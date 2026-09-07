@@ -26,6 +26,11 @@ htmlcov/
 *.duckdb.wal
 *.log
 
+# Data Lake & Storage
+*.parquet
+data/
+
+
 # Sensitive credentials
 .env
 .env.local
@@ -34,3 +39,20 @@ htmlcov/
 .vscode/
 .idea/
 *.swp
+
+# AI Agent harnesses, skills & assistant metadata
+.agents/
+.agent/
+_agents/
+agent/
+.claude/
+.claude.json
+claude.json
+CLAUDE.md
+.codex/
+skills/
+.skills/
+skills-lock.json
+.impeccable/
+PRODUCT.md
+DESIGN.md

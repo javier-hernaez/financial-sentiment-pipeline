@@ -36,15 +36,23 @@ class BaseAsyncExtractor(ABC):
         params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Any:
-        """Executes an HTTP GET request with exponential backoff and jitter."""
-        url = f"{self.base_url}/{endpoint.lstrip('/')}" if endpoint else self.base_url
+        """Executes an HTTP GET request with exponential backoff, redirect handling, and jitter."""
+        if endpoint:
+            url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+        else:
+            url = f"{self.base_url}/" if not self.base_url.endswith("/") else self.base_url
+
         combined_headers = {**self.headers, **(headers or {})}
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
             for attempt in range(1, self.max_retries + 1):
                 try:
                     response = await client.get(url, params=params, headers=combined_headers)
                     
+                    # If 403 or 401, don't waste retries on permissions/blocking
+                    if response.status_code in (401, 403):
+                        response.raise_for_status()
+
                     # Handle rate limits (429) or transient server errors (5xx)
                     if response.status_code in (429, 500, 502, 503, 504):
                         retry_after = response.headers.get("Retry-After")
@@ -64,7 +72,17 @@ class BaseAsyncExtractor(ABC):
                     response.raise_for_status()
                     return response.json()
 
-                except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code in (401, 403) or attempt == self.max_retries:
+                        raise
+                    jitter = random.uniform(0.1, 0.5)
+                    sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter
+                    console.print(
+                        f"[yellow][{self.name}] HTTP {exc.response.status_code}. Retrying in {sleep_time:.2f}s...[/yellow]"
+                    )
+                    await asyncio.sleep(sleep_time)
+
+                except httpx.RequestError as exc:
                     if attempt == self.max_retries:
                         console.print(f"[bold red][{self.name}] Fatal extraction error: {exc}[/bold red]")
                         raise

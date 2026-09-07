@@ -28,17 +28,28 @@ py -m venv venv
 copy .env.example .env
 ```
 
-### 3. Ejecutar el Pipeline
-Ejecuta la ingestión completa y generación del dataset Gold:
-```bash
-# Modo rápido de integración (usa mock NLP para validar extracción y DuckDB inmediatamente)
-.\venv\Scripts\python -m src.main --symbol BTCUSDT --hours 24 --mock-nlp
+### 3. Encender el Servidor y Dashboard Web (1 Clic)
+Puedes iniciar el servidor web interactivo usando los scripts automáticos:
+- **Doble clic en Windows**: `start_dashboard.bat` (inicia el servidor y abre el navegador automáticamente).
+- **Desde PowerShell**:
+  ```powershell
+  .\start_dashboard.ps1
+  ```
+El terminal estará disponible en:
+* **Terminal Cuantitativo:** `http://localhost:8080`
+* **Panel de Administración & Telemetría:** `http://localhost:8080/admin`
 
-# Modo con inferencia FinBERT completa
-.\venv\Scripts\python -m src.main --symbol BTCUSDT --hours 24
+### 4. Ejecutar el Pipeline ELT
+Puedes ejecutar el pipeline mediante los scripts rápidos o directamente con Python:
+```powershell
+# Usando script PowerShell
+.\run_pipeline.ps1 -Symbol BTCUSDT -Hours 24
+
+# O directamente con Python
+.\venv\Scripts\python -m src.main --symbol BTCUSDT --hours 24 --mock-nlp
 ```
 
-### 4. Ejecutar Pruebas Unitarias
+### 5. Ejecutar Pruebas Unitarias
 ```bash
 .\venv\Scripts\pytest tests/ -v
 ```

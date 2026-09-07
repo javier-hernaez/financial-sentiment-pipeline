@@ -94,7 +94,7 @@ class MarketWarehouse:
             LEFT JOIN silver_social_sentiment s
                 ON m.timestamp_hour = s.timestamp_hour
             LEFT JOIN silver_fear_greed fg
-                ON strptime(m.timestamp_hour, '%Y-%m-%d %H:%M:%S')::DATE = strptime(fg.date, '%Y-%m-%d')::DATE
+                ON SUBSTRING(m.timestamp_hour, 1, 10) = fg.date
             GROUP BY
                 m.timestamp_hour,
                 m.asset_ticker,
@@ -121,8 +121,8 @@ class MarketWarehouse:
                 interval,
                 timestamp_open_ms,
                 timestamp_close_ms,
-                strptime(datetime_open_utc, '%Y-%m-%dT%H:%M:%S%z'),
-                strptime(datetime_close_utc, '%Y-%m-%dT%H:%M:%S%z'),
+                TRY_CAST(datetime_open_utc AS TIMESTAMPTZ),
+                TRY_CAST(datetime_close_utc AS TIMESTAMPTZ),
                 timestamp_hour,
                 open_price,
                 high_price,
@@ -155,7 +155,7 @@ class MarketWarehouse:
                 upvotes,
                 upvote_ratio,
                 num_comments,
-                strptime(created_utc, '%Y-%m-%dT%H:%M:%S%z'),
+                TRY_CAST(created_utc AS TIMESTAMPTZ),
                 timestamp_hour,
                 sentiment_score,
                 sentiment_label,
@@ -177,7 +177,7 @@ class MarketWarehouse:
             SELECT
                 source,
                 timestamp_epoch,
-                strptime(datetime_utc, '%Y-%m-%dT%H:%M:%S%z'),
+                TRY_CAST(datetime_utc AS TIMESTAMPTZ),
                 date,
                 fear_and_greed_score,
                 fear_and_greed_classification
@@ -187,11 +187,35 @@ class MarketWarehouse:
         count = self.conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
         return count
 
-    def query_gold(self, limit: int = 24) -> pl.DataFrame:
-        """Queries the consolidated gold layer dataset."""
-        res = self.conn.execute(
-            f"SELECT * FROM gold_hourly_market_sentiment LIMIT {limit}"
-        ).arrow()
+    def query_gold(self, symbol: Optional[str] = None, limit: int = 24) -> pl.DataFrame:
+        """Queries the consolidated gold layer dataset, optionally filtered by asset_ticker."""
+        query = "SELECT * FROM gold_hourly_market_sentiment"
+        if symbol:
+            query += f" WHERE asset_ticker = '{symbol.upper()}'"
+        query += f" ORDER BY timestamp_hour DESC LIMIT {limit}"
+
+        res = self.conn.execute(query).arrow()
+        return pl.from_arrow(res)
+
+    def query_social_posts(self, limit: int = 20) -> pl.DataFrame:
+        """Queries the latest enriched social sentiment posts from silver layer."""
+        res = self.conn.execute(f"""
+            SELECT
+                post_id,
+                subreddit,
+                title,
+                cleaned_text,
+                author,
+                upvotes,
+                num_comments,
+                created_utc,
+                sentiment_score,
+                sentiment_label,
+                confidence
+            FROM silver_social_sentiment
+            ORDER BY created_utc DESC
+            LIMIT {limit}
+        """).arrow()
         return pl.from_arrow(res)
 
     def close(self) -> None:
