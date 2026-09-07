@@ -26,6 +26,11 @@ htmlcov/
 *.duckdb.wal
 *.log
 
+# Data Lake & Storage
+*.parquet
+data/
+
+
 # Sensitive credentials
 .env
 .env.local

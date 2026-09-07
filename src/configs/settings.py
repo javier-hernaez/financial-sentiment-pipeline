@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
 
@@ -49,10 +49,11 @@ class Settings(BaseSettings):
     max_backoff_seconds: float = 16.0
     request_timeout_seconds: float = 15.0
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     def setup_directories(self) -> None:
         """Ensure all data lake directories exist."""

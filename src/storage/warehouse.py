@@ -94,7 +94,7 @@ class MarketWarehouse:
             LEFT JOIN silver_social_sentiment s
                 ON m.timestamp_hour = s.timestamp_hour
             LEFT JOIN silver_fear_greed fg
-                ON strptime(m.timestamp_hour, '%Y-%m-%d %H:%M:%S')::DATE = strptime(fg.date, '%Y-%m-%d')::DATE
+                ON SUBSTRING(m.timestamp_hour, 1, 10) = fg.date
             GROUP BY
                 m.timestamp_hour,
                 m.asset_ticker,
@@ -121,8 +121,8 @@ class MarketWarehouse:
                 interval,
                 timestamp_open_ms,
                 timestamp_close_ms,
-                strptime(datetime_open_utc, '%Y-%m-%dT%H:%M:%S%z'),
-                strptime(datetime_close_utc, '%Y-%m-%dT%H:%M:%S%z'),
+                TRY_CAST(datetime_open_utc AS TIMESTAMPTZ),
+                TRY_CAST(datetime_close_utc AS TIMESTAMPTZ),
                 timestamp_hour,
                 open_price,
                 high_price,
@@ -155,7 +155,7 @@ class MarketWarehouse:
                 upvotes,
                 upvote_ratio,
                 num_comments,
-                strptime(created_utc, '%Y-%m-%dT%H:%M:%S%z'),
+                TRY_CAST(created_utc AS TIMESTAMPTZ),
                 timestamp_hour,
                 sentiment_score,
                 sentiment_label,
@@ -177,7 +177,7 @@ class MarketWarehouse:
             SELECT
                 source,
                 timestamp_epoch,
-                strptime(datetime_utc, '%Y-%m-%dT%H:%M:%S%z'),
+                TRY_CAST(datetime_utc AS TIMESTAMPTZ),
                 date,
                 fear_and_greed_score,
                 fear_and_greed_classification
