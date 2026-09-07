@@ -40,8 +40,16 @@ data/
 .idea/
 *.swp
 
-# Agent skills & local assistant configuration
+# AI Agent harnesses, skills & assistant metadata
 .agents/
 .agent/
 _agents/
-
+agent/
+.claude/
+.claude.json
+claude.json
+CLAUDE.md
+.codex/
+skills/
+.skills/
+skills-lock.json

@@ -40,231 +40,212 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Market Intelligence Terminal | Quant ELT & FinBERT</title>
+  <title>Terminal Cuantitativo de Mercado | Market Intelligence</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background-color: #0b0f17; color: #cbd5e1; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    .glow-bull { text-shadow: 0 0 12px rgba(16, 185, 129, 0.45); }
-    .glow-bear { text-shadow: 0 0 12px rgba(244, 63, 94, 0.45); }
-    .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
-    .scrollbar-thin::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    body { background-color: #090d16; color: #cbd5e1; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .font-tabular { font-variant-numeric: tabular-nums; }
+    .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
   </style>
 </head>
 <body class="antialiased p-4 md:p-6 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-6">
 
-    <!-- Top Navigation & Live Control Bar -->
+    <!-- Top Navigation & Controls -->
     <header class="flex flex-wrap justify-between items-center pb-5 border-b border-slate-800 gap-4">
       <div>
-        <div class="flex items-center gap-3">
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1.5"></span>
-            LIVE TERMINAL (PORT 8080)
-          </span>
-          <span class="text-xs text-slate-500 tracking-wider uppercase font-mono">Medallion ELT • DuckDB Columnar • FinBERT NLP</span>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Terminal en Vivo • Puerto 8080</span>
         </div>
-        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight mt-1 text-white flex items-center gap-2">
-          <span>⚡</span> Market Intelligence Engine
+        <h1 class="text-2xl font-bold tracking-tight text-white">
+          Market Intelligence Terminal
         </h1>
       </div>
 
       <!-- Controls: Asset Picker, Ingest Button & Export -->
       <div class="flex flex-wrap items-center gap-3">
-        <select id="asset-select" onchange="onAssetChange()" class="bg-slate-900 border border-slate-700 text-amber-400 font-mono font-bold text-sm rounded-lg px-3 py-2 outline-none focus:border-amber-400 transition cursor-pointer">
-          <option value="BTCUSDT">₿ BTC / USDT</option>
-          <option value="ETHUSDT">Ξ ETH / USDT</option>
-          <option value="SOLUSDT">◎ SOL / USDT</option>
+        <select id="asset-select" onchange="onAssetChange()" class="bg-slate-900 border border-slate-700 text-amber-400 font-mono font-bold text-sm rounded-md px-3 py-2 outline-none focus:border-amber-400 transition cursor-pointer">
+          <option value="BTCUSDT">BTC / USDT</option>
+          <option value="ETHUSDT">ETH / USDT</option>
+          <option value="SOLUSDT">SOL / USDT</option>
         </select>
 
-        <select id="hours-select" class="bg-slate-900 border border-slate-700 text-slate-300 font-mono text-xs rounded-lg px-3 py-2 outline-none cursor-pointer">
+        <select id="hours-select" class="bg-slate-900 border border-slate-700 text-slate-300 font-mono text-xs rounded-md px-3 py-2 outline-none cursor-pointer">
           <option value="12">12 Horas</option>
           <option value="24" selected>24 Horas</option>
           <option value="48">48 Horas</option>
         </select>
 
-        <button id="btn-run" onclick="triggerPipeline()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-mono px-4 py-2 rounded-lg transition-all shadow flex items-center gap-2">
-          <span>▶</span> Ingestar & Enriquecer
+        <button id="btn-run" onclick="triggerPipeline()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold font-mono px-4 py-2 rounded-md transition shadow-sm flex items-center gap-2">
+          <span>Actualizar datos de mercado</span>
         </button>
 
-        <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3.5 py-2 rounded-lg border border-slate-700 transition flex items-center gap-1.5" title="Descargar CSV para Backtesting">
-          <span>⤓</span> CSV
+        <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3.5 py-2 rounded-md border border-slate-700 transition" title="Descargar histórico en formato CSV">
+          Descargar CSV
         </button>
 
-        <a href="/admin" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-xs font-mono px-3.5 py-2 rounded-lg border border-blue-500/30 transition flex items-center gap-1.5" title="Panel de Administración y Estado del ELT">
-          <span>🛠️</span> Admin
+        <a href="/admin" class="bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-mono px-3.5 py-2 rounded-md border border-slate-700 transition" title="Panel de Administración y Telemetría">
+          Panel de Control
         </a>
       </div>
     </header>
 
     <!-- Notification Toast -->
-    <div id="toast" class="hidden p-3 rounded-lg text-xs font-mono border transition-all"></div>
+    <div id="toast" class="hidden p-3 rounded-md text-xs font-mono border transition-all"></div>
 
-    <!-- KPI Metric Cards -->
+    <!-- KPI Metric Cards (Single-plane, high contrast, no blur decoration) -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- Price Card -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 relative overflow-hidden shadow-sm">
-        <div class="text-xs uppercase font-medium text-slate-400">Precio de Cierre (Binance)</div>
-        <div class="text-3xl font-black font-mono mt-1 text-white" id="kpi-price">$---.--</div>
-        <div class="flex items-center gap-2 mt-2 text-xs font-medium text-emerald-400" id="kpi-vol">
-          <span>▲ Vol: --</span>
+      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+        <div class="text-xs uppercase font-medium text-slate-400 font-mono">Último Precio de Cierre</div>
+        <div class="text-2xl font-bold font-mono mt-1 text-white font-tabular" id="kpi-price">$---.--</div>
+        <div class="flex items-center gap-2 mt-2 text-xs font-medium text-slate-300 font-mono" id="kpi-vol">
+          <span>Vol: --</span>
         </div>
       </div>
 
       <!-- FinBERT Sentiment Card -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 relative overflow-hidden shadow-sm">
-        <div class="text-xs uppercase font-medium text-slate-400">Sentimiento FinBERT (Horario)</div>
-        <div class="text-3xl font-black font-mono mt-1 text-emerald-400" id="kpi-sentiment">---</div>
+      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+        <div class="text-xs uppercase font-medium text-slate-400 font-mono">Sentimiento Ponderado (1h)</div>
+        <div class="text-2xl font-bold font-mono mt-1 text-emerald-400 font-tabular" id="kpi-sentiment">---</div>
         <div class="flex items-center justify-between mt-2 text-xs font-medium" id="kpi-sentiment-details">
-          <span class="text-emerald-400 font-semibold" id="kpi-sentiment-label">Bullish</span>
-          <span class="text-slate-400" id="kpi-posts-count">-- menciones</span>
+          <span class="text-emerald-400 font-semibold" id="kpi-sentiment-label">Alcista</span>
+          <span class="text-slate-400 font-mono" id="kpi-posts-count">-- menciones</span>
         </div>
       </div>
 
       <!-- Macro Fear & Greed Card -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 relative overflow-hidden shadow-sm">
-        <div class="text-xs uppercase font-medium text-slate-400">Crypto Fear & Greed Index</div>
+      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+        <div class="text-xs uppercase font-medium text-slate-400 font-mono">Índice Miedo y Codicia</div>
         <div class="flex items-baseline gap-2 mt-1">
-          <span class="text-3xl font-black font-mono text-emerald-400" id="kpi-fg-score">--</span>
-          <span class="text-xs font-semibold uppercase text-emerald-400 tracking-wider" id="kpi-fg-class">/ 100</span>
+          <span class="text-2xl font-bold font-mono text-emerald-400 font-tabular" id="kpi-fg-score">--</span>
+          <span class="text-xs font-semibold uppercase text-emerald-400 tracking-wider font-mono" id="kpi-fg-class">/ 100</span>
         </div>
-        <div class="w-full bg-slate-800 rounded-full h-2 mt-3 overflow-hidden">
-          <div id="fg-bar" class="bg-emerald-500 h-2 rounded-full transition-all" style="width: 50%"></div>
+        <div class="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+          <div id="fg-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all" style="width: 50%"></div>
         </div>
       </div>
 
       <!-- Quantitative Alpha Signal Card -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 relative overflow-hidden shadow-sm">
-        <div class="text-xs uppercase font-medium text-slate-400">Señal Cuantitativa (Alpha)</div>
-        <div class="text-sm font-extrabold font-mono mt-1 text-amber-400 tracking-tight leading-snug" id="kpi-alpha-signal">
+      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+        <div class="text-xs uppercase font-medium text-slate-400 font-mono">Señal Cuantitativa (Alpha)</div>
+        <div class="text-sm font-bold font-mono mt-1 text-amber-400 tracking-tight" id="kpi-alpha-signal">
           CALCULANDO...
         </div>
-        <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
+        <div class="flex items-center justify-between mt-2 text-xs text-slate-400 font-mono">
           <span>Confianza: <strong class="text-emerald-400" id="kpi-alpha-conf">--%</strong></span>
-          <span>Vol: <strong class="text-slate-300" id="kpi-alpha-vol">--%</strong></span>
+          <span>Volatilidad: <strong class="text-slate-300" id="kpi-alpha-vol">--%</strong></span>
         </div>
       </div>
     </section>
 
-    <!-- Main Candlestick Chart with Volume & Sentiment Crosshair -->
-    <section class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm">
-      <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+    <!-- Candlestick Chart (Clear axes, readable crosshair, no neon halos) -->
+    <section class="bg-slate-900 border border-slate-800 rounded-lg p-5">
+      <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
         <div>
-          <h3 class="font-bold text-base text-white flex items-center gap-2">
-            <span>📈</span> Velas Japonesas OHLCV 1h & Sentimiento FinBERT Ponderado
-          </h3>
-          <p class="text-xs text-slate-400">Pasa el ratón sobre el gráfico para inspeccionar Open, High, Low, Close, Volumen y Sentimiento</p>
+          <h2 class="text-sm font-semibold text-white">Velas Japonesas Horarias & Sentimiento FinBERT</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Inspecciona apertura, máximos, mínimos, cierre y volumen pasando el cursor sobre las velas.</p>
         </div>
         <div class="flex items-center gap-4 text-xs font-mono">
-          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span> Vela Alcista</span>
-          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500 inline-block"></span> Vela Bajista</span>
-          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-400/70 inline-block"></span> FinBERT Score</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span> Vela Alcista</span>
+          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block"></span> Vela Bajista</span>
+          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span> Sentimiento</span>
         </div>
       </div>
 
       <!-- Hover Tooltip Header Display -->
-      <div id="crosshair-info" class="h-6 text-xs font-mono text-slate-300 flex flex-wrap gap-4 items-center bg-slate-950/60 px-3 py-1 rounded border border-slate-800 mb-2">
-        <span>Inspección: Mueve el cursor por el gráfico</span>
+      <div id="crosshair-info" class="h-6 text-xs font-mono text-slate-300 flex flex-wrap gap-4 items-center bg-slate-950 px-3 py-1 rounded border border-slate-800 mb-2">
+        <span>Inspección: Mueve el cursor por el gráfico para examinar velas</span>
       </div>
 
-      <div class="relative w-full h-80 bg-slate-950 rounded-lg p-2 flex items-end">
+      <div class="relative w-full h-80 bg-slate-950 rounded-md p-2 flex items-end">
         <canvas id="candleChart" class="w-full h-full cursor-crosshair"></canvas>
       </div>
     </section>
 
-    <!-- Lower Two-Column Section: Sandbox & Social Feed -->
+    <!-- Lower Section: Sandbox & Social Feed -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
       <!-- FinBERT Interactive Testing Sandbox -->
-      <section class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+      <section class="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
         <div>
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="font-bold text-base text-white flex items-center gap-2">
-              <span>🧪</span> FinBERT NLP Sandbox (Prueba en Directo)
-            </h3>
-            <span class="text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded">
-              Interactive Test
-            </span>
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="text-sm font-semibold text-white">Laboratorio de Inferencia FinBERT</h3>
+            <span class="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Prueba interactiva</span>
           </div>
-          <p class="text-xs text-slate-400 mb-4">
-            Escribe cualquier titular, noticia o tweet financiero para que el modelo FinBERT lo analice en tiempo real con sus pesos probabilísticos:
-          </p>
+          <p class="text-xs text-slate-400 mb-3">Introduce cualquier texto financiero para obtener el análisis de sentimiento en tiempo real:</p>
 
-          <textarea id="sandbox-input" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 focus:border-indigo-500 outline-none resize-none font-mono" placeholder="Ej: Federal Reserve cuts interest rates by 50 bps, massive rally begins in tech and crypto assets..."></textarea>
+          <textarea id="sandbox-input" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-md p-3 text-xs text-slate-200 focus:border-slate-600 outline-none resize-none font-mono" placeholder="Ej: Federal Reserve holds rates steady as economic indicators point to resilient corporate earnings..."></textarea>
 
-          <div class="flex gap-2 mt-2">
-            <button onclick="testFinBERT()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold px-4 py-2 rounded-lg transition shadow flex items-center gap-1.5">
-              <span>⚡</span> Evaluar Texto con FinBERT
+          <div class="flex flex-wrap gap-2 mt-2.5">
+            <button onclick="testFinBERT()" class="bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs font-medium px-4 py-2 rounded-md transition shadow-sm">
+              Evaluar texto
             </button>
-            <button onclick="setSamplePrompt(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono px-2.5 py-2 rounded-lg border border-slate-700">
+            <button onclick="setSamplePrompt(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3 py-2 rounded-md border border-slate-700">
               Ejemplo Alcista
             </button>
-            <button onclick="setSamplePrompt(2)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-mono px-2.5 py-2 rounded-lg border border-slate-700">
+            <button onclick="setSamplePrompt(2)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3 py-2 rounded-md border border-slate-700">
               Ejemplo Bajista
             </button>
           </div>
         </div>
 
         <!-- Sandbox Output Box -->
-        <div id="sandbox-output" class="hidden mt-4 bg-slate-950 border border-slate-800 rounded-lg p-3.5">
+        <div id="sandbox-output" class="hidden mt-4 bg-slate-950 border border-slate-800 rounded-md p-3.5">
           <div class="flex justify-between items-center mb-2">
-            <span class="text-xs font-mono text-slate-400">Resultado FinBERT:</span>
+            <span class="text-xs font-mono text-slate-400">Clasificación:</span>
             <span id="res-badge" class="px-2 py-0.5 rounded text-xs font-mono font-bold">---</span>
           </div>
-          <div class="text-lg font-mono font-bold" id="res-score">Score: ---</div>
-          <!-- Probability bars -->
+          <div class="text-sm font-mono font-bold" id="res-score">Score: ---</div>
           <div class="grid grid-cols-3 gap-2 mt-3 text-center text-[10px] font-mono">
-            <div class="bg-emerald-950/30 border border-emerald-500/20 p-1.5 rounded">
-              <div class="text-emerald-400">Bullish</div>
+            <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
+              <div class="text-emerald-400 font-semibold">Alcista (Bull)</div>
               <div class="font-bold text-white mt-0.5" id="res-p-pos">0%</div>
             </div>
-            <div class="bg-rose-950/30 border border-rose-500/20 p-1.5 rounded">
-              <div class="text-rose-400">Bearish</div>
+            <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
+              <div class="text-rose-400 font-semibold">Bajista (Bear)</div>
               <div class="font-bold text-white mt-0.5" id="res-p-neg">0%</div>
             </div>
-            <div class="bg-slate-900 border border-slate-700 p-1.5 rounded">
-              <div class="text-slate-400">Neutral</div>
+            <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
+              <div class="text-slate-400 font-semibold">Neutral</div>
               <div class="font-bold text-white mt-0.5" id="res-p-neu">0%</div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Live Social Feed & FinBERT Classification Inspector -->
-      <section class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+      <!-- Social Feed Inspector -->
+      <section class="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
         <div>
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="font-bold text-base text-white flex items-center gap-2">
-              <span>💬</span> Feed Social Enriquecido (Silver Layer)
-            </h3>
-            <span class="text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded">
-              r/CryptoCurrency • r/WallStreetBets
-            </span>
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="text-sm font-semibold text-white">Publicaciones Analizadas (Capa Silver)</h3>
+            <span class="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Reddit & Noticias</span>
           </div>
-          <p class="text-xs text-slate-400 mb-3">Posts capturados e inferidos con scoring de sentimiento y votos comunitarios:</p>
+          <p class="text-xs text-slate-400 mb-3">Auditoría del texto sanitizado y puntuación FinBERT asignada:</p>
 
-          <div id="social-feed-container" class="space-y-2.5 max-h-64 overflow-y-auto scrollbar-thin pr-1">
-            <div class="text-center py-6 text-xs text-slate-500 font-mono">Cargando publicaciones analizadas...</div>
+          <div id="social-feed-container" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin pr-1">
+            <div class="text-center py-6 text-xs text-slate-500 font-mono">Cargando publicaciones...</div>
           </div>
         </div>
 
         <div class="text-[11px] font-mono text-slate-500 pt-3 border-t border-slate-800 flex justify-between">
-          <span>Fuente: Ingestión asíncrona</span>
-          <span>Limpieza de texto: Polars Vectorizado</span>
+          <span>Ingestión asíncrona</span>
+          <span>Limpieza vectorizada Polars</span>
         </div>
       </section>
     </div>
 
     <!-- Gold Layer Table (Full Analytics View) -->
-    <section class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm">
-      <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+    <section class="bg-slate-900 border border-slate-800 rounded-lg p-5">
+      <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
         <div>
-          <h3 class="font-bold text-base text-white flex items-center gap-2">
-            <span>🏛️</span> Gold Layer Feature Store (DuckDB)
-          </h3>
-          <p class="text-xs text-slate-400">Tabla temporal consolidada con precios, volumen, métricas FinBERT y Macro</p>
+          <h2 class="text-sm font-semibold text-white">Almacén Columnar Consolidado (DuckDB Gold)</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Serie temporal de precios, volumen y sentimiento unificada por hora.</p>
         </div>
-        <button onclick="loadData()" class="text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition border border-slate-700">
-          ↻ Refrescar Tabla
+        <button onclick="loadData()" class="text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md transition border border-slate-700">
+          Refrescar tabla
         </button>
       </div>
 
