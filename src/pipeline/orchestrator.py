@@ -10,6 +10,7 @@ from ..configs.settings import settings
 from ..extractors import BinanceKlinesExtractor, FearGreedExtractor, SocialRedditExtractor
 from ..storage import BronzeDataLake, MarketWarehouse
 from ..nlp import TextCleaner, FinBERTEngine
+from ..analytics.quant_signals import QuantSignalsEngine
 
 console = Console()
 
@@ -97,10 +98,11 @@ class MarketIntelligencePipeline:
         total_social = self.warehouse.upsert_social_sentiment(df_social_scored)
 
         # -------------------------------------------------------------
-        # 4. Gold Analytics Consolidation (DuckDB)
+        # 4. Gold Analytics Consolidation & Alpha Signal Generation
         # -------------------------------------------------------------
-        console.print("[bold blue]4. Generating Gold Layer Feature Store...[/bold blue]")
-        gold_df = self.warehouse.query_gold(limit=min(self.hours, 10))
+        console.print("[bold blue]4. Generating Gold Layer Feature Store & Alpha Signals...[/bold blue]")
+        gold_df_raw = self.warehouse.query_gold(symbol=self.symbol, limit=self.hours)
+        gold_df = QuantSignalsEngine.calculate_signals(gold_df_raw)
 
         elapsed_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
         console.print(f"[bold green][OK] Pipeline completed in {elapsed_seconds:.2f}s[/bold green]")
