@@ -39,3 +39,9 @@ data/
 .vscode/
 .idea/
 *.swp
+
+# Agent skills & local assistant configuration
+.agents/
+.agent/
+_agents/
+
