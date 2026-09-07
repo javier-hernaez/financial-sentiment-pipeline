@@ -47,17 +47,19 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
     .font-tabular { font-variant-numeric: tabular-nums; }
     .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    :focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
   </style>
 </head>
 <body class="antialiased p-4 md:p-6 min-h-screen">
   <div class="max-w-7xl mx-auto space-y-6">
 
-    <!-- Top Navigation & Controls -->
-    <header class="flex flex-wrap justify-between items-center pb-5 border-b border-slate-800 gap-4">
+    <!-- Top Navigation & System Status (Heuristic H1 & WCAG Landmark) -->
+    <header class="flex flex-wrap justify-between items-center pb-5 border-b border-slate-800 gap-4" role="banner">
       <div>
-        <div class="flex items-center gap-2 mb-1">
-          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Terminal en Vivo • Puerto 8080</span>
+        <div class="flex items-center gap-2 mb-1" id="system-status-indicator" role="status" aria-live="polite">
+          <span id="status-dot" class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="status-text" class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Terminal en Vivo • DuckDB Conectado</span>
+          <span id="last-sync-time" class="text-[10px] text-slate-500 font-mono hidden md:inline"></span>
         </div>
         <h1 class="text-2xl font-bold tracking-tight text-white">
           Market Intelligence Terminal
@@ -65,213 +67,235 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
 
       <!-- Controls: Asset Picker, Ingest Button & Export -->
-      <div class="flex flex-wrap items-center gap-3">
-        <select id="asset-select" onchange="onAssetChange()" class="bg-slate-900 border border-slate-700 text-amber-400 font-mono font-bold text-sm rounded-md px-3 py-2 outline-none focus:border-amber-400 transition cursor-pointer">
+      <nav class="flex flex-wrap items-center gap-3" aria-label="Controles principales">
+        <label for="asset-select" class="sr-only">Seleccionar criptoactivo</label>
+        <select id="asset-select" onchange="onAssetChange()" aria-label="Seleccionar criptoactivo" class="bg-slate-900 border border-slate-700 text-amber-400 font-mono font-bold text-sm rounded-md px-3 py-2 outline-none focus:border-amber-400 focus-visible:ring-2 focus-visible:ring-blue-500 transition cursor-pointer">
           <option value="BTCUSDT">BTC / USDT</option>
           <option value="ETHUSDT">ETH / USDT</option>
           <option value="SOLUSDT">SOL / USDT</option>
         </select>
 
-        <select id="hours-select" class="bg-slate-900 border border-slate-700 text-slate-300 font-mono text-xs rounded-md px-3 py-2 outline-none cursor-pointer">
+        <label for="hours-select" class="sr-only">Rango temporal en horas</label>
+        <select id="hours-select" aria-label="Rango temporal en horas" class="bg-slate-900 border border-slate-700 text-slate-300 font-mono text-xs rounded-md px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer">
           <option value="12">12 Horas</option>
           <option value="24" selected>24 Horas</option>
           <option value="48">48 Horas</option>
         </select>
 
-        <button id="btn-run" onclick="triggerPipeline()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold font-mono px-4 py-2 rounded-md transition shadow-sm flex items-center gap-2">
-          <span>Actualizar datos de mercado</span>
+        <button id="btn-run" onclick="triggerPipeline()" aria-label="Ejecutar ingesta ELT de mercado" class="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-semibold font-mono px-4 py-2 rounded-md transition shadow-sm flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-blue-500">
+          <span id="btn-run-label">Actualizar datos de mercado</span>
         </button>
 
-        <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3.5 py-2 rounded-md border border-slate-700 transition" title="Descargar histórico en formato CSV">
+        <button onclick="exportCSV()" aria-label="Descargar histórico en formato CSV" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3.5 py-2 rounded-md border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-blue-500" title="Descargar histórico en formato CSV">
           Descargar CSV
         </button>
 
-        <a href="/admin" class="bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-mono px-3.5 py-2 rounded-md border border-slate-700 transition" title="Panel de Administración y Telemetría">
+        <a href="/admin" aria-label="Ir al Panel de Control y Telemetría" class="bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-mono px-3.5 py-2 rounded-md border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-blue-500" title="Panel de Administración y Telemetría">
           Panel de Control
         </a>
-      </div>
+      </nav>
     </header>
 
-    <!-- Notification Toast -->
-    <div id="toast" class="hidden p-3 rounded-md text-xs font-mono border transition-all"></div>
-
-    <!-- KPI Metric Cards (Single-plane, high contrast, no blur decoration) -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <!-- Price Card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
-        <div class="text-xs uppercase font-medium text-slate-400 font-mono">Último Precio de Cierre</div>
-        <div class="text-2xl font-bold font-mono mt-1 text-white font-tabular" id="kpi-price">$---.--</div>
-        <div class="flex items-center gap-2 mt-2 text-xs font-medium text-slate-300 font-mono" id="kpi-vol">
-          <span>Vol: --</span>
-        </div>
+    <!-- Disconnection Warning Banner (Fortify: Offline Recovery) -->
+    <div id="offline-banner" class="hidden p-4 rounded-md text-xs font-mono border bg-rose-950/40 text-rose-300 border-rose-800/80 flex flex-wrap justify-between items-center gap-3" role="alert">
+      <div>
+        <strong class="font-bold">Conexión con el servidor interrumpida:</strong> No se reciben respuestas de http://localhost:8080.
       </div>
-
-      <!-- FinBERT Sentiment Card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
-        <div class="text-xs uppercase font-medium text-slate-400 font-mono">Sentimiento Ponderado (1h)</div>
-        <div class="text-2xl font-bold font-mono mt-1 text-emerald-400 font-tabular" id="kpi-sentiment">---</div>
-        <div class="flex items-center justify-between mt-2 text-xs font-medium" id="kpi-sentiment-details">
-          <span class="text-emerald-400 font-semibold" id="kpi-sentiment-label">Alcista</span>
-          <span class="text-slate-400 font-mono" id="kpi-posts-count">-- menciones</span>
-        </div>
-      </div>
-
-      <!-- Macro Fear & Greed Card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
-        <div class="text-xs uppercase font-medium text-slate-400 font-mono">Índice Miedo y Codicia</div>
-        <div class="flex items-baseline gap-2 mt-1">
-          <span class="text-2xl font-bold font-mono text-emerald-400 font-tabular" id="kpi-fg-score">--</span>
-          <span class="text-xs font-semibold uppercase text-emerald-400 tracking-wider font-mono" id="kpi-fg-class">/ 100</span>
-        </div>
-        <div class="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
-          <div id="fg-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all" style="width: 50%"></div>
-        </div>
-      </div>
-
-      <!-- Quantitative Alpha Signal Card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
-        <div class="text-xs uppercase font-medium text-slate-400 font-mono">Señal Cuantitativa (Alpha)</div>
-        <div class="text-sm font-bold font-mono mt-1 text-amber-400 tracking-tight" id="kpi-alpha-signal">
-          CALCULANDO...
-        </div>
-        <div class="flex items-center justify-between mt-2 text-xs text-slate-400 font-mono">
-          <span>Confianza: <strong class="text-emerald-400" id="kpi-alpha-conf">--%</strong></span>
-          <span>Volatilidad: <strong class="text-slate-300" id="kpi-alpha-vol">--%</strong></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Candlestick Chart (Clear axes, readable crosshair, no neon halos) -->
-    <section class="bg-slate-900 border border-slate-800 rounded-lg p-5">
-      <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
-        <div>
-          <h2 class="text-sm font-semibold text-white">Velas Japonesas Horarias & Sentimiento FinBERT</h2>
-          <p class="text-xs text-slate-400 mt-0.5">Inspecciona apertura, máximos, mínimos, cierre y volumen pasando el cursor sobre las velas.</p>
-        </div>
-        <div class="flex items-center gap-4 text-xs font-mono">
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span> Vela Alcista</span>
-          <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block"></span> Vela Bajista</span>
-          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span> Sentimiento</span>
-        </div>
-      </div>
-
-      <!-- Hover Tooltip Header Display -->
-      <div id="crosshair-info" class="h-6 text-xs font-mono text-slate-300 flex flex-wrap gap-4 items-center bg-slate-950 px-3 py-1 rounded border border-slate-800 mb-2">
-        <span>Inspección: Mueve el cursor por el gráfico para examinar velas</span>
-      </div>
-
-      <div class="relative w-full h-80 bg-slate-950 rounded-md p-2 flex items-end">
-        <canvas id="candleChart" class="w-full h-full cursor-crosshair"></canvas>
-      </div>
-    </section>
-
-    <!-- Lower Section: Sandbox & Social Feed -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-      <!-- FinBERT Interactive Testing Sandbox -->
-      <section class="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <h3 class="text-sm font-semibold text-white">Laboratorio de Inferencia FinBERT</h3>
-            <span class="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Prueba interactiva</span>
-          </div>
-          <p class="text-xs text-slate-400 mb-3">Introduce cualquier texto financiero para obtener el análisis de sentimiento en tiempo real:</p>
-
-          <textarea id="sandbox-input" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-md p-3 text-xs text-slate-200 focus:border-slate-600 outline-none resize-none font-mono" placeholder="Ej: Federal Reserve holds rates steady as economic indicators point to resilient corporate earnings..."></textarea>
-
-          <div class="flex flex-wrap gap-2 mt-2.5">
-            <button onclick="testFinBERT()" class="bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs font-medium px-4 py-2 rounded-md transition shadow-sm">
-              Evaluar texto
-            </button>
-            <button onclick="setSamplePrompt(1)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3 py-2 rounded-md border border-slate-700">
-              Ejemplo Alcista
-            </button>
-            <button onclick="setSamplePrompt(2)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3 py-2 rounded-md border border-slate-700">
-              Ejemplo Bajista
-            </button>
-          </div>
-        </div>
-
-        <!-- Sandbox Output Box -->
-        <div id="sandbox-output" class="hidden mt-4 bg-slate-950 border border-slate-800 rounded-md p-3.5">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-xs font-mono text-slate-400">Clasificación:</span>
-            <span id="res-badge" class="px-2 py-0.5 rounded text-xs font-mono font-bold">---</span>
-          </div>
-          <div class="text-sm font-mono font-bold" id="res-score">Score: ---</div>
-          <div class="grid grid-cols-3 gap-2 mt-3 text-center text-[10px] font-mono">
-            <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
-              <div class="text-emerald-400 font-semibold">Alcista (Bull)</div>
-              <div class="font-bold text-white mt-0.5" id="res-p-pos">0%</div>
-            </div>
-            <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
-              <div class="text-rose-400 font-semibold">Bajista (Bear)</div>
-              <div class="font-bold text-white mt-0.5" id="res-p-neg">0%</div>
-            </div>
-            <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
-              <div class="text-slate-400 font-semibold">Neutral</div>
-              <div class="font-bold text-white mt-0.5" id="res-p-neu">0%</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Social Feed Inspector -->
-      <section class="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <h3 class="text-sm font-semibold text-white">Publicaciones Analizadas (Capa Silver)</h3>
-            <span class="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Reddit & Noticias</span>
-          </div>
-          <p class="text-xs text-slate-400 mb-3">Auditoría del texto sanitizado y puntuación FinBERT asignada:</p>
-
-          <div id="social-feed-container" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin pr-1">
-            <div class="text-center py-6 text-xs text-slate-500 font-mono">Cargando publicaciones...</div>
-          </div>
-        </div>
-
-        <div class="text-[11px] font-mono text-slate-500 pt-3 border-t border-slate-800 flex justify-between">
-          <span>Ingestión asíncrona</span>
-          <span>Limpieza vectorizada Polars</span>
-        </div>
-      </section>
+      <button onclick="loadData()" class="bg-rose-900/60 hover:bg-rose-800 text-white text-xs px-3 py-1.5 rounded border border-rose-700 transition">
+        Reintentar conexión
+      </button>
     </div>
 
-    <!-- Gold Layer Table (Full Analytics View) -->
-    <section class="bg-slate-900 border border-slate-800 rounded-lg p-5">
-      <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
-        <div>
-          <h2 class="text-sm font-semibold text-white">Almacén Columnar Consolidado (DuckDB Gold)</h2>
-          <p class="text-xs text-slate-400 mt-0.5">Serie temporal de precios, volumen y sentimiento unificada por hora.</p>
+    <!-- Notification Toast (Aria-live) -->
+    <div id="toast" class="hidden p-3 rounded-md text-xs font-mono border transition-all" role="status" aria-live="polite"></div>
+
+    <main class="space-y-6">
+
+      <!-- KPI Metric Cards (Single-plane, high contrast, clean typography) -->
+      <section aria-labelledby="kpi-heading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <h2 id="kpi-heading" class="sr-only">Métricas Clave de Mercado</h2>
+
+        <!-- Price Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+          <div class="text-xs uppercase font-medium text-slate-400 font-mono">Último Precio de Cierre</div>
+          <div class="text-2xl font-bold font-mono mt-1 text-white font-tabular" id="kpi-price">$---.--</div>
+          <div class="flex items-center gap-2 mt-2 text-xs font-medium text-slate-300 font-mono" id="kpi-vol">
+            <span>Volumen: Pendiente</span>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono mt-1">Fuente: Binance REST klines</div>
         </div>
-        <button onclick="loadData()" class="text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md transition border border-slate-700">
-          Refrescar tabla
-        </button>
+
+        <!-- FinBERT Sentiment Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+          <div class="text-xs uppercase font-medium text-slate-400 font-mono">Sentimiento Ponderado (1h)</div>
+          <div class="text-2xl font-bold font-mono mt-1 text-slate-300 font-tabular" id="kpi-sentiment">---</div>
+          <div class="flex items-center justify-between mt-2 text-xs font-medium" id="kpi-sentiment-details">
+            <span class="text-slate-400 font-semibold" id="kpi-sentiment-label">Sin datos</span>
+            <span class="text-slate-400 font-mono" id="kpi-posts-count">0 menciones</span>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono mt-1">Rango normalizado: -1.0 a +1.0</div>
+        </div>
+
+        <!-- Macro Fear & Greed Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+          <div class="text-xs uppercase font-medium text-slate-400 font-mono">Índice Miedo y Codicia</div>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span class="text-2xl font-bold font-mono text-emerald-400 font-tabular" id="kpi-fg-score">--</span>
+            <span class="text-xs font-semibold uppercase text-emerald-400 tracking-wider font-mono" id="kpi-fg-class">/ 100</span>
+          </div>
+          <div class="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+            <div id="fg-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all" style="width: 50%"></div>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono mt-1">Fuente: Alternative.me Macro</div>
+        </div>
+
+        <!-- Quantitative Alpha Signal Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+          <div class="text-xs uppercase font-medium text-slate-400 font-mono">Señal Cuantitativa (Alpha)</div>
+          <div class="text-sm font-bold font-mono mt-1 text-slate-400 tracking-tight" id="kpi-alpha-signal">
+            PENDIENTE DE DATOS
+          </div>
+          <div class="flex items-center justify-between mt-2 text-xs text-slate-400 font-mono">
+            <span>Certeza: <strong class="text-slate-300" id="kpi-alpha-conf">--%</strong></span>
+            <span>Volatilidad: <strong class="text-slate-300" id="kpi-alpha-vol">--%</strong></span>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono mt-1">Divergencia precio vs. FinBERT</div>
+        </div>
+      </section>
+
+      <!-- Candlestick Chart (Clear axes, readable crosshair, no neon halos) -->
+      <section aria-labelledby="chart-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-5">
+        <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+          <div>
+            <h2 id="chart-heading" class="text-sm font-semibold text-white">Velas Japonesas Horarias & Sentimiento FinBERT</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Inspecciona apertura, máximos, mínimos, cierre y volumen pasando el cursor sobre las velas.</p>
+          </div>
+          <div class="flex items-center gap-4 text-xs font-mono" aria-label="Leyenda del gráfico">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span> Vela Alcista</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block"></span> Vela Bajista</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span> Sentimiento FinBERT</span>
+          </div>
+        </div>
+
+        <!-- Hover Tooltip Header Display -->
+        <div id="crosshair-info" class="h-6 text-xs font-mono text-slate-300 flex flex-wrap gap-4 items-center bg-slate-950 px-3 py-1 rounded border border-slate-800 mb-2" role="region" aria-label="Detalles de vela seleccionada">
+          <span>Inspección: Mueve el cursor por el gráfico para examinar velas</span>
+        </div>
+
+        <div class="relative w-full h-80 bg-slate-950 rounded-md p-2 flex items-end">
+          <canvas id="candleChart" class="w-full h-full cursor-crosshair" aria-label="Gráfico de velas horarias"></canvas>
+        </div>
+      </section>
+
+      <!-- Lower Section: Sandbox & Social Feed -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- FinBERT Interactive Testing Sandbox -->
+        <section aria-labelledby="sandbox-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h3 id="sandbox-heading" class="text-sm font-semibold text-white">Laboratorio de Inferencia FinBERT</h3>
+              <span class="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Inferencia local</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Introduce cualquier texto financiero para obtener el análisis de sentimiento en tiempo real:</p>
+
+            <label for="sandbox-input" class="sr-only">Texto financiero para analizar</label>
+            <textarea id="sandbox-input" rows="3" aria-label="Texto financiero para analizar" class="w-full bg-slate-950 border border-slate-800 rounded-md p-3 text-xs text-slate-200 focus:border-slate-600 focus-visible:ring-2 focus-visible:ring-blue-500 outline-none resize-none font-mono" placeholder="Ej: Federal Reserve holds rates steady as economic indicators point to resilient corporate earnings..."></textarea>
+
+            <div class="flex flex-wrap gap-2 mt-2.5">
+              <button onclick="testFinBERT()" aria-label="Evaluar texto con FinBERT" class="bg-blue-600 hover:bg-blue-500 text-white font-mono text-xs font-medium px-4 py-2 rounded-md transition shadow-sm focus-visible:ring-2 focus-visible:ring-blue-500">
+                Evaluar texto
+              </button>
+              <button onclick="setSamplePrompt(1)" aria-label="Cargar ejemplo alcista" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3 py-2 rounded-md border border-slate-700 focus-visible:ring-2 focus-visible:ring-blue-500">
+                Ejemplo Alcista
+              </button>
+              <button onclick="setSamplePrompt(2)" aria-label="Cargar ejemplo bajista" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono px-3 py-2 rounded-md border border-slate-700 focus-visible:ring-2 focus-visible:ring-blue-500">
+                Ejemplo Bajista
+              </button>
+            </div>
+          </div>
+
+          <!-- Sandbox Output Box -->
+          <div id="sandbox-output" class="hidden mt-4 bg-slate-950 border border-slate-800 rounded-md p-3.5" role="region" aria-label="Resultado de inferencia">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-mono text-slate-400">Clasificación:</span>
+              <span id="res-badge" class="px-2 py-0.5 rounded text-xs font-mono font-bold">---</span>
+            </div>
+            <div class="text-sm font-mono font-bold" id="res-score">Score: ---</div>
+            <div class="grid grid-cols-3 gap-2 mt-3 text-center text-[10px] font-mono">
+              <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
+                <div class="text-emerald-400 font-semibold">Alcista (Bull)</div>
+                <div class="font-bold text-white mt-0.5" id="res-p-pos">0%</div>
+              </div>
+              <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
+                <div class="text-rose-400 font-semibold">Bajista (Bear)</div>
+                <div class="font-bold text-white mt-0.5" id="res-p-neg">0%</div>
+              </div>
+              <div class="bg-slate-900 border border-slate-800 p-1.5 rounded">
+                <div class="text-slate-400 font-semibold">Neutral</div>
+                <div class="font-bold text-white mt-0.5" id="res-p-neu">0%</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Social Feed Inspector -->
+        <section aria-labelledby="social-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h3 id="social-heading" class="text-sm font-semibold text-white">Publicaciones Analizadas (Capa Silver)</h3>
+              <span class="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Reddit & Noticias</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Auditoría del texto sanitizado y puntuación FinBERT asignada:</p>
+
+            <div id="social-feed-container" class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin pr-1" role="region" aria-label="Lista de publicaciones recientes">
+              <div class="text-center py-6 text-xs text-slate-500 font-mono">Cargando publicaciones...</div>
+            </div>
+          </div>
+
+          <div class="text-[11px] font-mono text-slate-500 pt-3 border-t border-slate-800 flex justify-between">
+            <span>Ingestión asíncrona</span>
+            <span>Limpieza vectorizada Polars</span>
+          </div>
+        </section>
       </div>
 
-      <div class="overflow-x-auto scrollbar-thin">
-        <table class="w-full text-left text-xs font-mono">
-          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase">
-            <tr>
-              <th class="py-2.5 px-3">Hora (UTC)</th>
-              <th class="py-2.5 px-3">Ticker</th>
-              <th class="py-2.5 px-3 text-right">Open</th>
-              <th class="py-2.5 px-3 text-right">High</th>
-              <th class="py-2.5 px-3 text-right">Low</th>
-              <th class="py-2.5 px-3 text-right">Close</th>
-              <th class="py-2.5 px-3 text-right">Volumen</th>
-              <th class="py-2.5 px-3 text-right">Sentimiento</th>
-              <th class="py-2.5 px-3 text-center">Señal Alpha</th>
-              <th class="py-2.5 px-3 text-center">Fear & Greed</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800" id="gold-table-body">
-            <tr><td colspan="10" class="text-center py-6 text-slate-500 font-mono">Cargando serie temporal de DuckDB...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <!-- Gold Layer Table (Full Analytics View) -->
+      <section aria-labelledby="table-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-5">
+        <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+          <div>
+            <h2 id="table-heading" class="text-sm font-semibold text-white">Almacén Columnar Consolidado (DuckDB Gold)</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Serie temporal de precios, volumen y sentimiento unificada por hora.</p>
+          </div>
+          <button onclick="loadData()" aria-label="Refrescar tabla de DuckDB" class="text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md transition border border-slate-700 focus-visible:ring-2 focus-visible:ring-blue-500">
+            Refrescar tabla
+          </button>
+        </div>
 
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-left text-xs font-mono" role="table">
+            <thead class="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase">
+              <tr>
+                <th scope="col" class="py-2.5 px-3">Hora (UTC)</th>
+                <th scope="col" class="py-2.5 px-3">Ticker</th>
+                <th scope="col" class="py-2.5 px-3 text-right">Open</th>
+                <th scope="col" class="py-2.5 px-3 text-right">High</th>
+                <th scope="col" class="py-2.5 px-3 text-right">Low</th>
+                <th scope="col" class="py-2.5 px-3 text-right">Close</th>
+                <th scope="col" class="py-2.5 px-3 text-right">Volumen</th>
+                <th scope="col" class="py-2.5 px-3 text-right">Sentimiento</th>
+                <th scope="col" class="py-2.5 px-3 text-center">Señal Alpha</th>
+                <th scope="col" class="py-2.5 px-3 text-center">Fear & Greed</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800" id="gold-table-body">
+              <tr><td colspan="10" class="text-center py-6 text-slate-500 font-mono">Cargando serie temporal de DuckDB...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
   </div>
 
   <!-- Interactive JavaScript Engine -->
@@ -285,13 +309,29 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
 
     async function loadData() {
       const asset = document.getElementById('asset-select').value;
+      const hours = document.getElementById('hours-select').value;
+      const offlineBanner = document.getElementById('offline-banner');
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      const lastSync = document.getElementById('last-sync-time');
+
       try {
-        const res = await fetch(`/api/gold?symbol=${asset}`);
+        const res = await fetch(`/api/gold?symbol=${asset}&limit=${hours}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         currentData = data;
         renderDashboard(data);
+
+        offlineBanner.classList.add('hidden');
+        statusDot.className = 'inline-block w-2 h-2 rounded-full bg-emerald-500';
+        statusText.textContent = 'Terminal en Vivo • DuckDB Conectado';
+        const now = new Date();
+        lastSync.textContent = `(Sincronizado: ${now.toLocaleTimeString()})`;
       } catch (err) {
         console.error("Error al cargar datos:", err);
+        offlineBanner.classList.remove('hidden');
+        statusDot.className = 'inline-block w-2 h-2 rounded-full bg-rose-500';
+        statusText.textContent = 'Terminal Desconectado • Error de Red';
       }
       loadSocialFeed();
     }
@@ -299,6 +339,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
     async function loadSocialFeed() {
       try {
         const res = await fetch('/api/social-posts');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const posts = await res.json();
         currentSocial = posts;
         renderSocialFeed(posts);
@@ -308,20 +349,54 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     function renderDashboard(data) {
-      if (!data || data.length === 0) return;
+      const tbody = document.getElementById('gold-table-body');
+      const asset = document.getElementById('asset-select').value;
+
+      if (!data || data.length === 0) {
+        // Zero state / empty state handling (Fortify principle)
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" class="py-12 text-center">
+              <div class="max-w-md mx-auto space-y-3">
+                <div class="text-sm font-semibold text-slate-200">No hay datos históricos en la capa Gold para ${asset}</div>
+                <p class="text-xs text-slate-400">El almacén de datos DuckDB aún no tiene velas u opiniones consolidadas para este activo. Ejecuta la primera ingesta para poblar el lago de datos.</p>
+                <button onclick="triggerPipeline()" class="mt-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-mono px-4 py-2 rounded-md transition shadow-sm">
+                  Iniciar primera ingesta de datos
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+        document.getElementById('kpi-price').textContent = '$---.--';
+        document.getElementById('kpi-vol').textContent = 'Volumen: Sin registros';
+        document.getElementById('kpi-sentiment').textContent = '---';
+        document.getElementById('kpi-sentiment-label').textContent = 'Sin datos';
+        document.getElementById('kpi-sentiment-label').className = 'text-slate-400 font-semibold';
+        document.getElementById('kpi-posts-count').textContent = '0 menciones';
+        document.getElementById('kpi-fg-score').textContent = '--';
+        document.getElementById('kpi-fg-class').textContent = '/ 100';
+        document.getElementById('fg-bar').style.width = '0%';
+        document.getElementById('kpi-alpha-signal').textContent = 'PENDIENTE DE INGESTA';
+        document.getElementById('kpi-alpha-signal').className = 'text-sm font-bold font-mono mt-1 text-slate-400 tracking-tight';
+        document.getElementById('kpi-alpha-conf').textContent = '--%';
+        document.getElementById('kpi-alpha-vol').textContent = '--%';
+        return;
+      }
+
       const latest = data[0];
 
       // KPIs
-      document.getElementById('kpi-price').textContent = `$${latest.close_price.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-      document.getElementById('kpi-vol').textContent = `▲ 1h Vol: ${latest.volume.toFixed(1)} • ${latest.trades_count} trades`;
+      document.getElementById('kpi-price').textContent = `$${(latest.close_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('kpi-vol').textContent = `Volumen 1h: ${(latest.volume || 0).toFixed(1)} (${latest.trades_count || 0} operaciones)`;
 
       const sent = latest.avg_hourly_sentiment || 0.0;
       const sentEl = document.getElementById('kpi-sentiment');
       sentEl.textContent = (sent >= 0 ? '+' : '') + sent.toFixed(3);
-      sentEl.className = `text-3xl font-black font-mono mt-1 ${sent > 0 ? 'text-emerald-400 glow-bull' : (sent < 0 ? 'text-rose-400 glow-bear' : 'text-slate-400')}`;
+      sentEl.className = `text-2xl font-bold font-mono mt-1 ${sent > 0.05 ? 'text-emerald-400' : (sent < -0.05 ? 'text-rose-400' : 'text-slate-300')}`;
 
-      document.getElementById('kpi-sentiment-label').textContent = sent > 0.2 ? 'Bullish (Alcista)' : (sent < -0.2 ? 'Bearish (Bajista)' : 'Neutral');
-      document.getElementById('kpi-sentiment-label').className = sent > 0.2 ? 'text-emerald-400 font-semibold' : (sent < -0.2 ? 'text-rose-400 font-semibold' : 'text-slate-400 font-semibold');
+      const sentLabel = document.getElementById('kpi-sentiment-label');
+      sentLabel.textContent = sent > 0.1 ? 'Alcista' : (sent < -0.1 ? 'Bajista' : 'Neutral');
+      sentLabel.className = sent > 0.1 ? 'text-emerald-400 font-semibold' : (sent < -0.1 ? 'text-rose-400 font-semibold' : 'text-slate-400 font-semibold');
       document.getElementById('kpi-posts-count').textContent = `${latest.social_volume_mentions || 0} menciones`;
 
       document.getElementById('kpi-fg-score').textContent = latest.fear_and_greed_score || '--';
@@ -329,28 +404,27 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
       document.getElementById('fg-bar').style.width = `${latest.fear_and_greed_score || 50}%`;
 
       // Alpha Signal
-      const alphaSignal = latest.alpha_signal || 'CONSOLIDATION';
+      const alphaSignal = latest.alpha_signal || 'CONSOLIDACION';
       const alphaConf = latest.signal_confidence ? Math.round(latest.signal_confidence * 100) : 75;
       const alphaVol = latest.realized_volatility ? latest.realized_volatility.toFixed(2) : '0.45';
 
       const sigEl = document.getElementById('kpi-alpha-signal');
       sigEl.textContent = alphaSignal;
-      sigEl.className = `text-sm font-extrabold font-mono mt-1 tracking-tight ${alphaSignal.includes('BULL') || alphaSignal.includes('BUY') ? 'text-emerald-400 glow-bull' : (alphaSignal.includes('BEAR') || alphaSignal.includes('SHORT') ? 'text-rose-400 glow-bear' : 'text-amber-400')}`;
+      sigEl.className = `text-sm font-bold font-mono mt-1 tracking-tight ${alphaSignal.includes('BULL') || alphaSignal.includes('ACCUMULATE') ? 'text-emerald-400' : (alphaSignal.includes('BEAR') || alphaSignal.includes('DISTRIBUTE') ? 'text-rose-400' : 'text-amber-400')}`;
 
       document.getElementById('kpi-alpha-conf').textContent = `${alphaConf}%`;
       document.getElementById('kpi-alpha-vol').textContent = `${alphaVol}%`;
 
       // Table Render
-      const tbody = document.getElementById('gold-table-body');
       tbody.innerHTML = '';
       data.forEach(row => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-800/40 transition-colors';
         const s = row.avg_hourly_sentiment || 0.0;
-        const color = s > 0 ? 'text-emerald-400 font-bold' : (s < 0 ? 'text-rose-400 font-bold' : 'text-slate-400');
+        const color = s > 0 ? 'text-emerald-400 font-semibold' : (s < 0 ? 'text-rose-400 font-semibold' : 'text-slate-400');
         const sign = s > 0 ? '+' : '';
         const sig = row.alpha_signal || 'NEUTRAL';
-        const sigColor = sig.includes('BULL') || sig.includes('BUY') ? 'text-emerald-400' : (sig.includes('BEAR') ? 'text-rose-400' : 'text-amber-400');
+        const sigColor = sig.includes('BULL') || sig.includes('ACCUMULATE') ? 'text-emerald-400' : (sig.includes('BEAR') || sig.includes('DISTRIBUTE') ? 'text-rose-400' : 'text-amber-400');
 
         tr.innerHTML = `
           <td class="py-2.5 px-3 font-semibold text-white">${row.timestamp_hour}</td>
@@ -377,7 +451,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
     function renderSocialFeed(posts) {
       const container = document.getElementById('social-feed-container');
       if (!posts || posts.length === 0) {
-        container.innerHTML = '<div class="text-center py-4 text-xs text-slate-500 font-mono">No hay publicaciones disponibles.</div>';
+        container.innerHTML = '<div class="text-center py-6 text-xs text-slate-500 font-mono">No hay publicaciones disponibles en la capa Silver. Ejecuta la ingesta para obtener feeds de Reddit.</div>';
         return;
       }
       container.innerHTML = '';
@@ -388,7 +462,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
         card.className = 'bg-slate-950 border border-slate-800/80 rounded-lg p-3 hover:border-slate-700 transition';
         card.innerHTML = `
           <div class="flex justify-between items-start gap-2 mb-1">
-            <span class="text-xs font-semibold text-slate-200 line-clamp-1">${p.title || 'Untitled Post'}</span>
+            <span class="text-xs font-semibold text-slate-200 line-clamp-1">${p.title || 'Publicación sin título'}</span>
             <span class="text-[10px] font-mono px-2 py-0.5 rounded border ${badgeColor} uppercase font-bold shrink-0">
               ${p.sentiment_label} (${score > 0 ? '+' : ''}${score.toFixed(2)})
             </span>
@@ -396,7 +470,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
           <p class="text-[11px] text-slate-400 line-clamp-2">${p.cleaned_text || ''}</p>
           <div class="flex items-center gap-3 text-[10px] text-slate-500 font-mono mt-2">
             <span>r/${p.subreddit}</span>
-            <span>▲ ${p.upvotes} upvotes</span>
+            <span>▲ ${p.upvotes} votos</span>
             <span>💬 ${p.num_comments} comentarios</span>
           </div>
         `;
@@ -404,7 +478,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
       });
     }
 
-    // High-Resolution Interactive Candlestick Chart
+    // High-Resolution Interactive Candlestick Chart (Crisp, High Contrast)
     function drawCandlestickChart(data, hoverIdx = -1) {
       const canvas = document.getElementById('candleChart');
       if (!canvas) return;
@@ -528,15 +602,16 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
       document.getElementById('crosshair-info').textContent = "Inspección: Mueve el cursor por el gráfico";
     });
 
-    // Pipeline Trigger
+    // Pipeline Trigger (Actionable, High Agency)
     async function triggerPipeline() {
       const btn = document.getElementById('btn-run');
+      const btnLabel = document.getElementById('btn-run-label');
       const toast = document.getElementById('toast');
       const asset = document.getElementById('asset-select').value;
       const hours = document.getElementById('hours-select').value;
 
       btn.disabled = true;
-      btn.innerHTML = '<span>⏳</span> Ingestando & Enriqueciendo...';
+      btnLabel.textContent = 'Actualizando datos...';
 
       try {
         const res = await fetch('/api/run-pipeline', {
@@ -545,15 +620,15 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
           body: JSON.stringify({ symbol: asset, hours: parseInt(hours) })
         });
         const result = await res.json();
-        toast.className = 'p-3 rounded-lg text-xs font-mono border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 block';
-        toast.textContent = `✓ Ingestión completada para ${result.symbol}: ${result.candles_processed} velas, ${result.posts_processed} posts en ${result.elapsed_seconds.toFixed(2)}s`;
+        toast.className = 'p-3.5 rounded-md text-xs font-mono border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 block';
+        toast.textContent = `Ingesta completada para ${result.symbol}: ${result.candles_processed} velas, ${result.posts_processed} publicaciones en ${result.elapsed_seconds.toFixed(2)}s`;
         await loadData();
       } catch (err) {
-        toast.className = 'p-3 rounded-lg text-xs font-mono border bg-rose-500/10 text-rose-400 border-rose-500/30 block';
-        toast.textContent = `✗ Error en pipeline: ${err}`;
+        toast.className = 'p-3.5 rounded-md text-xs font-mono border bg-rose-500/10 text-rose-400 border-rose-500/30 block';
+        toast.textContent = `Error en la ejecución del pipeline: ${err}`;
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span>▶</span> Ingestar & Enriquecer';
+        btnLabel.textContent = 'Actualizar datos de mercado';
       }
     }
 
@@ -579,7 +654,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
         badge.textContent = label.toUpperCase();
         badge.className = `px-2 py-0.5 rounded text-xs font-mono font-bold ${label==='bullish'?'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30':(label==='bearish'?'bg-rose-500/20 text-rose-400 border border-rose-500/30':'bg-slate-800 text-slate-400')}`;
 
-        document.getElementById('res-score').textContent = `Score Continuo: ${score >= 0 ? '+' : ''}${score.toFixed(3)} (Confianza: ${(result.confidence*100).toFixed(1)}%)`;
+        document.getElementById('res-score').textContent = `Score Continuo: ${score >= 0 ? '+' : ''}${score.toFixed(3)} (Certeza: ${(result.confidence*100).toFixed(1)}%)`;
         document.getElementById('res-score').className = `text-lg font-mono font-bold ${score>0?'text-emerald-400':(score<0?'text-rose-400':'text-slate-300')}`;
 
         document.getElementById('res-p-pos').textContent = `${(result.prob_positive*100).toFixed(1)}%`;
@@ -606,7 +681,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     loadData();
-    setInterval(loadData, 6000);
+    setInterval(loadData, 8000);
     window.addEventListener('resize', () => drawCandlestickChart(currentData));
   </script>
 </body>
