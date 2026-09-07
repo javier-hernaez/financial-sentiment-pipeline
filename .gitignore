@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C environments
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases & logs
+*.duckdb
+*.duckdb.wal
+*.log
+
+# Sensitive credentials
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
