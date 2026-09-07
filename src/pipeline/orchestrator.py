@@ -1,16 +1,17 @@
 """End-to-End Orchestrator for the Market Intelligence ELT Engine."""
+
 import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+
 import polars as pl
 from rich.console import Console
-from rich.table import Table
 
+from ..analytics.quant_signals import QuantSignalsEngine
 from ..configs.settings import settings
 from ..extractors import BinanceKlinesExtractor, FearGreedExtractor, SocialRedditExtractor
+from ..nlp import FinBERTEngine, TextCleaner
 from ..storage import BronzeDataLake, MarketWarehouse
-from ..nlp import TextCleaner, FinBERTEngine
-from ..analytics.quant_signals import QuantSignalsEngine
 
 console = Console()
 
@@ -71,15 +72,15 @@ class MarketIntelligencePipeline:
         # 2. Bronze Data Lake Landing (Immutable Parquet)
         # -------------------------------------------------------------
         console.print("[bold blue]2. Storing raw data in Bronze Lake...[/bold blue]")
-        m_file = self.lake.write_raw_records("market", raw_market)
-        fg_file = self.lake.write_raw_records("fear_greed", raw_macro)
-        s_file = self.lake.write_raw_records("social", raw_social)
+        self.lake.write_raw_records("market", raw_market)
+        self.lake.write_raw_records("fear_greed", raw_macro)
+        self.lake.write_raw_records("social", raw_social)
 
         # -------------------------------------------------------------
         # 3. Silver Layer Transformations & NLP Enrichment
         # -------------------------------------------------------------
         console.print("[bold blue]3. Transforming & Enriching into Silver Layer...[/bold blue]")
-        
+
         # 3a. Market Prices
         df_market = pl.DataFrame(raw_market)
         total_market = self.warehouse.upsert_market_prices(df_market)
@@ -90,9 +91,7 @@ class MarketIntelligencePipeline:
 
         # 3c. Social NLP Enrichment with Polars & FinBERT
         df_social_raw = pl.DataFrame(raw_social)
-        df_social_cleaned = TextCleaner.clean_polars_column(
-            df_social_raw, title_col="title", body_col="text_body"
-        )
+        df_social_cleaned = TextCleaner.clean_polars_column(df_social_raw, title_col="title", body_col="text_body")
         console.print("   -> Running batch sentiment inference (FinBERT)...")
         df_social_scored = self.nlp_engine.score_dataframe(df_social_cleaned)
         total_social = self.warehouse.upsert_social_sentiment(df_social_scored)

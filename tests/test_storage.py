@@ -1,8 +1,11 @@
 """Unit tests for Bronze Data Lake and DuckDB Warehouse."""
+
 import tempfile
 from pathlib import Path
+
 import polars as pl
 import pytest
+
 from src.storage import BronzeDataLake, MarketWarehouse
 
 
@@ -28,55 +31,61 @@ def test_duckdb_warehouse_schema_and_query():
         db_path = Path(tmpdir) / "test_warehouse.duckdb"
         warehouse = MarketWarehouse(db_path=db_path)
 
-        df_market = pl.DataFrame([
-            {
-                "source": "binance",
-                "asset_ticker": "BTCUSDT",
-                "interval": "1h",
-                "timestamp_open_ms": 1710000000000,
-                "timestamp_close_ms": 1710003600000,
-                "datetime_open_utc": "2026-09-07T12:00:00+00:00",
-                "datetime_close_utc": "2026-09-07T12:59:59+00:00",
-                "timestamp_hour": "2026-09-07 12:00:00",
-                "open_price": 65000.0,
-                "high_price": 65500.0,
-                "low_price": 64800.0,
-                "close_price": 65300.0,
-                "volume": 120.5,
-                "quote_volume": 7860000.0,
-                "trades_count": 1500,
-            }
-        ])
+        df_market = pl.DataFrame(
+            [
+                {
+                    "source": "binance",
+                    "asset_ticker": "BTCUSDT",
+                    "interval": "1h",
+                    "timestamp_open_ms": 1710000000000,
+                    "timestamp_close_ms": 1710003600000,
+                    "datetime_open_utc": "2026-09-07T12:00:00+00:00",
+                    "datetime_close_utc": "2026-09-07T12:59:59+00:00",
+                    "timestamp_hour": "2026-09-07 12:00:00",
+                    "open_price": 65000.0,
+                    "high_price": 65500.0,
+                    "low_price": 64800.0,
+                    "close_price": 65300.0,
+                    "volume": 120.5,
+                    "quote_volume": 7860000.0,
+                    "trades_count": 1500,
+                }
+            ]
+        )
 
-        df_social = pl.DataFrame([
-            {
-                "source": "reddit",
-                "post_id": "test_post_1",
-                "subreddit": "CryptoCurrency",
-                "title": "Bitcoin breaking resistance",
-                "cleaned_text": "Bitcoin breaking resistance to ATH",
-                "author": "trader_joe",
-                "upvotes": 50,
-                "upvote_ratio": 0.95,
-                "num_comments": 12,
-                "created_utc": "2026-09-07T12:30:00+00:00",
-                "timestamp_hour": "2026-09-07 12:00:00",
-                "sentiment_score": 0.85,
-                "sentiment_label": "bullish",
-                "confidence": 0.95,
-            }
-        ])
+        df_social = pl.DataFrame(
+            [
+                {
+                    "source": "reddit",
+                    "post_id": "test_post_1",
+                    "subreddit": "CryptoCurrency",
+                    "title": "Bitcoin breaking resistance",
+                    "cleaned_text": "Bitcoin breaking resistance to ATH",
+                    "author": "trader_joe",
+                    "upvotes": 50,
+                    "upvote_ratio": 0.95,
+                    "num_comments": 12,
+                    "created_utc": "2026-09-07T12:30:00+00:00",
+                    "timestamp_hour": "2026-09-07 12:00:00",
+                    "sentiment_score": 0.85,
+                    "sentiment_label": "bullish",
+                    "confidence": 0.95,
+                }
+            ]
+        )
 
-        df_macro = pl.DataFrame([
-            {
-                "source": "alternative_me",
-                "timestamp_epoch": 1710000000,
-                "datetime_utc": "2026-09-07T00:00:00+00:00",
-                "date": "2026-09-07",
-                "fear_and_greed_score": 75,
-                "fear_and_greed_classification": "greed",
-            }
-        ])
+        df_macro = pl.DataFrame(
+            [
+                {
+                    "source": "alternative_me",
+                    "timestamp_epoch": 1710000000,
+                    "datetime_utc": "2026-09-07T00:00:00+00:00",
+                    "date": "2026-09-07",
+                    "fear_and_greed_score": 75,
+                    "fear_and_greed_classification": "greed",
+                }
+            ]
+        )
 
         count_m = warehouse.upsert_market_prices(df_market)
         count_s = warehouse.upsert_social_sentiment(df_social)

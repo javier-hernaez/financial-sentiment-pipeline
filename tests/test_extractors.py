@@ -1,5 +1,7 @@
 """Unit tests for extractors and cleaners."""
+
 import pytest
+
 from src.extractors import BinanceKlinesExtractor, FearGreedExtractor, SocialRedditExtractor
 from src.nlp.cleaner import TextCleaner
 

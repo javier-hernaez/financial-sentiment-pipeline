@@ -1,4 +1,5 @@
 """High-End Quant Market Intelligence Dashboard Server with Real-time Candlesticks, FinBERT Sandbox & Alpha Signals."""
+
 import argparse
 import asyncio
 import io
@@ -6,9 +7,9 @@ import json
 import os
 import sys
 import urllib.parse
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 if sys.platform == "win32":
     try:
@@ -19,15 +20,14 @@ if sys.platform == "win32":
 
 import duckdb
 import httpx
-import polars as pl
 from rich.console import Console
 
+from ..analytics.quant_signals import QuantSignalsEngine
 from ..configs.settings import settings
-from ..pipeline.orchestrator import MarketIntelligencePipeline
-from ..storage import MarketWarehouse
 from ..nlp.cleaner import TextCleaner
 from ..nlp.finbert_engine import FinBERTEngine
-from ..analytics.quant_signals import QuantSignalsEngine
+from ..pipeline.orchestrator import MarketIntelligencePipeline
+from ..storage import MarketWarehouse
 from .admin_view import ADMIN_HTML_TEMPLATE
 
 console = Console()
@@ -559,7 +559,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
       if (hoverIdx >= 0 && hoverIdx < n) {
         const d = series[hoverIdx];
         const x = paddingX + (hoverIdx * candleSpacing) + (candleSpacing / 2);
-        
+
         ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -732,7 +732,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 silver_s = conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
                 silver_fg = conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
                 gold_total = conn.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchone()[0]
-                symbols = [r[0] for r in conn.execute("SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment").fetchall()]
+                symbols = [
+                    r[0]
+                    for r in conn.execute("SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment").fetchall()
+                ]
                 conn.close()
 
                 metrics = {
@@ -751,7 +754,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     "gold": {
                         "total_rows": gold_total,
                         "symbols": symbols,
-                    }
+                    },
                 }
                 self._send_json(metrics, 200)
             except Exception as exc:
@@ -763,6 +766,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             # 1. Binance Ping
             try:
                 import time
+
                 t0 = time.time()
                 res = httpx.get("https://api.binance.com/api/v3/ping", timeout=5.0)
                 lat = round((time.time() - t0) * 1000, 1)
@@ -833,7 +837,9 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
                 self.send_response(200)
                 self.send_header("Content-Type", "text/csv")
-                self.send_header("Content-Disposition", f"attachment; filename={symbol.lower()}_market_sentiment_gold.csv")
+                self.send_header(
+                    "Content-Disposition", f"attachment; filename={symbol.lower()}_market_sentiment_gold.csv"
+                )
                 self.end_headers()
                 self.wfile.write(csv_bytes)
             except Exception as exc:
@@ -842,12 +848,15 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/status":
             db_path = str(settings.duckdb_path)
-            self._send_json({
-                "server": "online",
-                "port": 8080,
-                "duckdb_exists": os.path.exists(db_path),
-                "supported_assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
-            }, 200)
+            self._send_json(
+                {
+                    "server": "online",
+                    "port": 8080,
+                    "duckdb_exists": os.path.exists(db_path),
+                    "supported_assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+                },
+                200,
+            )
             return
 
         else:
@@ -872,17 +881,18 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             hours = int(payload.get("hours", 24))
 
             try:
-                pipeline = MarketIntelligencePipeline(
-                    symbol=symbol, hours=hours, force_mock_nlp=True
-                )
+                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=True)
                 result = asyncio.run(pipeline.run())
-                self._send_json({
-                    "symbol": result["symbol"],
-                    "candles_processed": result["candles_processed"],
-                    "posts_processed": result["posts_processed"],
-                    "macro_records": result["macro_records"],
-                    "elapsed_seconds": result["elapsed_seconds"],
-                }, 200)
+                self._send_json(
+                    {
+                        "symbol": result["symbol"],
+                        "candles_processed": result["candles_processed"],
+                        "posts_processed": result["posts_processed"],
+                        "macro_records": result["macro_records"],
+                        "elapsed_seconds": result["elapsed_seconds"],
+                    },
+                    200,
+                )
             except Exception as exc:
                 self._send_json({"error": str(exc)}, 500)
             return
@@ -891,10 +901,18 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             text = payload.get("text", "")
             cleaned = TextCleaner.clean_string(text)
             preds = sandbox_nlp.predict_batch([cleaned])
-            res = preds[0] if preds else {
-                "sentiment_score": 0.0, "sentiment_label": "neutral", "confidence": 0.5,
-                "prob_positive": 0.33, "prob_negative": 0.33, "prob_neutral": 0.34
-            }
+            res = (
+                preds[0]
+                if preds
+                else {
+                    "sentiment_score": 0.0,
+                    "sentiment_label": "neutral",
+                    "confidence": 0.5,
+                    "prob_positive": 0.33,
+                    "prob_negative": 0.33,
+                    "prob_neutral": 0.34,
+                }
+            )
             self._send_json(res, 200)
             return
 
@@ -914,7 +932,9 @@ def run_server(host: str = "127.0.0.1", port: int = 8080):
     """Starts the advanced dashboard HTTP server."""
     server_address = (host, port)
     httpd = HTTPServer(server_address, AdvancedDashboardHandler)
-    console.print(f"[bold green][OK] Advanced Market Intelligence Terminal running on http://{host}:{port}[/bold green]")
+    console.print(
+        f"[bold green][OK] Advanced Market Intelligence Terminal running on http://{host}:{port}[/bold green]"
+    )
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

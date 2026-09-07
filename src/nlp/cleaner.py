@@ -1,6 +1,7 @@
 """Text cleaning and normalization module using Polars and Regex."""
+
 import re
-from typing import Union, List
+
 import polars as pl
 
 
@@ -39,14 +40,10 @@ class TextCleaner:
         """
         # Combine title and text_body
         df_combined = df.with_columns(
-            pl.concat_str([pl.col(title_col), pl.lit(". "), pl.col(body_col)]).alias(
-                "raw_text"
-            )
+            pl.concat_str([pl.col(title_col), pl.lit(". "), pl.col(body_col)]).alias("raw_text")
         )
 
         # Apply cleaning expressions
-        cleaned_series = df_combined["raw_text"].map_elements(
-            cls.clean_string, return_dtype=pl.String
-        )
+        cleaned_series = df_combined["raw_text"].map_elements(cls.clean_string, return_dtype=pl.String)
 
         return df_combined.with_columns(cleaned_series.alias("cleaned_text"))

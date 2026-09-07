@@ -1,8 +1,10 @@
 """Alternative.me Crypto Fear & Greed Index Extractor."""
+
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from .base import BaseAsyncExtractor
+
 from ..configs.settings import settings
+from .base import BaseAsyncExtractor
 
 
 class FearGreedExtractor(BaseAsyncExtractor):
@@ -15,7 +17,7 @@ class FearGreedExtractor(BaseAsyncExtractor):
     async def extract(self, limit: int = 30) -> List[Dict[str, Any]]:
         """
         Fetches the Fear & Greed Index values.
-        
+
         :param limit: Number of historical days to retrieve (0 returns all history).
         :return: Normalized list of daily sentiment records.
         """
@@ -30,13 +32,15 @@ class FearGreedExtractor(BaseAsyncExtractor):
             dt = datetime.fromtimestamp(ts, tz=timezone.utc)
             date_str = dt.strftime("%Y-%m-%d")
 
-            normalized.append({
-                "source": "alternative_me",
-                "timestamp_epoch": ts,
-                "datetime_utc": dt.isoformat(),
-                "date": date_str,
-                "fear_and_greed_score": int(item["value"]),
-                "fear_and_greed_classification": item.get("value_classification", "Unknown").lower(),
-            })
+            normalized.append(
+                {
+                    "source": "alternative_me",
+                    "timestamp_epoch": ts,
+                    "datetime_utc": dt.isoformat(),
+                    "date": date_str,
+                    "fear_and_greed_score": int(item["value"]),
+                    "fear_and_greed_classification": item.get("value_classification", "Unknown").lower(),
+                }
+            )
 
         return normalized

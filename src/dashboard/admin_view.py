@@ -50,7 +50,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
       <!-- 1. Connectivity Section -->
       <section aria-labelledby="conn-heading" class="space-y-3">
         <h2 id="conn-heading" class="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">Conectividad de Fuentes de Datos</h2>
-        
+
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
             <div class="flex justify-between items-center mb-1">

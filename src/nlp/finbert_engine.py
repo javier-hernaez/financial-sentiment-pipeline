@@ -1,7 +1,10 @@
 """FinBERT Financial Sentiment Engine with Batch Inference and Resilient Fallback."""
+
 from typing import Any, Dict, List, Optional
+
 import polars as pl
 from rich.console import Console
+
 from ..configs.settings import settings
 
 console = Console()
@@ -22,7 +25,7 @@ class FinBERTEngine:
         self.model_name = model_name or settings.finbert_model_name
         self.batch_size = batch_size or settings.nlp_batch_size
         self.force_mock = force_mock or settings.use_mock_nlp
-        
+
         self.tokenizer = None
         self.model = None
         self._is_transformer_ready = False
@@ -33,8 +36,8 @@ class FinBERTEngine:
     def _try_load_model(self) -> None:
         """Attempts to load HuggingFace Transformers and FinBERT weights."""
         try:
-            from transformers import AutoTokenizer, AutoModelForSequenceClassification
-            import torch
+            import torch  # noqa: F401
+            from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
             console.print(f"[cyan][FinBERT] Loading tokenizer and weights for '{self.model_name}'...[/cyan]")
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -93,7 +96,7 @@ class FinBERTEngine:
 
                 max_idx = int(torch.argmax(probs).item())
                 raw_label = labels_map.get(max_idx, "neutral")
-                
+
                 # Normalize label to financial terminology
                 if raw_label == "positive":
                     fin_label = "bullish"
@@ -102,14 +105,16 @@ class FinBERTEngine:
                 else:
                     fin_label = "neutral"
 
-                results.append({
-                    "sentiment_score": score,
-                    "sentiment_label": fin_label,
-                    "confidence": round(float(probs[max_idx].item()), 4),
-                    "prob_positive": round(pos, 4),
-                    "prob_negative": round(neg, 4),
-                    "prob_neutral": round(neu, 4),
-                })
+                results.append(
+                    {
+                        "sentiment_score": score,
+                        "sentiment_label": fin_label,
+                        "confidence": round(float(probs[max_idx].item()), 4),
+                        "prob_positive": round(pos, 4),
+                        "prob_negative": round(neg, 4),
+                        "prob_neutral": round(neu, 4),
+                    }
+                )
 
         return results
 
@@ -119,14 +124,52 @@ class FinBERTEngine:
         Used as zero-dependency fallback for rapid testing and lightweight environments.
         """
         bullish_lexicon = {
-            "surge", "surges", "rally", "rallies", "bullish", "inflows", "high",
-            "record", "profit", "gain", "gains", "long", "optimistic", "growth",
-            "breakout", "accumulate", "buy", "up", "pump", "soar", "soaring", "skyrocket"
+            "surge",
+            "surges",
+            "rally",
+            "rallies",
+            "bullish",
+            "inflows",
+            "high",
+            "record",
+            "profit",
+            "gain",
+            "gains",
+            "long",
+            "optimistic",
+            "growth",
+            "breakout",
+            "accumulate",
+            "buy",
+            "up",
+            "pump",
+            "soar",
+            "soaring",
+            "skyrocket",
         }
         bearish_lexicon = {
-            "drop", "drops", "plunge", "plunges", "bearish", "crash", "fall",
-            "down", "correction", "liquidate", "liquidation", "probe", "sec",
-            "fear", "panic", "dump", "ban", "loss", "losses", "risk-off", "short", "pullback"
+            "drop",
+            "drops",
+            "plunge",
+            "plunges",
+            "bearish",
+            "crash",
+            "fall",
+            "down",
+            "correction",
+            "liquidate",
+            "liquidation",
+            "probe",
+            "sec",
+            "fear",
+            "panic",
+            "dump",
+            "ban",
+            "loss",
+            "losses",
+            "risk-off",
+            "short",
+            "pullback",
         }
 
         results: List[Dict[str, Any]] = []
@@ -164,20 +207,20 @@ class FinBERTEngine:
                 score = 0.0
                 confidence = 0.50
 
-            results.append({
-                "sentiment_score": score,
-                "sentiment_label": fin_label,
-                "confidence": confidence,
-                "prob_positive": round(pos, 4),
-                "prob_negative": round(neg, 4),
-                "prob_neutral": round(neu, 4),
-            })
+            results.append(
+                {
+                    "sentiment_score": score,
+                    "sentiment_label": fin_label,
+                    "confidence": confidence,
+                    "prob_positive": round(pos, 4),
+                    "prob_negative": round(neg, 4),
+                    "prob_neutral": round(neu, 4),
+                }
+            )
 
         return results
 
-    def score_dataframe(
-        self, df: pl.DataFrame, text_column: str = "cleaned_text"
-    ) -> pl.DataFrame:
+    def score_dataframe(self, df: pl.DataFrame, text_column: str = "cleaned_text") -> pl.DataFrame:
         """
         Appends sentiment_score, sentiment_label, and confidence columns to a Polars DataFrame.
         """
@@ -191,8 +234,10 @@ class FinBERTEngine:
         labels = [p["sentiment_label"] for p in predictions]
         confidences = [p["confidence"] for p in predictions]
 
-        return df.with_columns([
-            pl.Series("sentiment_score", scores, dtype=pl.Float64),
-            pl.Series("sentiment_label", labels, dtype=pl.String),
-            pl.Series("confidence", confidences, dtype=pl.Float64),
-        ])
+        return df.with_columns(
+            [
+                pl.Series("sentiment_score", scores, dtype=pl.Float64),
+                pl.Series("sentiment_label", labels, dtype=pl.String),
+                pl.Series("confidence", confidences, dtype=pl.Float64),
+            ]
+        )

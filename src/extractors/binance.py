@@ -1,8 +1,10 @@
 """Binance REST API Kline (OHLCV) Extractor."""
+
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from .base import BaseAsyncExtractor
+
 from ..configs.settings import settings
+from .base import BaseAsyncExtractor
 
 
 class BinanceKlinesExtractor(BaseAsyncExtractor):
@@ -29,7 +31,7 @@ class BinanceKlinesExtractor(BaseAsyncExtractor):
     ) -> List[Dict[str, Any]]:
         """
         Extracts OHLCV candles from /api/v3/klines.
-        
+
         :param symbol: Trading pair ticker (e.g., BTCUSDT).
         :param interval: Candle timeframe (e.g., '1h', '15m', '1d').
         :param limit: Number of candles (max 1000).
@@ -56,7 +58,7 @@ class BinanceKlinesExtractor(BaseAsyncExtractor):
         for kline in raw_klines:
             open_ms = int(kline[0])
             close_ms = int(kline[6])
-            
+
             # Convert milliseconds to UTC datetime string
             dt_open = datetime.fromtimestamp(open_ms / 1000.0, tz=timezone.utc)
             dt_close = datetime.fromtimestamp(close_ms / 1000.0, tz=timezone.utc)
