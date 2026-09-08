@@ -883,11 +883,20 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({stage, symbol, hours})
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          let errDetail = `HTTP ${res.status}`;
+          try {
+            const errJson = await res.json();
+            if (errJson && errJson.error) errDetail = errJson.error;
+          } catch(e) {}
+          throw new Error(errDetail);
+        }
         const data = await res.json();
 
         if (stage === 'extract') {
           logMessage(`Extracción completada: ${data.candles} velas, ${data.macro_records} macro, ${data.social_records} posts en ${data.elapsed_seconds}s.`, 'success');
+        } else if (stage === 'transform') {
+          logMessage(`Transformación Silver completada: ${data.candles_processed} velas, ${data.posts_processed} noticias vectorizadas con FinBERT en ${data.elapsed_seconds}s.`, 'success');
         } else if (stage === 'gold') {
           logMessage(`Capa Gold recalculada: ${data.consolidated_hours} registros horarios consolidados en ${data.elapsed_seconds}s.`, 'success');
         } else {

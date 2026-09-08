@@ -38,3 +38,26 @@ def test_score_dataframe():
     assert "sentiment_label" in scored_df.columns
     assert scored_df["sentiment_label"][0] == "bullish"
     assert scored_df["sentiment_label"][1] == "bearish"
+
+
+def test_finbert_spanish_scoring_and_normalization():
+    engine = FinBERTEngine(force_mock=True)
+
+    bullish_es = "¡Bitcoin se dispara a nuevos máximos históricos con entradas récord de capital institucional!"
+    bearish_es = "El mercado de criptomonedas se desploma tras fuertes liquidaciones y ventas de pánico."
+    neutral_es = "El mercado cotiza en rango lateral sin cambios a la espera de noticias."
+
+    preds = engine.predict_batch([bullish_es, bearish_es, neutral_es])
+    assert len(preds) == 3
+
+    assert preds[0]["sentiment_label"] == "bullish"
+    assert preds[0]["sentiment_score"] > 0.0
+
+    assert preds[1]["sentiment_label"] == "bearish"
+    assert preds[1]["sentiment_score"] < 0.0
+
+    assert preds[2]["sentiment_label"] == "neutral"
+
+    for p in preds:
+        prob_sum = round(p["prob_positive"] + p["prob_negative"] + p["prob_neutral"], 2)
+        assert prob_sum == 1.0

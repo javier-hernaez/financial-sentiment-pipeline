@@ -1,42 +1,53 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Cpu, Zap, Activity } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Cpu, Zap, Activity, AlertCircle, RotateCcw } from 'lucide-react';
 import { NlpPrediction } from '@/types';
 import { analyzeText } from '@/lib/api';
 
 export const FinbertLab: React.FC = () => {
   const [text, setText] = useState(
-    'Bitcoin surges past major resistance as institutional spot ETF inflows reach new record highs.'
+    'Bitcoin se dispara a nuevos máximos históricos impulsado por compras récord de fondos institucionales.'
   );
   const [result, setResult] = useState<NlpPrediction | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const presets = {
-    bullish:
+    bullish_es:
+      'Bitcoin se dispara a nuevos máximos históricos impulsado por compras récord de fondos institucionales.',
+    bearish_es:
+      'Fuertes liquidaciones y ventas de pánico provocan un desplome en los principales exchanges de criptomonedas.',
+    neutral_es:
+      'El mercado cotiza en un rango lateral estrecho con baja volatilidad a la espera del anuncio de tipos de interés.',
+    bullish_en:
       'Bitcoin spot ETF institutional inflows reach unprecedented all-time record, signalling massive structural accumulation.',
-    bearish:
-      'Regulators launch sweeping investigation into protocol vulnerability after severe liquidation cascade hits decentralized lending markets.',
-    neutral:
-      'Cryptocurrency market displays low volatility consolidation as trading volume contracts ahead of central bank rate announcement.',
+    bearish_en:
+      'Regulators launch sweeping investigation into protocol vulnerability after severe liquidation cascade hits markets.',
   };
 
   const handleAnalyze = async (sampleText?: string) => {
-    const textToAnalyze = sampleText || text;
+    const textToAnalyze = sampleText !== undefined ? sampleText : text;
     if (!textToAnalyze.trim()) return;
     setIsAnalyzing(true);
+    setError(null);
 
     try {
       const pred = await analyzeText(textToAnalyze);
       setResult(pred);
-    } catch (err) {
+    } catch (err: any) {
       console.error('NLP evaluation error:', err);
+      setError(err?.message || 'Error al conectar con el motor de evaluación FinBERT');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const setPreset = (key: 'bullish' | 'bearish' | 'neutral') => {
+  useEffect(() => {
+    handleAnalyze();
+  }, []);
+
+  const setPreset = (key: keyof typeof presets) => {
     const val = presets[key];
     setText(val);
     handleAnalyze(val);
@@ -55,9 +66,17 @@ export const FinbertLab: React.FC = () => {
               Evaluador de Sentimiento FinBERT
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Análisis cuantitativo de polaridad y extracción de características semánticas financieras.
+              Análisis cuantitativo de polaridad y extracción de características semánticas financieras (Español e Inglés).
             </p>
           </div>
+
+          {/* Error Notice if any */}
+          {error && (
+            <div className="flex items-center gap-2.5 p-3 rounded-sm bg-rose-950/60 border border-rose-800 text-rose-300 text-xs font-mono">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Quick Preset Buttons */}
           <div className="space-y-1.5">
@@ -67,34 +86,63 @@ export const FinbertLab: React.FC = () => {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setPreset('bullish')}
+                onClick={() => setPreset('bullish_es')}
                 className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#052e16] text-[#4ade80] border border-[#16a34a] hover:bg-[#073f1f] transition"
               >
-                Alcista / ETF Inflows
+                Alcista (ES)
               </button>
               <button
                 type="button"
-                onClick={() => setPreset('bearish')}
+                onClick={() => setPreset('bearish_es')}
                 className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#450a0a] text-[#f87171] border border-[#b91c1c] hover:bg-[#5c0d0d] transition"
               >
-                Bajista / Liquidaciones
+                Bajista (ES)
               </button>
               <button
                 type="button"
-                onClick={() => setPreset('neutral')}
+                onClick={() => setPreset('neutral_es')}
                 className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#162137] text-slate-300 border border-[#233352] hover:bg-[#1f2d4a] transition"
               >
-                Neutral / Consolidación
+                Neutral (ES)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreset('bullish_en')}
+                className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#064e3b]/50 text-emerald-300 border border-emerald-700/60 hover:bg-[#064e3b] transition"
+              >
+                Bullish (EN)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreset('bearish_en')}
+                className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#7f1d1d]/50 text-rose-300 border border-rose-700/60 hover:bg-[#7f1d1d] transition"
+              >
+                Bearish (EN)
               </button>
             </div>
           </div>
 
           <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <label htmlFor="finbert-text-input" className="text-xs font-mono text-slate-400">
+                Texto para inferir:
+              </label>
+              {text && (
+                <button
+                  type="button"
+                  onClick={() => setText('')}
+                  className="text-[11px] font-mono text-slate-400 hover:text-white flex items-center gap-1 transition"
+                >
+                  <RotateCcw className="w-3 h-3" /> Limpiar
+                </button>
+              )}
+            </div>
             <textarea
+              id="finbert-text-input"
               rows={4}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Introduce texto financiero para inferir polaridad..."
+              placeholder="Introduce texto financiero para inferir polaridad (ej: Bitcoin se dispara a nuevos máximos)..."
               className="w-full bg-[#0e1628] border border-[#1e2a42] text-white text-xs sm:text-sm font-mono rounded-sm p-3.5 outline-none focus:border-slate-500 resize-none leading-relaxed"
             />
           </div>

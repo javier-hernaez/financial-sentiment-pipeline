@@ -10,22 +10,35 @@ import {
 
 const API_BASE = '/api';
 
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let errorMsg = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data && data.error) {
+        errorMsg = data.error;
+      }
+    } catch {
+      // response was not JSON
+    }
+    throw new Error(errorMsg);
+  }
+  return res.json();
+}
+
 export async function fetchMetrics(): Promise<SystemMetrics> {
   const res = await fetch(`${API_BASE}/admin/metrics`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return handleResponse<SystemMetrics>(res);
 }
 
 export async function fetchDiagnostics(): Promise<Diagnostics> {
   const res = await fetch(`${API_BASE}/admin/diagnostics`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return handleResponse<Diagnostics>(res);
 }
 
 export async function fetchGoldData(symbol: string = 'BTCUSDT', limit: number = 24): Promise<GoldRecord[]> {
   const res = await fetch(`${API_BASE}/gold?symbol=${symbol}&limit=${limit}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return handleResponse<GoldRecord[]>(res);
 }
 
 export async function fetchTableData(
@@ -43,14 +56,12 @@ export async function fetchTableData(
     symbol,
   });
   const res = await fetch(`${API_BASE}/admin/table-data?${params.toString()}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return handleResponse<TableDataResponse>(res);
 }
 
 export async function fetchBronzeTree(): Promise<{ total_files: number; files: BronzeFile[] }> {
   const res = await fetch(`${API_BASE}/admin/bronze-tree`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return handleResponse<{ total_files: number; files: BronzeFile[] }>(res);
 }
 
 export async function runStage(
@@ -63,8 +74,7 @@ export async function runStage(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ stage, symbol, hours }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return handleResponse<PipelineRunResult>(res);
 }
 
 export async function runWarehouseOp(action: 'vacuum' | 'checkpoint' | 'refresh_views' | 'clear_table', table?: string): Promise<{ status: string; message: string }> {
@@ -73,8 +83,7 @@ export async function runWarehouseOp(action: 'vacuum' | 'checkpoint' | 'refresh_
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, table }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return handleResponse<{ status: string; message: string }>(res);
 }
 
 export async function analyzeText(text: string): Promise<NlpPrediction> {
@@ -84,8 +93,7 @@ export async function analyzeText(text: string): Promise<NlpPrediction> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
+  const data = await handleResponse<NlpPrediction>(res);
   data.latency_ms = Math.round(performance.now() - t0);
   return data;
 }

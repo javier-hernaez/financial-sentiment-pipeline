@@ -41,7 +41,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
     ]);
   };
 
-  const handleRunStage = async (stage: 'extract' | 'gold' | 'full') => {
+  const handleRunStage = async (stage: 'extract' | 'transform' | 'gold' | 'full') => {
     setIsRunning(true);
     setActiveStage(stage);
     addLog(`Iniciando fase [${stage.toUpperCase()}] para ${symbol} (${hours} horas)...`, 'info');
@@ -51,6 +51,11 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
       if (stage === 'extract') {
         addLog(
           `Extracción completada en ${res.elapsed_seconds}s: ${res.candles} velas, ${res.macro_records} macro, ${res.social_records} noticias en tiempo real.`,
+          'success'
+        );
+      } else if (stage === 'transform') {
+        addLog(
+          `Transformación Silver completada en ${res.elapsed_seconds}s: ${res.candles_processed} velas, ${res.posts_processed} noticias vectorizadas con FinBERT.`,
           'success'
         );
       } else if (stage === 'gold') {
@@ -204,7 +209,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
                   </p>
                 </div>
                 <button
-                  onClick={() => handleRunStage('full')}
+                  onClick={() => handleRunStage('transform')}
                   disabled={isRunning}
                   className="w-full py-2 px-3 bg-[#162137] hover:bg-[#1e2d4a] disabled:opacity-40 text-xs font-semibold text-slate-200 rounded-sm border border-[#233352] transition flex items-center justify-center gap-1.5"
                 >

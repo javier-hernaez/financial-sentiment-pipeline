@@ -120,86 +120,129 @@ class FinBERTEngine:
 
     def _predict_heuristic(self, texts: List[str]) -> List[Dict[str, Any]]:
         """
-        Deterministic, rule-based financial lexicon engine.
+        Deterministic, rule-based financial lexicon engine with English and Spanish coverage.
         Used as zero-dependency fallback for rapid testing and lightweight environments.
         """
+        import re
+
         bullish_lexicon = {
-            "surge",
-            "surges",
-            "rally",
-            "rallies",
-            "bullish",
-            "inflows",
-            "high",
-            "record",
-            "profit",
-            "gain",
-            "gains",
-            "long",
-            "optimistic",
-            "growth",
-            "breakout",
-            "accumulate",
-            "buy",
-            "up",
-            "pump",
-            "soar",
-            "soaring",
-            "skyrocket",
+            # English
+            "surge", "surges", "surging", "surged",
+            "rally", "rallies", "rallying", "rallied",
+            "bullish", "bull", "bulls",
+            "inflow", "inflows",
+            "high", "highs", "record", "records", "ath", "all-time-high",
+            "profit", "profits", "profitable", "gain", "gains", "gaining",
+            "long", "longs", "optimistic", "optimism", "growth", "growing",
+            "breakout", "breakouts", "breaking", "accumulate", "accumulation", "accumulating",
+            "buy", "buying", "buyer", "buyers", "bought",
+            "up", "pump", "pumping", "pumped", "soar", "soaring", "soared",
+            "skyrocket", "skyrocketing", "skyrocketed", "moon", "mooning",
+            "adoption", "outperform", "outperforming", "dividend", "boost",
+            "rebound", "rebounds", "rebounding", "green", "strong", "strength",
+            # Spanish
+            "sube", "suben", "subio", "subió", "subida", "subidas", "subiendo",
+            "alcista", "alcistas", "alza", "alzas", "repunta", "repunte", "repuntes",
+            "ganancia", "ganancias", "compras", "compra", "comprando", "compradores",
+            "acumular", "acumulacion", "acumulación", "acumulando",
+            "maximo", "maximos", "máximo", "máximos", "record", "récord",
+            "positivo", "positivos", "positiva", "positivas", "optimismo", "optimista", "optimistas",
+            "crecimiento", "dispara", "disparan", "disparado", "disparada", "disparandose",
+            "explota", "explotando", "supera", "superando", "flujo", "flujos", "entradas",
+            "recupera", "recuperacion", "recuperación", "rebote", "verde", "verdes",
+            "fuerte", "fortaleza", "historico", "histórico", "historicos", "históricos",
         }
         bearish_lexicon = {
-            "drop",
-            "drops",
-            "plunge",
-            "plunges",
-            "bearish",
-            "crash",
-            "fall",
-            "down",
-            "correction",
-            "liquidate",
-            "liquidation",
-            "probe",
-            "sec",
-            "fear",
-            "panic",
-            "dump",
-            "ban",
-            "loss",
-            "losses",
-            "risk-off",
-            "short",
-            "pullback",
+            # English
+            "drop", "drops", "dropping", "dropped",
+            "plunge", "plunges", "plunging", "plunged",
+            "bearish", "bear", "bears",
+            "crash", "crashes", "crashing", "crashed",
+            "fall", "falls", "falling", "fell",
+            "down", "correction", "corrections", "dip", "dips",
+            "liquidate", "liquidates", "liquidated", "liquidation", "liquidations",
+            "probe", "probes", "investigation", "sec",
+            "fear", "panic", "panics", "dump", "dumps", "dumping", "dumped",
+            "ban", "bans", "banned", "banning",
+            "loss", "losses", "losing", "lost",
+            "risk-off", "short", "shorts", "shorting",
+            "pullback", "pullbacks", "slump", "slumps", "tumble", "tumbles",
+            "bleeding", "bleed", "bleeds", "fud", "scam", "hack", "hacked",
+            "lawsuit", "sued", "fraud", "insolvency", "insolvent", "bankrupt", "bankruptcy",
+            "red", "selloff", "sell-off", "selling", "sell", "collapse", "collapsing",
+            # Spanish
+            "cae", "caen", "caida", "caída", "caidas", "caídas", "cayendo", "cayo", "cayó",
+            "baja", "bajan", "bajada", "bajadas", "bajando", "bajo", "bajó",
+            "bajista", "bajistas", "desploma", "desploman", "desplome", "desplomes", "desplomandose",
+            "colapso", "colapsa", "colapsan", "perdida", "perdidas", "pérdida", "pérdidas",
+            "quiebra", "quiebran", "quiebras", "panico", "pánico", "miedo",
+            "venta", "ventas", "vendiendo", "vendedores",
+            "liquidacion", "liquidaciones", "liquidación",
+            "pesimismo", "pesimista", "pesimistas", "negativo", "negativos", "negativa", "negativas",
+            "correccion", "corrección", "correcciones", "sancion", "sanciones", "sanción",
+            "demanda", "demandas", "fraude", "estafa", "hackeo", "hackeado", "riesgo", "sangria", "sangría",
+            "rojo", "rojos", "roja", "rojas", "hundimiento", "hunde", "hunden",
+        }
+
+        neutral_lexicon = {
+            # English
+            "sideways", "consolidation", "consolidating", "consolidates", "consolidate",
+            "range", "range-bound", "flat", "neutral", "stable", "stability",
+            "steady", "unchanged", "waiting", "pause", "paused", "low-volatility",
+            # Spanish
+            "lateral", "laterales", "consolidacion", "consolidación", "consolida", "consolidando",
+            "estable", "estabilidad", "espera", "neutro", "neutral", "calma", "pausa",
+            "plano", "tranquilidad", "indecision", "indecisión",
         }
 
         results: List[Dict[str, Any]] = []
 
         for text in texts:
-            words = set(text.lower().split())
+            if not text or not text.strip():
+                results.append(
+                    {
+                        "sentiment_score": 0.0,
+                        "sentiment_label": "neutral",
+                        "confidence": 0.70,
+                        "prob_positive": 0.15,
+                        "prob_negative": 0.15,
+                        "prob_neutral": 0.70,
+                    }
+                )
+                continue
+
+            words = set(re.findall(r"\b[\w-]+\b", text.lower()))
             bull_hits = len(words.intersection(bullish_lexicon))
             bear_hits = len(words.intersection(bearish_lexicon))
+            neu_hits = len(words.intersection(neutral_lexicon))
 
-            total_hits = bull_hits + bear_hits
-            if total_hits == 0:
+            total_directional = bull_hits + bear_hits
+
+            # Neutral priority if explicit neutral terms exist and balance or dominate
+            if (
+                total_directional == 0
+                or (neu_hits > 0 and neu_hits >= total_directional)
+                or (neu_hits > 0 and bull_hits == bear_hits)
+            ):
                 pos, neg, neu = 0.15, 0.15, 0.70
                 fin_label = "neutral"
                 score = 0.0
-                confidence = 0.70
+                confidence = round(min(0.95, 0.70 + (neu_hits * 0.10)), 2)
             elif bull_hits > bear_hits:
-                margin = (bull_hits - bear_hits) / total_hits
-                pos = 0.60 + (0.35 * margin)
-                neg = 0.10
-                neu = max(0.0, 1.0 - pos - neg)
+                margin = (bull_hits - bear_hits) / total_directional
+                pos = round(0.55 + (0.35 * margin), 4)
+                neg = round(0.08 * (1.0 - margin), 4)
+                neu = round(max(0.0, 1.0 - pos - neg), 4)
                 fin_label = "bullish"
                 score = round(pos - neg, 4)
                 confidence = round(pos, 4)
             elif bear_hits > bull_hits:
-                margin = (bear_hits - bull_hits) / total_hits
-                neg = 0.60 + (0.35 * margin)
-                pos = 0.10
-                neu = max(0.0, 1.0 - pos - neg)
+                margin = (bear_hits - bull_hits) / total_directional
+                neg = round(0.55 + (0.35 * margin), 4)
+                pos = round(0.08 * (1.0 - margin), 4)
+                neu = round(max(0.0, 1.0 - pos - neg), 4)
                 fin_label = "bearish"
-                score = round(pos - neg, 4)
+                score = round(-(neg - pos), 4)
                 confidence = round(neg, 4)
             else:
                 pos, neg, neu = 0.35, 0.35, 0.30

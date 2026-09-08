@@ -102,6 +102,8 @@ async def main_async() -> int:
         console.print(f"[bold red]Pipeline failed with error:[/bold red] {exc}")
         console.print_exception()
         return 1
+    finally:
+        pipeline.close()
 
 
 def main() -> None:

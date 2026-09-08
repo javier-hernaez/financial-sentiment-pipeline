@@ -31,7 +31,8 @@ class BronzeDataLake:
         Partition layout: data/bronze/{source}/year=YYYY/month=MM/day=DD/{source}_{timestamp}.parquet
         """
         if not records:
-            raise ValueError(f"No records provided for source: {source}")
+            console.print(f"[yellow][BronzeLake] Advertencia: No se recibieron registros para el origen: {source}[/yellow]")
+            return None
 
         now = datetime.now(timezone.utc)
         year_part = f"year={now.year:04d}"
