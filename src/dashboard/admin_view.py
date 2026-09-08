@@ -47,13 +47,14 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
     }
     .font-tabular { font-variant-numeric: tabular-nums; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0b0f19; }
-    ::-webkit-scrollbar-thumb { background: #263147; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #3b4866; }
+    ::-webkit-scrollbar-track { background: #11141a; }
+    ::-webkit-scrollbar-thumb { background: #2e3748; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3e4b62; }
     .tab-btn[aria-selected="true"] {
-      color: #38bdf8;
-      border-bottom-color: #38bdf8;
-      background-color: rgba(56, 189, 248, 0.04);
+      color: #1a73e8;
+      border-bottom-color: #1a73e8;
+      background-color: rgba(26, 115, 232, 0.05);
+      font-weight: 600;
     }
     .tab-btn[aria-selected="false"] {
       color: #94a3b8;
@@ -64,19 +65,13 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
       border-bottom-color: #334155;
     }
     :focus-visible {
-      outline: 2px solid #38bdf8;
+      outline: 2px solid #1a73e8;
       outline-offset: 2px;
     }
-    @keyframes pulse-subtle {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    .anim-pulse-subtle {
-      animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
   </style>
 </head>
-<body class="h-full bg-[#0b0f19] text-slate-200 flex flex-col font-sans selection:bg-sky-500/20 selection:text-sky-200">
+<body class="h-full bg-[#11141a] text-slate-200 flex flex-col font-sans selection:bg-blue-600/20 selection:text-blue-200">
 
   <!-- Top Navigation Bar (Google Cloud Style) -->
   <header class="border-b border-google-border bg-google-surface sticky top-0 z-30 flex-none" role="banner">

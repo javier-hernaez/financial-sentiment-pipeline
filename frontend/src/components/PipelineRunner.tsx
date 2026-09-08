@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Play, Terminal, ArrowRight, CheckCircle2, AlertCircle, Clock, Database, FileText } from 'lucide-react';
+import { Play, Terminal, ArrowRight } from 'lucide-react';
 import { runStage } from '@/lib/api';
 
 interface PipelineRunnerProps {
@@ -50,7 +50,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
       const res = await runStage(stage, symbol, hours);
       if (stage === 'extract') {
         addLog(
-          `Extracción completada en ${res.elapsed_seconds}s: ${res.candles} velas, ${res.macro_records} macro, ${res.social_records} artículos en tiempo real.`,
+          `Extracción completada en ${res.elapsed_seconds}s: ${res.candles} velas, ${res.macro_records} macro, ${res.social_records} noticias en tiempo real.`,
           'success'
         );
       } else if (stage === 'gold') {
@@ -78,34 +78,34 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Pipeline Execution Parameters */}
-        <div className="bg-google-surface border border-google-border rounded-xl p-5 space-y-5 lg:col-span-1">
+        <div className="bg-[#131b2e] border border-[#1e2a42] rounded p-5 space-y-5 lg:col-span-1">
           <div>
-            <h2 className="text-base font-semibold text-white tracking-tight">Parámetros de Orquestación</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Control de ingesta, paralelismo y capas analíticas.</p>
+            <h3 className="text-base font-bold text-white tracking-tight">Parámetros de Ingesta</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Control de extracción, enriquecimiento y capas analíticas.</p>
           </div>
 
           <div className="space-y-4">
             {/* Asset Selection */}
             <div>
               <label htmlFor="select-asset" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
-                Criptoactivo Objetivo
+                Activo Financiero
               </label>
               <select
                 id="select-asset"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                className="w-full bg-google-surfaceHigh border border-google-border text-white text-xs font-mono rounded-lg px-3 py-2.5 outline-none focus:border-sky-400 cursor-pointer transition"
+                className="w-full bg-[#0e1628] border border-[#1e2a42] text-white text-xs font-mono rounded-sm px-3 py-2 outline-none focus:border-slate-500 cursor-pointer transition"
               >
-                <option value="BTCUSDT">BTC / USDT • Bitcoin</option>
-                <option value="ETHUSDT">ETH / USDT • Ethereum</option>
-                <option value="SOLUSDT">SOL / USDT • Solana</option>
+                <option value="BTCUSDT">BTC / USDT · Bitcoin Spot</option>
+                <option value="ETHUSDT">ETH / USDT · Ethereum Spot</option>
+                <option value="SOLUSDT">SOL / USDT · Solana Spot</option>
               </select>
             </div>
 
             {/* Time Horizon Selection */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
-                Ventana de Ingesta (Horas)
+                Ventana de Tiempo
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[12, 24, 48, 72].map((h) => (
@@ -113,10 +113,10 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
                     key={h}
                     type="button"
                     onClick={() => setHours(h)}
-                    className={`text-xs font-mono py-1.5 rounded border transition ${
+                    className={`text-xs font-mono py-1.5 rounded-sm border transition ${
                       hours === h
-                        ? 'border-sky-500/50 bg-sky-500/10 text-sky-400 font-semibold'
-                        : 'border-google-border bg-google-surfaceHigh text-slate-300 hover:text-white'
+                        ? 'border-[#15803d] bg-[#052e16] text-[#4ade80] font-bold'
+                        : 'border-[#1e2a42] bg-[#0e1628] text-slate-300 hover:text-white'
                     }`}
                   >
                     {h}h
@@ -125,19 +125,19 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
               </div>
             </div>
 
-            {/* Feed Information */}
-            <div className="border-t border-google-borderSubtle pt-4 space-y-2">
+            {/* Feed Status Information */}
+            <div className="border-t border-[#1e2a42] pt-4 space-y-2.5">
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-slate-400">Noticias en Vivo:</span>
-                <span className="text-emerald-400 font-medium">CoinTelegraph & CoinDesk</span>
+                <span className="text-[#4ade80] font-bold">CoinTelegraph & CoinDesk</span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-slate-400">Precios de Mercado:</span>
-                <span className="text-sky-400 font-medium">Binance Public REST</span>
+                <span className="text-slate-200 font-medium">Binance Public REST</span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-slate-400">Motor NLP:</span>
-                <span className="text-amber-400 font-medium">FinBERT Local</span>
+                <span className="text-slate-200 font-medium">FinBERT Local</span>
               </div>
             </div>
 
@@ -146,9 +146,9 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
               <button
                 onClick={() => handleRunStage('full')}
                 disabled={isRunning}
-                className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center justify-center gap-2 transition"
+                className="w-full py-2.5 px-4 bg-[#1e3a5f] hover:bg-[#254673] active:bg-[#1a3353] disabled:opacity-50 text-white text-xs font-bold rounded-sm border border-[#2e5282] shadow-sm flex items-center justify-center gap-2 transition"
               >
-                <Play className={`w-4 h-4 ${isRunning && activeStage === 'full' ? 'animate-spin' : ''}`} />
+                <Play className={`w-3.5 h-3.5 ${isRunning && activeStage === 'full' ? 'animate-spin' : ''}`} />
                 <span>
                   {isRunning && activeStage === 'full'
                     ? 'Ejecutando Pipeline Completo...'
@@ -163,28 +163,28 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
         <div className="lg:col-span-2 space-y-6">
           
           {/* Modular Stages Grid */}
-          <div className="bg-google-surface border border-google-border rounded-xl p-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono mb-4">
+          <div className="bg-[#131b2e] border border-[#1e2a42] rounded p-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono mb-3">
               Ejecución Modular por Capas
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Bronze Stage */}
-              <div className="bg-google-surfaceHigh border border-google-border rounded-lg p-4 flex flex-col justify-between space-y-3">
+              <div className="bg-[#0e1628] border border-[#1e2a42] rounded p-4 flex flex-col justify-between space-y-3">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-400 font-mono">1. BRONZE LAKE</span>
-                    <span className="text-[10px] text-slate-400 font-mono">Extracción</span>
+                    <span className="text-xs font-bold text-slate-200 font-mono">1. BRONZE LAKE</span>
+                    <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#052e16] px-1.5 py-0.5 border border-[#16a34a] rounded-sm">RAW</span>
                   </div>
-                  <h4 className="text-sm font-semibold text-white mt-1">Extracción Raw</h4>
+                  <h4 className="text-xs font-bold text-white mt-2">Extracción Inmutable</h4>
                   <p className="text-xs text-slate-400 mt-1">
-                    Descarga en paralelo de Binance, CoinTelegraph y Alternative.me hacia Parquet inmutable.
+                    Descarga en paralelo de velas Binance y noticias RSS a ficheros Parquet.
                   </p>
                 </div>
                 <button
                   onClick={() => handleRunStage('extract')}
                   disabled={isRunning}
-                  className="w-full py-2 px-3 bg-google-surfaceHighest hover:bg-slate-700 disabled:opacity-40 text-xs font-medium text-slate-200 rounded border border-google-border transition flex items-center justify-center gap-1.5"
+                  className="w-full py-2 px-3 bg-[#162137] hover:bg-[#1e2d4a] disabled:opacity-40 text-xs font-semibold text-slate-200 rounded-sm border border-[#233352] transition flex items-center justify-center gap-1.5"
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                   <span>Extraer a Bronze</span>
@@ -192,21 +192,21 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
               </div>
 
               {/* Silver Stage */}
-              <div className="bg-google-surfaceHigh border border-google-border rounded-lg p-4 flex flex-col justify-between space-y-3">
+              <div className="bg-[#0e1628] border border-[#1e2a42] rounded p-4 flex flex-col justify-between space-y-3">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-cyan-400 font-mono">2. SILVER TABLES</span>
-                    <span className="text-[10px] text-slate-400 font-mono">NLP Batching</span>
+                    <span className="text-xs font-bold text-slate-200 font-mono">2. SILVER TABLES</span>
+                    <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#052e16] px-1.5 py-0.5 border border-[#16a34a] rounded-sm">NLP</span>
                   </div>
-                  <h4 className="text-sm font-semibold text-white mt-1">Transformación</h4>
+                  <h4 className="text-xs font-bold text-white mt-2">Limpieza y Scoring</h4>
                   <p className="text-xs text-slate-400 mt-1">
-                    Limpieza con Polars, inferencia de sentimiento con FinBERT y almacenamiento relacional.
+                    Normalización con Polars, clasificación FinBERT y tablas relacionales DuckDB.
                   </p>
                 </div>
                 <button
                   onClick={() => handleRunStage('full')}
                   disabled={isRunning}
-                  className="w-full py-2 px-3 bg-google-surfaceHighest hover:bg-slate-700 disabled:opacity-40 text-xs font-medium text-slate-200 rounded border border-google-border transition flex items-center justify-center gap-1.5"
+                  className="w-full py-2 px-3 bg-[#162137] hover:bg-[#1e2d4a] disabled:opacity-40 text-xs font-semibold text-slate-200 rounded-sm border border-[#233352] transition flex items-center justify-center gap-1.5"
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                   <span>Procesar Silver</span>
@@ -214,21 +214,21 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
               </div>
 
               {/* Gold Stage */}
-              <div className="bg-google-surfaceHigh border border-google-border rounded-lg p-4 flex flex-col justify-between space-y-3">
+              <div className="bg-[#0e1628] border border-[#1e2a42] rounded p-4 flex flex-col justify-between space-y-3">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-400 font-mono">3. GOLD FEATURES</span>
-                    <span className="text-[10px] text-slate-400 font-mono">Consolidación</span>
+                    <span className="text-xs font-bold text-slate-200 font-mono">3. GOLD FEATURES</span>
+                    <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#052e16] px-1.5 py-0.5 border border-[#16a34a] rounded-sm">GOLD</span>
                   </div>
-                  <h4 className="text-sm font-semibold text-white mt-1">Feature Store</h4>
+                  <h4 className="text-xs font-bold text-white mt-2">Feature Store</h4>
                   <p className="text-xs text-slate-400 mt-1">
-                    Cálculo de señales cuantitativas Alpha (divergencia precio-sentimiento y volatilidad).
+                    Alineación horaria de retornos, polaridad y señales cuantitativas alpha.
                   </p>
                 </div>
                 <button
                   onClick={() => handleRunStage('gold')}
                   disabled={isRunning}
-                  className="w-full py-2 px-3 bg-google-surfaceHighest hover:bg-slate-700 disabled:opacity-40 text-xs font-medium text-slate-200 rounded border border-google-border transition flex items-center justify-center gap-1.5"
+                  className="w-full py-2 px-3 bg-[#162137] hover:bg-[#1e2d4a] disabled:opacity-40 text-xs font-semibold text-slate-200 rounded-sm border border-[#233352] transition flex items-center justify-center gap-1.5"
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                   <span>Actualizar Gold</span>
@@ -238,32 +238,32 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
           </div>
 
           {/* Real-time Log Stream Console */}
-          <div className="bg-google-surface border border-google-border rounded-xl p-5">
-            <div className="flex items-center justify-between pb-3 border-b border-google-borderSubtle">
+          <div className="bg-[#131b2e] border border-[#1e2a42] rounded p-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-subtle-pulse"></span>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300 font-mono flex items-center gap-1.5">
-                  <Terminal className="w-3.5 h-3.5 text-sky-400" />
-                  Registro de Ejecución en Tiempo Real
+                <span className="w-2 h-2 rounded-sm bg-[#22c55e]"></span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 font-mono flex items-center gap-1.5">
+                  <Terminal className="w-3.5 h-3.5 text-slate-300" />
+                  Registro de Operaciones
                 </h3>
               </div>
               <button
                 onClick={() => setLogs([])}
-                className="text-[11px] text-slate-400 hover:text-white font-mono transition"
+                className="text-xs text-slate-400 hover:text-white font-mono transition"
               >
                 Limpiar consola
               </button>
             </div>
 
-            <div className="mt-3 bg-[#070a12] border border-google-borderSubtle rounded-lg p-3 font-mono text-xs text-slate-300 h-64 overflow-y-auto space-y-2">
+            <div className="mt-3 bg-[#0a0f1d] border border-[#1e2a42] rounded-sm p-3 font-mono text-xs text-slate-300 h-64 overflow-y-auto space-y-2">
               {logs.length === 0 ? (
-                <div className="text-slate-600">No hay eventos registrados en la sesión.</div>
+                <div className="text-slate-500">No hay eventos registrados en la sesión.</div>
               ) : (
                 logs.map((log) => {
                   let colorClass = 'text-slate-300';
-                  if (log.type === 'success') colorClass = 'text-emerald-400';
-                  if (log.type === 'error') colorClass = 'text-rose-400';
-                  if (log.type === 'warning') colorClass = 'text-amber-400';
+                  if (log.type === 'success') colorClass = 'text-[#4ade80] font-bold';
+                  if (log.type === 'error') colorClass = 'text-[#f87171] font-bold';
+                  if (log.type === 'warning') colorClass = 'text-amber-400 font-bold';
 
                   return (
                     <div key={log.id} className="flex items-start gap-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, FileSpreadsheet, FolderTree } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, FolderTree } from 'lucide-react';
 import { TableDataResponse, BronzeFile } from '@/types';
 import { fetchTableData, fetchBronzeTree } from '@/lib/api';
 
@@ -59,9 +59,9 @@ export const MedallionExplorer: React.FC = () => {
     <div className="space-y-6">
       
       {/* Table Selector & Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-google-surface border border-google-border rounded-xl p-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#131b2e] border border-[#1e2a42] rounded p-4">
         <div className="flex items-center gap-3">
-          <label htmlFor="structure-select" className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono">
+          <label htmlFor="structure-select" className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
             Estructura:
           </label>
           <select
@@ -71,7 +71,7 @@ export const MedallionExplorer: React.FC = () => {
               setSelectedTable(e.target.value);
               setOffset(0);
             }}
-            className="bg-google-surfaceHigh border border-google-border text-white text-xs font-mono rounded-lg px-3 py-1.5 outline-none focus:border-sky-400 cursor-pointer"
+            className="bg-[#0e1628] border border-[#1e2a42] text-slate-200 text-xs font-mono font-bold rounded-sm px-3 py-1.5 outline-none focus:border-slate-500 cursor-pointer"
           >
             <optgroup label="Capa Gold (Feature Store)">
               <option value="gold_hourly_market_sentiment">gold_hourly_market_sentiment (Consolidado)</option>
@@ -95,13 +95,13 @@ export const MedallionExplorer: React.FC = () => {
                 placeholder="Filtrar por texto o símbolo..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="bg-google-surfaceHigh border border-google-border text-xs text-white rounded-lg pl-8 pr-3 py-1.5 outline-none focus:border-sky-400 w-56 sm:w-64 font-mono"
+                className="bg-[#0e1628] border border-[#1e2a42] text-xs text-white rounded-sm pl-8 pr-3 py-1.5 outline-none focus:border-slate-500 w-56 sm:w-64 font-mono"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
             </div>
             <button
               type="submit"
-              className="px-3 py-1.5 bg-google-surfaceHigh hover:bg-slate-700 text-slate-200 text-xs font-mono rounded-lg border border-google-border transition"
+              className="px-3.5 py-1.5 bg-[#162137] hover:bg-[#1e2d4a] text-slate-200 text-xs font-mono font-bold rounded-sm border border-[#233352] transition"
             >
               Buscar
             </button>
@@ -111,17 +111,17 @@ export const MedallionExplorer: React.FC = () => {
 
       {/* Relational SQL Table */}
       {selectedTable !== '__bronze_lake__' ? (
-        <div className="bg-google-surface border border-google-border rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-google-border flex justify-between items-center text-xs font-mono">
+        <div className="bg-[#131b2e] border border-[#1e2a42] rounded overflow-hidden">
+          <div className="p-3.5 border-b border-[#1e2a42] flex justify-between items-center text-xs font-mono">
             <div className="text-slate-400">
-              Mostrando <span className="text-white font-semibold">{tableData?.total_count === 0 ? 0 : offset + 1}-{Math.min(offset + limit, tableData?.total_count || 0)}</span> de{' '}
-              <span className="text-white font-semibold">{tableData?.total_count || 0}</span> registros
+              Mostrando <span className="text-white font-bold">{tableData?.total_count === 0 ? 0 : offset + 1}-{Math.min(offset + limit, tableData?.total_count || 0)}</span> de{' '}
+              <span className="text-[#4ade80] font-bold">{tableData?.total_count || 0}</span> registros
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setOffset((o) => Math.max(0, o - limit))}
                 disabled={offset === 0 || isLoading}
-                className="px-2.5 py-1 rounded bg-google-surfaceHigh hover:bg-slate-700 disabled:opacity-30 text-slate-200 transition flex items-center gap-1"
+                className="px-2.5 py-1 rounded-sm bg-[#0e1628] hover:bg-[#162137] disabled:opacity-30 text-slate-200 border border-[#1e2a42] transition flex items-center gap-1 font-bold"
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Anterior
               </button>
@@ -129,7 +129,7 @@ export const MedallionExplorer: React.FC = () => {
               <button
                 onClick={() => setOffset((o) => o + limit)}
                 disabled={offset + limit >= (tableData?.total_count || 0) || isLoading}
-                className="px-2.5 py-1 rounded bg-google-surfaceHigh hover:bg-slate-700 disabled:opacity-30 text-slate-200 transition flex items-center gap-1"
+                className="px-2.5 py-1 rounded-sm bg-[#0e1628] hover:bg-[#162137] disabled:opacity-30 text-slate-200 border border-[#1e2a42] transition flex items-center gap-1 font-bold"
               >
                 Siguiente <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -138,16 +138,16 @@ export const MedallionExplorer: React.FC = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-google-surfaceHigh text-slate-400 border-b border-google-border">
+              <thead className="bg-[#0e1628] text-slate-300 border-b border-[#1e2a42]">
                 <tr>
                   {tableData?.columns.map((col) => (
-                    <th key={col} className="py-3 px-4 font-semibold whitespace-nowrap text-[11px] uppercase">
+                    <th key={col} className="py-2.5 px-3.5 font-bold whitespace-nowrap text-xs uppercase tracking-wider">
                       {col}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-google-borderSubtle text-slate-300">
+              <tbody className="divide-y divide-[#1e2a42] text-slate-300">
                 {isLoading ? (
                   <tr>
                     <td colSpan={tableData?.columns.length || 5} className="p-8 text-center text-slate-500 font-mono">
@@ -162,26 +162,27 @@ export const MedallionExplorer: React.FC = () => {
                   </tr>
                 ) : (
                   tableData.rows.map((row, rIdx) => (
-                    <tr key={rIdx} className="hover:bg-google-surfaceHigh/60 transition">
+                    <tr key={rIdx} className="hover:bg-[#17233a] transition">
                       {tableData.columns.map((col) => {
                         const val = row[col];
                         if (col === 'sentiment_label') {
-                          const badge =
-                            val === 'bullish'
-                              ? 'text-emerald-400 bg-emerald-500/10'
-                              : val === 'bearish'
-                              ? 'text-rose-400 bg-rose-500/10'
-                              : 'text-amber-400 bg-amber-500/10';
+                          const isBullish = String(val).toLowerCase() === 'bullish';
+                          const isBearish = String(val).toLowerCase() === 'bearish';
+                          const badge = isBullish
+                            ? 'text-[#4ade80] bg-[#052e16] border border-[#16a34a]'
+                            : isBearish
+                            ? 'text-[#f87171] bg-[#450a0a] border border-[#b91c1c]'
+                            : 'text-amber-300 bg-amber-950/60 border border-amber-700/60';
                           return (
-                            <td key={col} className="py-2.5 px-4 whitespace-nowrap">
-                              <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${badge}`}>
+                            <td key={col} className="py-2 px-3.5 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded-sm text-xs font-bold ${badge}`}>
                                 {val}
                               </span>
                             </td>
                           );
                         }
                         return (
-                          <td key={col} className="py-2.5 px-4 whitespace-nowrap font-tabular">
+                          <td key={col} className="py-2 px-3.5 whitespace-nowrap font-tabular">
                             {val !== null && val !== undefined ? String(val) : '-'}
                           </td>
                         );
@@ -195,27 +196,29 @@ export const MedallionExplorer: React.FC = () => {
         </div>
       ) : (
         /* Bronze Lake Partitions */
-        <div className="bg-google-surface border border-google-border rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-google-border flex justify-between items-center text-xs font-mono">
-            <span className="text-amber-400 font-semibold flex items-center gap-1.5">
-              <FolderTree className="w-4 h-4" />
+        <div className="bg-[#131b2e] border border-[#1e2a42] rounded overflow-hidden">
+          <div className="p-3.5 border-b border-[#1e2a42] flex justify-between items-center text-xs font-mono">
+            <span className="text-white font-bold flex items-center gap-1.5">
+              <FolderTree className="w-4 h-4 text-[#4ade80]" />
               Particiones Parquet Inmutables en Disco
             </span>
-            <span className="text-slate-400">{bronzeFiles.length} ficheros en el lago</span>
+            <span className="text-[#4ade80] font-bold bg-[#052e16] border border-[#16a34a] px-2 py-0.5 rounded-sm">
+              {bronzeFiles.length} ficheros en el lago
+            </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-google-surfaceHigh text-slate-400 border-b border-google-border">
+              <thead className="bg-[#0e1628] text-slate-300 border-b border-[#1e2a42]">
                 <tr>
-                  <th className="py-2.5 px-4">Fuente</th>
-                  <th className="py-2.5 px-4">Partición Temporal</th>
-                  <th className="py-2.5 px-4">Nombre del Archivo</th>
-                  <th className="py-2.5 px-4">Tamaño</th>
-                  <th className="py-2.5 px-4">Modificación (UTC)</th>
+                  <th className="py-2.5 px-3.5 font-bold uppercase tracking-wider">Fuente</th>
+                  <th className="py-2.5 px-3.5 font-bold uppercase tracking-wider">Partición Temporal</th>
+                  <th className="py-2.5 px-3.5 font-bold uppercase tracking-wider">Nombre del Archivo</th>
+                  <th className="py-2.5 px-3.5 font-bold uppercase tracking-wider">Tamaño</th>
+                  <th className="py-2.5 px-3.5 font-bold uppercase tracking-wider">Modificación (UTC)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-google-borderSubtle text-slate-300">
+              <tbody className="divide-y divide-[#1e2a42] text-slate-300">
                 {bronzeFiles.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-slate-500 font-mono">
@@ -224,12 +227,12 @@ export const MedallionExplorer: React.FC = () => {
                   </tr>
                 ) : (
                   bronzeFiles.map((f, i) => (
-                    <tr key={i} className="hover:bg-google-surfaceHigh/60 transition">
-                      <td className="py-2.5 px-4 font-bold text-amber-400 font-mono text-xs">{f.source}</td>
-                      <td className="py-2.5 px-4 text-slate-300 font-mono text-xs">{f.partition}</td>
-                      <td className="py-2.5 px-4 text-white font-mono text-xs">{f.filename}</td>
-                      <td className="py-2.5 px-4 text-slate-300 font-mono text-xs font-tabular">{f.size_kb} KB</td>
-                      <td className="py-2.5 px-4 text-slate-400 font-mono text-xs">{f.modified_utc}</td>
+                    <tr key={i} className="hover:bg-[#17233a] transition">
+                      <td className="py-2 px-3.5 font-bold text-[#4ade80] font-mono text-xs">{f.source}</td>
+                      <td className="py-2 px-3.5 text-slate-200 font-mono text-xs">{f.partition}</td>
+                      <td className="py-2 px-3.5 text-white font-mono text-xs">{f.filename}</td>
+                      <td className="py-2 px-3.5 text-slate-200 font-mono text-xs font-tabular">{f.size_kb} KB</td>
+                      <td className="py-2 px-3.5 text-slate-400 font-mono text-xs">{f.modified_utc}</td>
                     </tr>
                   ))
                 )}
