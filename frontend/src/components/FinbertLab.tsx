@@ -13,19 +13,6 @@ export const FinbertLab: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const presets = {
-    bullish_es:
-      'Bitcoin se dispara a nuevos máximos históricos impulsado por compras récord de fondos institucionales.',
-    bearish_es:
-      'Fuertes liquidaciones y ventas de pánico provocan un desplome en los principales exchanges de criptomonedas.',
-    neutral_es:
-      'El mercado cotiza en un rango lateral estrecho con baja volatilidad a la espera del anuncio de tipos de interés.',
-    bullish_en:
-      'Bitcoin spot ETF institutional inflows reach unprecedented all-time record, signalling massive structural accumulation.',
-    bearish_en:
-      'Regulators launch sweeping investigation into protocol vulnerability after severe liquidation cascade hits markets.',
-  };
-
   const handleAnalyze = async (sampleText?: string) => {
     const textToAnalyze = sampleText !== undefined ? sampleText : text;
     if (!textToAnalyze.trim()) return;
@@ -46,12 +33,6 @@ export const FinbertLab: React.FC = () => {
   useEffect(() => {
     handleAnalyze();
   }, []);
-
-  const setPreset = (key: keyof typeof presets) => {
-    const val = presets[key];
-    setText(val);
-    handleAnalyze(val);
-  };
 
   return (
     <div className="space-y-6">
@@ -78,49 +59,6 @@ export const FinbertLab: React.FC = () => {
             </div>
           )}
 
-          {/* Quick Preset Buttons */}
-          <div className="space-y-1.5">
-            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider block font-bold">
-              Muestras Financieras de Prueba:
-            </span>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setPreset('bullish_es')}
-                className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#052e16] text-[#4ade80] border border-[#16a34a] hover:bg-[#073f1f] transition"
-              >
-                Alcista (ES)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreset('bearish_es')}
-                className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#450a0a] text-[#f87171] border border-[#b91c1c] hover:bg-[#5c0d0d] transition"
-              >
-                Bajista (ES)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreset('neutral_es')}
-                className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#162137] text-slate-300 border border-[#233352] hover:bg-[#1f2d4a] transition"
-              >
-                Neutral (ES)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreset('bullish_en')}
-                className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#064e3b]/50 text-emerald-300 border border-emerald-700/60 hover:bg-[#064e3b] transition"
-              >
-                Bullish (EN)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreset('bearish_en')}
-                className="text-xs font-mono font-bold px-2.5 py-1 rounded-sm bg-[#7f1d1d]/50 text-rose-300 border border-rose-700/60 hover:bg-[#7f1d1d] transition"
-              >
-                Bearish (EN)
-              </button>
-            </div>
-          </div>
 
           <div className="space-y-2">
             <div className="flex justify-between items-center">

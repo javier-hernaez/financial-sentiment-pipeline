@@ -32,8 +32,8 @@ from .admin_view import ADMIN_HTML_TEMPLATE
 
 console = Console()
 
-# Initialize NLP engine for sandbox testing
-sandbox_nlp = FinBERTEngine(force_mock=True)
+# Initialize NLP engine for sandbox testing (Real FinBERT Transformer with fallback)
+sandbox_nlp = FinBERTEngine(force_mock=False)
 
 ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="es">
