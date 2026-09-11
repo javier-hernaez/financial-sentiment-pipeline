@@ -714,6 +714,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(ADMIN_HTML_TEMPLATE.encode("utf-8"))
             return
 
+        elif path == "/api/health":
+            self._send_json({"status": "healthy", "service": "market-intelligence-api"}, 200)
+            return
+
         elif path == "/api/admin/metrics":
             try:
                 db_path = settings.duckdb_path
@@ -1191,6 +1195,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8080):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--host", type=str, default=os.environ.get("HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8080)))
     args = parser.parse_args()
-    run_server(port=args.port)
+    run_server(host=args.host, port=args.port)

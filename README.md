@@ -1,3 +1,12 @@
+---
+title: Market Intelligence Terminal
+emoji: 📊
+colorFrom: blue
+colorTo: slate
+sdk: docker
+app_port: 7860
+---
+
 # Market Intelligence Engine: Financial Sentiment ETL
 
 [![CI](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml)
