@@ -1,4 +1,5 @@
 """High-End Quant Market Intelligence Dashboard Server with Real-time Candlesticks, FinBERT Sandbox & Alpha Signals."""
+
 import argparse
 import asyncio
 import io
@@ -6,9 +7,9 @@ import json
 import os
 import sys
 import urllib.parse
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 if sys.platform == "win32":
     try:
@@ -19,15 +20,14 @@ if sys.platform == "win32":
 
 import duckdb
 import httpx
-import polars as pl
 from rich.console import Console
 
+from ..analytics.quant_signals import QuantSignalsEngine
 from ..configs.settings import settings
-from ..pipeline.orchestrator import MarketIntelligencePipeline
-from ..storage import MarketWarehouse
 from ..nlp.cleaner import TextCleaner
 from ..nlp.finbert_engine import FinBERTEngine
-from ..analytics.quant_signals import QuantSignalsEngine
+from ..pipeline.orchestrator import MarketIntelligencePipeline
+from ..storage import MarketWarehouse
 from .admin_view import ADMIN_HTML_TEMPLATE
 
 console = Console()
@@ -559,7 +559,7 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
       if (hoverIdx >= 0 && hoverIdx < n) {
         const d = series[hoverIdx];
         const x = paddingX + (hoverIdx * candleSpacing) + (candleSpacing / 2);
-        
+
         ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -714,6 +714,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(ADMIN_HTML_TEMPLATE.encode("utf-8"))
             return
 
+        elif path == "/api/health":
+            self._send_json({"status": "healthy", "service": "market-intelligence-api"}, 200)
+            return
+
         elif path == "/api/admin/metrics":
             try:
                 db_path = settings.duckdb_path
@@ -732,7 +736,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 silver_s = conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
                 silver_fg = conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
                 gold_total = conn.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchone()[0]
-                symbols = [r[0] for r in conn.execute("SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment").fetchall()]
+                symbols = [
+                    r[0]
+                    for r in conn.execute("SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment").fetchall()
+                ]
                 conn.close()
 
                 metrics = {
@@ -751,7 +758,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     "gold": {
                         "total_rows": gold_total,
                         "symbols": symbols,
-                    }
+                    },
                 }
                 self._send_json(metrics, 200)
             except Exception as exc:
@@ -763,6 +770,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             # 1. Binance Ping
             try:
                 import time
+
                 t0 = time.time()
                 res = httpx.get("https://api.binance.com/api/v3/ping", timeout=5.0)
                 lat = round((time.time() - t0) * 1000, 1)
@@ -833,21 +841,138 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
                 self.send_response(200)
                 self.send_header("Content-Type", "text/csv")
-                self.send_header("Content-Disposition", f"attachment; filename={symbol.lower()}_market_sentiment_gold.csv")
+                self.send_header(
+                    "Content-Disposition", f"attachment; filename={symbol.lower()}_market_sentiment_gold.csv"
+                )
                 self.end_headers()
                 self.wfile.write(csv_bytes)
             except Exception as exc:
                 self._send_json({"error": str(exc)}, 500)
             return
 
+        elif path == "/api/admin/table-data":
+            table = query_params.get("table", ["gold_hourly_market_sentiment"])[0]
+            limit = min(int(query_params.get("limit", [25])[0]), 100)
+            offset = max(int(query_params.get("offset", [0])[0]), 0)
+            search = query_params.get("search", [""])[0].strip()
+            symbol = query_params.get("symbol", [""])[0].strip().upper()
+
+            allowed_tables = {
+                "gold_hourly_market_sentiment",
+                "silver_market_prices",
+                "silver_social_sentiment",
+                "silver_fear_greed",
+            }
+            if table not in allowed_tables:
+                self._send_json({"error": f"Tabla no permitida: {table}"}, 400)
+                return
+
+            try:
+                db_path = str(settings.duckdb_path)
+                if not os.path.exists(db_path):
+                    self._send_json({"columns": [], "rows": [], "total_count": 0, "table": table}, 200)
+                    return
+
+                conn = duckdb.connect(db_path, read_only=True)
+
+                # Base query
+                where_clauses = []
+                params = []
+
+                if symbol and table in ("gold_hourly_market_sentiment", "silver_market_prices"):
+                    where_clauses.append("asset_ticker = ?")
+                    params.append(symbol)
+
+                if search:
+                    if table == "silver_social_sentiment":
+                        where_clauses.append("(title ILIKE ? OR subreddit ILIKE ? OR sentiment_label ILIKE ?)")
+                        params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+                    elif table == "gold_hourly_market_sentiment":
+                        where_clauses.append("(timestamp_hour ILIKE ? OR fear_and_greed_classification ILIKE ?)")
+                        params.extend([f"%{search}%", f"%{search}%"])
+                    elif table == "silver_market_prices":
+                        where_clauses.append("timestamp_hour ILIKE ?")
+                        params.append(f"%{search}%")
+
+                where_sql = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+                count_sql = f"SELECT COUNT(*) FROM {table}{where_sql}"
+                total_count = conn.execute(count_sql, params).fetchone()[0]
+
+                query_sql = f"SELECT * FROM {table}{where_sql} LIMIT {limit} OFFSET {offset}"
+                result = conn.execute(query_sql, params)
+                columns = [desc[0] for desc in result.description]
+                raw_rows = result.fetchall()
+                conn.close()
+
+                # Format rows
+                rows = []
+                for r in raw_rows:
+                    row_dict = {}
+                    for col_name, val in zip(columns, r):
+                        if hasattr(val, "isoformat"):
+                            row_dict[col_name] = val.isoformat()
+                        elif isinstance(val, float):
+                            row_dict[col_name] = round(val, 6)
+                        else:
+                            row_dict[col_name] = val
+                    rows.append(row_dict)
+
+                self._send_json(
+                    {
+                        "table": table,
+                        "columns": columns,
+                        "rows": rows,
+                        "total_count": total_count,
+                        "limit": limit,
+                        "offset": offset,
+                    },
+                    200,
+                )
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, 500)
+            return
+
+        elif path == "/api/admin/bronze-tree":
+            try:
+                bronze_dir = Path(settings.bronze_dir)
+                files_list = []
+                if bronze_dir.exists():
+                    for f in sorted(bronze_dir.glob("**/*.parquet"), key=lambda p: p.stat().st_mtime, reverse=True):
+                        rel_parts = f.relative_to(bronze_dir).parts
+                        source_name = rel_parts[0] if rel_parts else "unknown"
+                        partition_str = "/".join(rel_parts[1:-1]) if len(rel_parts) > 2 else ""
+                        stat = f.stat()
+                        import datetime as dt
+
+                        mtime = dt.datetime.fromtimestamp(stat.st_mtime, tz=dt.timezone.utc).isoformat()
+                        files_list.append(
+                            {
+                                "source": source_name,
+                                "partition": partition_str,
+                                "filename": f.name,
+                                "path": str(f.relative_to(bronze_dir)),
+                                "size_kb": round(stat.st_size / 1024, 2),
+                                "modified_utc": mtime,
+                            }
+                        )
+
+                self._send_json({"total_files": len(files_list), "files": files_list[:100]}, 200)
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, 500)
+            return
+
         elif path == "/api/status":
             db_path = str(settings.duckdb_path)
-            self._send_json({
-                "server": "online",
-                "port": 8080,
-                "duckdb_exists": os.path.exists(db_path),
-                "supported_assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
-            }, 200)
+            self._send_json(
+                {
+                    "server": "online",
+                    "port": 8080,
+                    "duckdb_exists": os.path.exists(db_path),
+                    "supported_assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+                },
+                200,
+            )
             return
 
         else:
@@ -872,17 +997,18 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             hours = int(payload.get("hours", 24))
 
             try:
-                pipeline = MarketIntelligencePipeline(
-                    symbol=symbol, hours=hours, force_mock_nlp=True
-                )
+                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=True)
                 result = asyncio.run(pipeline.run())
-                self._send_json({
-                    "symbol": result["symbol"],
-                    "candles_processed": result["candles_processed"],
-                    "posts_processed": result["posts_processed"],
-                    "macro_records": result["macro_records"],
-                    "elapsed_seconds": result["elapsed_seconds"],
-                }, 200)
+                self._send_json(
+                    {
+                        "symbol": result["symbol"],
+                        "candles_processed": result["candles_processed"],
+                        "posts_processed": result["posts_processed"],
+                        "macro_records": result["macro_records"],
+                        "elapsed_seconds": result["elapsed_seconds"],
+                    },
+                    200,
+                )
             except Exception as exc:
                 self._send_json({"error": str(exc)}, 500)
             return
@@ -891,16 +1017,158 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             text = payload.get("text", "")
             cleaned = TextCleaner.clean_string(text)
             preds = sandbox_nlp.predict_batch([cleaned])
-            res = preds[0] if preds else {
-                "sentiment_score": 0.0, "sentiment_label": "neutral", "confidence": 0.5,
-                "prob_positive": 0.33, "prob_negative": 0.33, "prob_neutral": 0.34
-            }
+            res = (
+                preds[0]
+                if preds
+                else {
+                    "sentiment_score": 0.0,
+                    "sentiment_label": "neutral",
+                    "confidence": 0.5,
+                    "prob_positive": 0.33,
+                    "prob_negative": 0.33,
+                    "prob_neutral": 0.34,
+                }
+            )
             self._send_json(res, 200)
+            return
+
+        elif path == "/api/admin/run-stage":
+            stage = payload.get("stage", "full")
+            symbol = payload.get("symbol", "BTCUSDT").upper()
+            hours = int(payload.get("hours", 24))
+
+            try:
+                import time
+
+                t0 = time.time()
+                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=True)
+
+                if stage == "extract":
+                    market_task = pipeline.binance_ext.extract(symbol=pipeline.symbol, limit=pipeline.hours)
+                    macro_task = pipeline.fear_greed_ext.extract(limit=10)
+                    social_task = pipeline.social_ext.extract(limit_per_sub=15)
+                    raw_market, raw_macro, raw_social = asyncio.run(
+                        asyncio.gather(market_task, macro_task, social_task)
+                    )
+                    p_market = pipeline.lake.write_raw_records("market", raw_market)
+                    p_macro = pipeline.lake.write_raw_records("fear_greed", raw_macro)
+                    p_social = pipeline.lake.write_raw_records("social", raw_social)
+                    elapsed = round(time.time() - t0, 2)
+                    self._send_json(
+                        {
+                            "status": "success",
+                            "stage": "extract",
+                            "symbol": symbol,
+                            "candles": len(raw_market),
+                            "macro_records": len(raw_macro),
+                            "social_records": len(raw_social),
+                            "bronze_files": [p_market.name, p_macro.name, p_social.name],
+                            "elapsed_seconds": elapsed,
+                        },
+                        200,
+                    )
+                    return
+
+                elif stage == "gold":
+                    warehouse = MarketWarehouse()
+                    raw_gold = warehouse.query_gold(symbol=symbol, limit=hours)
+                    enriched = QuantSignalsEngine.calculate_signals(raw_gold)
+                    warehouse.close()
+                    elapsed = round(time.time() - t0, 2)
+                    self._send_json(
+                        {
+                            "status": "success",
+                            "stage": "gold",
+                            "symbol": symbol,
+                            "consolidated_hours": len(raw_gold),
+                            "elapsed_seconds": elapsed,
+                        },
+                        200,
+                    )
+                    return
+
+                else:
+                    # Full pipeline execution
+                    result = asyncio.run(pipeline.run())
+                    self._send_json(
+                        {
+                            "status": "success",
+                            "stage": "full",
+                            "symbol": result["symbol"],
+                            "candles_processed": result["candles_processed"],
+                            "posts_processed": result["posts_processed"],
+                            "macro_records": result["macro_records"],
+                            "total_silver_market": result.get("total_silver_market", 0),
+                            "total_silver_social": result.get("total_silver_social", 0),
+                            "total_silver_macro": result.get("total_silver_macro", 0),
+                            "elapsed_seconds": result["elapsed_seconds"],
+                        },
+                        200,
+                    )
+                    return
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, 500)
+            return
+
+        elif path == "/api/admin/warehouse-ops":
+            action = payload.get("action", "").lower()
+            try:
+                db_path = str(settings.duckdb_path)
+                if not os.path.exists(db_path):
+                    self._send_json({"error": "DuckDB database file not found"}, 404)
+                    return
+
+                if action == "vacuum":
+                    conn = duckdb.connect(db_path)
+                    conn.execute("VACUUM;")
+                    conn.close()
+                    self._send_json({"status": "success", "message": "DuckDB VACUUM ejecutado con éxito. Espacio compactado."}, 200)
+                    return
+
+                elif action == "checkpoint":
+                    conn = duckdb.connect(db_path)
+                    conn.execute("CHECKPOINT;")
+                    conn.close()
+                    self._send_json({"status": "success", "message": "DuckDB CHECKPOINT ejecutado. WAL sincronizado al disco."}, 200)
+                    return
+
+                elif action == "refresh_views":
+                    warehouse = MarketWarehouse()
+                    warehouse._init_schema()
+                    warehouse.close()
+                    self._send_json({"status": "success", "message": "Esquemas y vistas analíticas Gold recalculadas."}, 200)
+                    return
+
+                elif action == "clear_table":
+                    table = payload.get("table", "")
+                    allowed = {"silver_social_sentiment", "silver_market_prices", "silver_fear_greed"}
+                    if table in allowed:
+                        conn = duckdb.connect(db_path)
+                        conn.execute(f"DELETE FROM {table};")
+                        conn.close()
+                        self._send_json({"status": "success", "message": f"Registros de {table} purgados."}, 200)
+                        return
+                    else:
+                        self._send_json({"error": f"Tabla inválida o protegida: {table}"}, 400)
+                        return
+
+                else:
+                    self._send_json({"error": f"Acción de almacén desconocida: {action}"}, 400)
+                    return
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, 500)
             return
 
         else:
             self.send_response(404)
             self.end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
 
     def _send_json(self, data: Any, status_code: int = 200):
         self.send_response(status_code)
@@ -914,7 +1182,9 @@ def run_server(host: str = "127.0.0.1", port: int = 8080):
     """Starts the advanced dashboard HTTP server."""
     server_address = (host, port)
     httpd = HTTPServer(server_address, AdvancedDashboardHandler)
-    console.print(f"[bold green][OK] Advanced Market Intelligence Terminal running on http://{host}:{port}[/bold green]")
+    console.print(
+        f"[bold green][OK] Advanced Market Intelligence Terminal running on http://{host}:{port}[/bold green]"
+    )
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
@@ -925,6 +1195,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8080):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--host", type=str, default=os.environ.get("HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8080)))
     args = parser.parse_args()
-    run_server(port=args.port)
+    run_server(host=args.host, port=args.port)

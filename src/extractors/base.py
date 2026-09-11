@@ -1,8 +1,10 @@
 """Base asynchronous extractor with Exponential Backoff and rate-limit resilience."""
-from abc import ABC, abstractmethod
+
 import asyncio
 import random
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
+
 import httpx
 from rich.console import Console
 
@@ -48,9 +50,9 @@ class BaseAsyncExtractor(ABC):
             for attempt in range(1, self.max_retries + 1):
                 try:
                     response = await client.get(url, params=params, headers=combined_headers)
-                    
-                    # If 403 or 401, don't waste retries on permissions/blocking
-                    if response.status_code in (401, 403):
+
+                    # If 403, 401, or 451 (geo-blocked/legal), don't waste retries on permissions/blocking
+                    if response.status_code in (401, 403, 451):
                         response.raise_for_status()
 
                     # Handle rate limits (429) or transient server errors (5xx)
@@ -73,7 +75,7 @@ class BaseAsyncExtractor(ABC):
                     return response.json()
 
                 except httpx.HTTPStatusError as exc:
-                    if exc.response.status_code in (401, 403) or attempt == self.max_retries:
+                    if exc.response.status_code in (401, 403, 451) or attempt == self.max_retries:
                         raise
                     jitter = random.uniform(0.1, 0.5)
                     sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter

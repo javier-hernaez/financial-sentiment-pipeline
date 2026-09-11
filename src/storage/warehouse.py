@@ -1,9 +1,12 @@
 """DuckDB Columnar Warehouse for Silver and Gold analytical layers."""
+
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
+
 import duckdb
 import polars as pl
 from rich.console import Console
+
 from ..configs.settings import settings
 
 console = Console()

@@ -56,3 +56,20 @@ skills-lock.json
 .impeccable/
 PRODUCT.md
 DESIGN.md
+
+# Node.js & Next.js
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+**/out/
+.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Scratch scripts & temporary tests
+scratch/
+

@@ -1,4 +1,15 @@
+---
+title: Market Intelligence Terminal
+emoji: 📊
+colorFrom: blue
+colorTo: slate
+sdk: docker
+app_port: 7860
+---
+
 # Market Intelligence Engine: Financial Sentiment ETL
+
+[![CI](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml)
 
 Motor de Inteligencia de Mercado diseñado bajo arquitectura **Medallion (Bronze / Silver / Gold)**. Ingiere de forma asíncrona datos de mercado financiero (OHLCV de Binance), sentimiento social (Reddit / Noticias) y macro-sentimiento (Crypto Fear & Greed Index), aplicando modelos **NLP (FinBERT)** para generar un conjunto de datos consolidado en **DuckDB** listo para modelos de Machine Learning y estrategias de trading algorítmico.
 

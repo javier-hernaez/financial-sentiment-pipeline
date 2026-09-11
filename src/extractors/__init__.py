@@ -1,4 +1,5 @@
 """Extractors module for asynchronous market and social data ingestion."""
+
 from .base import BaseAsyncExtractor
 from .binance import BinanceKlinesExtractor
 from .fear_greed import FearGreedExtractor

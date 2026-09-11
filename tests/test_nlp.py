@@ -1,6 +1,7 @@
 """Unit tests for NLP sentiment scoring."""
-import pytest
+
 import polars as pl
+
 from src.nlp.finbert_engine import FinBERTEngine
 
 
@@ -25,10 +26,12 @@ def test_finbert_heuristic_scoring():
 
 def test_score_dataframe():
     engine = FinBERTEngine(force_mock=True)
-    df = pl.DataFrame([
-        {"post_id": "p1", "cleaned_text": "Massive rally in tech and crypto markets today"},
-        {"post_id": "p2", "cleaned_text": "Panic selling causes crypto dump"},
-    ])
+    df = pl.DataFrame(
+        [
+            {"post_id": "p1", "cleaned_text": "Massive rally in tech and crypto markets today"},
+            {"post_id": "p2", "cleaned_text": "Panic selling causes crypto dump"},
+        ]
+    )
 
     scored_df = engine.score_dataframe(df, text_column="cleaned_text")
     assert "sentiment_score" in scored_df.columns

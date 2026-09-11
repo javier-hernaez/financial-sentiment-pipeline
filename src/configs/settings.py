@@ -1,14 +1,15 @@
 """Application settings and environment configuration."""
-import os
+
 from pathlib import Path
 from typing import Optional
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Strongly-typed application settings."""
-    
+
     # Environment
     app_env: str = Field(default="development", alias="APP_ENV")
     debug: bool = Field(default=True, alias="DEBUG")
@@ -27,16 +28,12 @@ class Settings(BaseSettings):
     default_interval: str = Field(default="1h", alias="DEFAULT_INTERVAL")
 
     # Macro Sentiment (Alternative.me)
-    fear_greed_api_url: str = Field(
-        default="https://api.alternative.me/fng/", alias="FEAR_GREED_API_URL"
-    )
+    fear_greed_api_url: str = Field(default="https://api.alternative.me/fng/", alias="FEAR_GREED_API_URL")
 
     # Social Data (Reddit)
     reddit_client_id: Optional[str] = Field(default=None, alias="REDDIT_CLIENT_ID")
     reddit_client_secret: Optional[str] = Field(default=None, alias="REDDIT_CLIENT_SECRET")
-    reddit_user_agent: str = Field(
-        default="MarketIntelligenceEngine/0.1.0", alias="REDDIT_USER_AGENT"
-    )
+    reddit_user_agent: str = Field(default="MarketIntelligenceEngine/0.1.0", alias="REDDIT_USER_AGENT")
 
     # NLP / FinBERT
     finbert_model_name: str = Field(default="ProsusAI/finbert", alias="FINBERT_MODEL_NAME")

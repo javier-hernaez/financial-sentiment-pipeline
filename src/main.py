@@ -1,7 +1,9 @@
 """CLI Entrypoint for Market Intelligence Engine."""
+
 import argparse
 import asyncio
 import sys
+
 from rich.console import Console
 from rich.table import Table
 

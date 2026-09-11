@@ -1,6 +1,7 @@
 """Quantitative Alpha Signals and Sentiment Divergence Engine."""
-import math
-from typing import Any, Dict, List
+
+from typing import List
+
 import polars as pl
 
 
@@ -24,19 +25,28 @@ class QuantSignalsEngine:
         df = gold_df.sort("timestamp_hour")
 
         # 1. Hourly Returns
-        df = df.with_columns([
-            ((pl.col("close_price") - pl.col("open_price")) / pl.col("open_price") * 100.0).alias("price_return_pct")
-        ])
+        df = df.with_columns(
+            [((pl.col("close_price") - pl.col("open_price")) / pl.col("open_price") * 100.0).alias("price_return_pct")]
+        )
 
         # 2. Rolling Realized Volatility (annualized proxy or 12h std dev)
-        df = df.with_columns([
-            pl.col("price_return_pct").rolling_std(window_size=min(5, len(df))).fill_null(0.5).alias("realized_volatility")
-        ])
+        df = df.with_columns(
+            [
+                pl.col("price_return_pct")
+                .rolling_std(window_size=min(5, len(df)))
+                .fill_null(0.5)
+                .alias("realized_volatility")
+            ]
+        )
 
         # 3. Sentiment Momentum (Difference with prior hour)
-        df = df.with_columns([
-            (pl.col("avg_hourly_sentiment") - pl.col("avg_hourly_sentiment").shift(1)).fill_null(0.0).alias("sentiment_momentum")
-        ])
+        df = df.with_columns(
+            [
+                (pl.col("avg_hourly_sentiment") - pl.col("avg_hourly_sentiment").shift(1))
+                .fill_null(0.0)
+                .alias("sentiment_momentum")
+            ]
+        )
 
         # 4. Divergence & Alpha Signals
         signals: List[str] = []
@@ -67,10 +77,12 @@ class QuantSignalsEngine:
                 signals.append("MARKET CONSOLIDATION (NEUTRAL)")
                 confidences.append(0.60)
 
-        df = df.with_columns([
-            pl.Series("alpha_signal", signals, dtype=pl.String),
-            pl.Series("signal_confidence", confidences, dtype=pl.Float64)
-        ])
+        df = df.with_columns(
+            [
+                pl.Series("alpha_signal", signals, dtype=pl.String),
+                pl.Series("signal_confidence", confidences, dtype=pl.Float64),
+            ]
+        )
 
         # Return latest first
         return df.sort("timestamp_hour", descending=True)
