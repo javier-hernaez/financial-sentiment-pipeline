@@ -23,8 +23,8 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
     { day: 'Sat', height: '35%', active: false },
   ];
 
-  // Fear & Greed / Alpha Sentiment percentage
-  const score = diagnostics?.fear_greed ? 68 : 68;
+  // Global sentiment consensus score
+  const score = 68;
 
   // SVG Gauge calculations (semi-circle from -180deg to 0deg)
   const totalTicks = 24;
@@ -33,7 +33,7 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   return (
     <div className="flex flex-col gap-6">
       
-      {/* 1. Most Day Active / Actividad Ingesta */}
+      {/* 1. Pipeline Ingestion Velocity by Day */}
       <div
         className={`p-6 rounded-2xl border transition-all duration-200 ${
           isDark
@@ -42,9 +42,14 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         }`}
       >
         <div className="flex items-center justify-between">
-          <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-            Día de Mayor Actividad
-          </h3>
+          <div>
+            <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+              Volumen de Ingesta Semanal
+            </h3>
+            <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Titulares extraídos por día
+            </span>
+          </div>
           <button className={`text-slate-400 hover:text-white transition`}>
             <MoreHorizontal className="w-5 h-5" />
           </button>
@@ -85,7 +90,7 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         </div>
       </div>
 
-      {/* 2. Repeat Customer Rate / Fear & Greed Gauge */}
+      {/* 2. Sentiment Consensus Speedometer */}
       <div
         className={`p-6 rounded-2xl border transition-all duration-200 ${
           isDark
@@ -94,9 +99,14 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         }`}
       >
         <div className="flex items-center justify-between">
-          <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-            Índice Sentimiento Global
-          </h3>
+          <div>
+            <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+              Consenso de Sentimiento Global
+            </h3>
+            <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Ponderación FinBERT + Macro
+            </span>
+          </div>
           <button className={`text-slate-400 hover:text-white transition`}>
             <MoreHorizontal className="w-5 h-5" />
           </button>
@@ -150,7 +160,7 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
           </div>
 
           <p className={`text-xs mt-3 font-medium text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Consenso Alcista (Objetivo: 80%)
+            Optimismo de Mercado (Objetivo: 80%)
           </p>
 
           <button
@@ -160,7 +170,7 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
                 : 'border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
-            Ver desglose
+            Ver desglose de polaridad
           </button>
         </div>
       </div>

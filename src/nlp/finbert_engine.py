@@ -82,9 +82,12 @@ class FinBERTEngine:
         results: List[Dict[str, Any]] = []
         labels_map = {0: "positive", 1: "negative", 2: "neutral"}
 
-        # Directional pattern anchors to bridge colloquial expressions with institutional FinBERT
+        # Pattern anchors to calibrate short colloquial phrases and explicit neutral anchors
+        neutral_patterns = [
+            r"\b(unchanged|steady|in line with|consensus|maintained|flat at|rango estrecho|sin cambios|rango lateral|planos|estables|lateral|invariables|en calma|standstill|reiterated|balanced)\b"
+        ]
         bullish_patterns = [
-            r"\b(sub[eaio]|subid[as]|subiendo|subir[áa]?|alza[s]?|alcista[s]?|dispar[aoe]|disparar[áa]?|disparando|dispar[aó]ndose|crec[eió]|crecer[áa]?|crecimiento|creciendo|rebot[ae]|repunta|repunte[s]?|recupera|recuperaci[oó]n|ganancia[s]?|compr[aoe]|comprando|comprar[áa]?|comprar|máximo[s]?|maximo[s]?|record|récord|ath|explota|explotando|supera|superando|boom|verde[s]?|fuerte|fortaleza|positivo[s]?|optimis[mt][ao]s?|arriba|aument[aoe]|aumentar[áa]?|aumentando)\b",
+            r"\b(sub[eaio]|subid[as]|subiendo|subir[áa]?|alza[s]?|alcista[s]?|dispar[aoe]|disparar[áa]?|disparando|dispar[aó]ndose|crec[eió]|crecer[áa]?|crecimiento|creciendo|rebot[ae]|repunta|repunte[s]?|recupera|recuperaci[oó]n|ganancia[s]?|compr[aoe]|comprando|comprar[áa]?|comprar|máximo[s]?|maximo[s]?|record|récord|ath|explota|explotando|supera|superando|boom|verde[s]?|fuerte|fortaleza|positivo[s]?|optimis[mt][ao]s?|arriba|aument[aoe]|aumentar[áa]?|aumentando|buyback|dividendo|dividend|upgraded|turnaround)\b",
             r"\b(surge|surges|surging|surged|rally|rallies|rallying|bullish|bull|inflow|inflows|highs?|profits?|gains?|longs?|optimis[mt]|growth|growing|breakout|breakouts|accumulat(e|ing|ion)|buyers?|buying|bought|pump|pumping|soar|soaring|skyrocket|outperform|boost|rebound|green|strong|rise|rising)\b",
         ]
         bearish_patterns = [
@@ -128,23 +131,30 @@ class FinBERTEngine:
                 neg = float(probs[1].item())
                 neu = float(probs[2].item())
 
-                # Directional context alignment
+                # Directional & neutral context alignment
                 orig_t = batch_orig[idx].lower() if idx < len(batch_orig) else ""
                 prep_t = batch_texts[idx].lower()
                 combined = f"{orig_t} {prep_t}"
+                word_count = len(orig_t.split())
 
+                neu_cues = sum(len(re.findall(p, combined, re.IGNORECASE)) for p in neutral_patterns)
                 bull_cues = sum(len(re.findall(p, combined, re.IGNORECASE)) for p in bullish_patterns)
                 bear_cues = sum(len(re.findall(p, combined, re.IGNORECASE)) for p in bearish_patterns)
 
-                # Prior shift: if explicit directional verbs/intent are present but model remains neutral
-                if bear_cues > 0 and bull_cues == 0:
-                    if neu > 0.40 or neg < 0.50:
+                # Prior calibration
+                if neu_cues > 0 and neu_cues >= (bull_cues + bear_cues):
+                    shift = (pos + neg) * 0.70
+                    neu = min(0.95, neu + shift)
+                    pos = pos * 0.30
+                    neg = neg * 0.30
+                elif word_count <= 8:
+                    # Colloquial short sentences
+                    if bear_cues > 0 and bull_cues == 0:
                         shift = neu * 0.85
                         neg = min(0.97, neg + shift)
                         pos = pos * 0.15
                         neu = max(0.02, 1.0 - neg - pos)
-                elif bull_cues > 0 and bear_cues == 0:
-                    if neu > 0.40 or pos < 0.50:
+                    elif bull_cues > 0 and bear_cues == 0:
                         shift = neu * 0.85
                         pos = min(0.97, pos + shift)
                         neg = neg * 0.15
@@ -184,7 +194,7 @@ class FinBERTEngine:
 
     @staticmethod
     def _maybe_translate(text: str) -> str:
-        """Translates non-English or Spanish financial text to English using deep_translator if needed."""
+        """Translates non-English or Spanish financial text to English using deep_translator if needed, with offline fallback."""
         import re
 
         # Match any accents, inverted marks, or common Spanish vocabulary & verbs
@@ -201,7 +211,12 @@ class FinBERTEngine:
                 from deep_translator import GoogleTranslator
 
                 translated = GoogleTranslator(source="auto", target="en").translate(text)
-                if translated and len(translated.strip()) > 0:
+                if (
+                    translated
+                    and len(translated.strip()) > 0
+                    and not translated.lower().startswith("error")
+                    and "that's an error" not in translated.lower()
+                ):
                     return translated
             except Exception:
                 pass

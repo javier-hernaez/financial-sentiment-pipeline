@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Eye, Users, MousePointerClick, Box, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Newspaper, Cpu, Zap, Database, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { SystemMetrics } from '@/types';
 
 interface ShopeersKpiCardsProps {
@@ -12,40 +12,40 @@ interface ShopeersKpiCardsProps {
 export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isDark = true }) => {
   const cards = [
     {
-      title: 'Velas OHLCV',
-      value: metrics?.silver.market_rows ? metrics.silver.market_rows.toLocaleString() : '16,431',
+      title: 'Noticias NLP Procesadas',
+      value: metrics?.silver.social_rows ? metrics.silver.social_rows.toLocaleString() : '16,431',
       change: '+15.5%',
       isPositive: true,
-      lastPeriod: 'vs. 14,653 período ant.',
-      icon: Eye,
-      iconBg: isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600',
+      lastPeriod: 'vs. 14,653 lote anterior',
+      icon: Newspaper,
+      iconBg: isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600',
     },
     {
-      title: 'Artículos NLP',
-      value: metrics?.silver.social_rows ? metrics.silver.social_rows.toLocaleString() : '6,225',
-      change: '+8.4%',
+      title: 'Confianza Media FinBERT',
+      value: '94.2%',
+      change: '+2.4%',
       isPositive: true,
-      lastPeriod: 'vs. 5,732 período ant.',
-      icon: Users,
-      iconBg: isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600',
+      lastPeriod: 'vs. 91.8% lote anterior',
+      icon: Cpu,
+      iconBg: isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600',
     },
     {
-      title: 'Latencia Ingesta',
-      value: '2,832 ms',
-      change: '-10.5%',
-      isPositive: false,
-      lastPeriod: 'vs. 3,294 período ant.',
-      icon: MousePointerClick,
-      iconBg: isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600',
+      title: 'Latencia Inferencia NLP',
+      value: '42 ms',
+      change: '-12.5%',
+      isPositive: true, // Faster is positive
+      lastPeriod: 'vs. 48 ms lote anterior',
+      icon: Zap,
+      iconBg: isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600',
     },
     {
-      title: 'Registros Gold',
-      value: metrics?.gold.total_rows ? `${metrics.gold.total_rows.toLocaleString()} h` : '1,224 h',
+      title: 'Lotes ELT Consolidados',
+      value: metrics?.gold.total_rows ? `${metrics.gold.total_rows.toLocaleString()} lotes` : '1,224 lotes',
       change: '+4.4%',
       isPositive: true,
-      lastPeriod: 'vs. 1,186 período ant.',
-      icon: Box,
-      iconBg: isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600',
+      lastPeriod: 'vs. 1,186 lote anterior',
+      icon: Database,
+      iconBg: isDark ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-50 text-purple-600',
     },
   ];
 
@@ -89,11 +89,7 @@ export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isD
                     : 'bg-rose-50 text-rose-700 border border-rose-100'
                 }`}
               >
-                {c.isPositive ? (
-                  <ArrowUpRight className="w-3 h-3" />
-                ) : (
-                  <ArrowDownRight className="w-3 h-3" />
-                )}
+                <ArrowUpRight className="w-3 h-3" />
                 {c.change}
               </span>
             </div>

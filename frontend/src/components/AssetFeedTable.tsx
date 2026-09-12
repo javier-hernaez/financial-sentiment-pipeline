@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MoreHorizontal, Star, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { MoreHorizontal, Star, Newspaper, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 
 interface AssetFeedTableProps {
   isDark?: boolean;
@@ -11,58 +11,58 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
   const items = [
     {
       id: '#83009',
-      name: 'Bitcoin / Tether Spot (BTCUSDT)',
-      category: 'Criptoactivo Primario',
-      sold: '2,310 lotes',
-      revenue: '$124,839',
+      headline: 'Bitcoin surges past $78k as institutional spot ETF inflows reach record highs',
+      source: 'CoinTelegraph RSS',
+      asset: 'BTC',
+      assetBg: 'bg-amber-500/15 text-amber-500',
+      polarity: '+0.85',
+      label: 'BULLISH',
       isPositive: true,
-      rating: '5.0',
-      icon: '₿',
-      iconBg: 'bg-amber-500/15 text-amber-500',
+      confidence: '96.4%',
     },
     {
       id: '#83001',
-      name: 'Ethereum / Tether Spot (ETHUSDT)',
-      category: 'Smart Contracts Layer 1',
-      sold: '1,230 lotes',
-      revenue: '$92,662',
+      headline: 'Ethereum layer-2 network throughput increases 45% following gas optimization',
+      source: 'CoinDesk Feed',
+      asset: 'ETH',
+      assetBg: 'bg-blue-500/15 text-blue-400',
+      polarity: '+0.74',
+      label: 'BULLISH',
       isPositive: true,
-      rating: '4.8',
-      icon: 'Ξ',
-      iconBg: 'bg-blue-500/15 text-blue-400',
+      confidence: '94.1%',
     },
     {
       id: '#83004',
-      name: 'Solana / Tether Spot (SOLUSDT)',
-      category: 'Alta Frecuencia & DeFi',
-      sold: '812 lotes',
-      revenue: '$74,048',
+      headline: 'Regulatory scrutiny intensifies over decentralized liquidity staking protocols',
+      source: 'CoinTelegraph RSS',
+      asset: 'MACRO',
+      assetBg: 'bg-rose-500/15 text-rose-400',
+      polarity: '-0.62',
+      label: 'BEARISH',
       isPositive: false,
-      rating: '4.7',
-      icon: '◎',
-      iconBg: 'bg-purple-500/15 text-purple-400',
+      confidence: '92.8%',
     },
     {
       id: '#83002',
-      name: 'CoinTelegraph Real-Time RSS',
-      category: 'Feed Social & NLP',
-      sold: '645 arts',
-      revenue: '$62,820',
-      isPositive: true,
-      rating: '4.5',
-      icon: '📰',
-      iconBg: 'bg-emerald-500/15 text-emerald-400',
+      headline: 'Federal Reserve signals steady interest rate trajectory amidst neutral inflation',
+      source: 'Alternative.me Macro',
+      asset: 'FED',
+      assetBg: 'bg-slate-500/15 text-slate-400',
+      polarity: '+0.05',
+      label: 'NEUTRAL',
+      isNeutral: true,
+      confidence: '88.5%',
     },
     {
       id: '#83003',
-      name: 'CoinDesk Market News Stream',
-      category: 'Macro & Institucional',
-      sold: '572 arts',
-      revenue: '$48,724',
+      headline: 'Solana decentralized exchange volume flips major competing blockchain networks',
+      source: 'CoinDesk Feed',
+      asset: 'SOL',
+      assetBg: 'bg-purple-500/15 text-purple-400',
+      polarity: '+0.79',
+      label: 'BULLISH',
       isPositive: true,
-      rating: '4.5',
-      icon: '⚡',
-      iconBg: 'bg-rose-500/15 text-rose-400',
+      confidence: '95.2%',
     },
   ];
 
@@ -76,9 +76,14 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          Activos y Feeds en Seguimiento
-        </h3>
+        <div>
+          <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            Últimos Titulares y Clasificación FinBERT en Tiempo Real
+          </h3>
+          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Inferencia semántica continua sobre feeds RSS del lago de datos
+          </p>
+        </div>
         <button className={`text-slate-400 hover:text-white transition`}>
           <MoreHorizontal className="w-5 h-5" />
         </button>
@@ -94,10 +99,10 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
               }`}
             >
               <th className="pb-3 pr-4">ID</th>
-              <th className="pb-3 pr-4">Nombre / Feed</th>
-              <th className="pb-3 pr-4">Volumen</th>
-              <th className="pb-3 pr-4">Valoración</th>
-              <th className="pb-3">Rating FinBERT</th>
+              <th className="pb-3 pr-4">Titular Analizado</th>
+              <th className="pb-3 pr-4">Fuente / Feed</th>
+              <th className="pb-3 pr-4">Polaridad FinBERT</th>
+              <th className="pb-3">Confianza NLP</th>
             </tr>
           </thead>
           <tbody
@@ -115,61 +120,52 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                   {row.id}
                 </td>
 
-                {/* NAME with ICON */}
-                <td className="py-3.5 pr-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${row.iconBg}`}
-                    >
-                      {row.icon}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="font-bold truncate block text-sm">{row.name}</span>
-                      <span className={`text-xs block ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>
-                        {row.category}
-                      </span>
-                    </div>
-                  </div>
-                </td>
-
-                {/* SOLD */}
-                <td className="py-3.5 pr-4 font-mono font-medium">
-                  {row.sold}
-                </td>
-
-                {/* REVENUE with green/pink dot */}
-                <td className="py-3.5 pr-4">
-                  <div className="flex items-center gap-1.5 font-mono font-bold">
-                    <div
-                      className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${
-                        row.isPositive
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-rose-500/20 text-rose-400'
-                      }`}
-                    >
-                      $
-                    </div>
+                {/* HEADLINE with Asset Badge */}
+                <td className="py-3.5 pr-4 max-w-xs sm:max-w-md">
+                  <div className="flex items-center gap-2.5">
                     <span
-                      className={
-                        row.isPositive
-                          ? isDark
-                            ? 'text-emerald-400'
-                            : 'text-emerald-600'
-                          : isDark
-                          ? 'text-rose-400'
-                          : 'text-rose-600'
-                      }
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg flex-shrink-0 ${row.assetBg}`}
                     >
-                      {row.revenue}
+                      {row.asset}
+                    </span>
+                    <span className="font-semibold truncate block text-xs" title={row.headline}>
+                      {row.headline}
                     </span>
                   </div>
                 </td>
 
-                {/* RATING */}
+                {/* SOURCE */}
+                <td className={`py-3.5 pr-4 font-mono text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {row.source}
+                </td>
+
+                {/* POLARITY with Sentiment Badge */}
+                <td className="py-3.5 pr-4">
+                  <span
+                    className={`inline-flex items-center gap-1 font-mono font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
+                      row.isPositive
+                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                        : row.isNeutral
+                        ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                        : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                    }`}
+                  >
+                    {row.isPositive ? (
+                      <ArrowUpRight className="w-3 h-3" />
+                    ) : row.isNeutral ? (
+                      <Minus className="w-3 h-3" />
+                    ) : (
+                      <ArrowDownRight className="w-3 h-3" />
+                    )}
+                    {row.label} ({row.polarity})
+                  </span>
+                </td>
+
+                {/* CONFIDENCE */}
                 <td className="py-3.5">
                   <div className="flex items-center gap-1 text-amber-400 font-mono font-bold">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span>({row.rating})</span>
+                    <span>{row.confidence}</span>
                   </div>
                 </td>
               </tr>

@@ -208,25 +208,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => handleSelect('maintenance')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
                 activeView === 'maintenance'
-                  ? 'text-blue-500 font-bold'
+                  ? isDark
+                    ? 'bg-blue-600/15 text-blue-400 font-bold'
+                    : 'bg-blue-50 text-blue-600 font-bold'
                   : isDark
                   ? 'text-slate-400 hover:text-white hover:bg-[#131b2e]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               } ${isCollapsed && !isMobileOpen ? 'justify-center px-0' : ''}`}
             >
-              <Settings className="w-4 h-4 flex-shrink-0" />
+              <Settings className={`w-4 h-4 flex-shrink-0 ${activeView === 'maintenance' ? 'text-blue-500' : ''}`} />
               {(!isCollapsed || isMobileOpen) && <span>Configuración</span>}
             </button>
 
             <button
               onClick={() => handleSelect('documentation')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
-                isDark
+                activeView === 'documentation'
+                  ? isDark
+                    ? 'bg-blue-600/15 text-blue-400 font-bold'
+                    : 'bg-blue-50 text-blue-600 font-bold'
+                  : isDark
                   ? 'text-slate-400 hover:text-white hover:bg-[#131b2e]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               } ${isCollapsed && !isMobileOpen ? 'justify-center px-0' : ''}`}
             >
-              <HelpCircle className="w-4 h-4 flex-shrink-0" />
+              <HelpCircle className={`w-4 h-4 flex-shrink-0 ${activeView === 'documentation' ? 'text-blue-500' : ''}`} />
               {(!isCollapsed || isMobileOpen) && <span>Ayuda y Guía</span>}
             </button>
           </div>

@@ -13,7 +13,8 @@ import { MarketTerminal } from '@/components/MarketTerminal';
 import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
 import { WarehouseOps } from '@/components/WarehouseOps';
-import { Calendar, ChevronDown, Plus, Download, ArrowLeft } from 'lucide-react';
+import { DocumentationGuide } from '@/components/DocumentationGuide';
+import { Calendar, ChevronDown, Play, Download, ArrowLeft } from 'lucide-react';
 import { SystemMetrics, Diagnostics } from '@/types';
 import { fetchMetrics, fetchDiagnostics } from '@/lib/api';
 
@@ -22,7 +23,7 @@ export default function Home() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
-  const [timeRange, setTimeRange] = useState('Last 30 days');
+  const [timeRange, setTimeRange] = useState('Últimas 24 horas');
 
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
@@ -87,6 +88,8 @@ export default function Home() {
           onToggleMobileMenu={() => setIsMobileOpen(!isMobileOpen)}
           isDark={isDark}
           onToggleTheme={toggleTheme}
+          onNavigate={(v) => setActiveView(v)}
+          activeView={activeView}
         />
 
         {/* Dashboard Content Container */}
@@ -96,12 +99,15 @@ export default function Home() {
           {activeView === 'dashboard' && (
             <div className="space-y-6">
               
-              {/* Header Bar matching Shopeers: Title + Date Picker + Dropdowns + Add Widget + Export */}
+              {/* Header Bar: Title + Date Range + Window + Run Pipeline + Export CSV */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                   <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Dashboard
+                    Dashboard de Sentimiento &amp; Pipeline ELT
                   </h1>
+                  <p className={`text-xs mt-1 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Lago de Datos Medallion · FinBERT NLP · Almacenamiento DuckDB
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -114,10 +120,10 @@ export default function Home() {
                     }`}
                   >
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Jan 1, 2025 - Feb 1, 2025</span>
+                    <span>En Tiempo Real · Lote Activo</span>
                   </div>
 
-                  {/* Range Dropdown */}
+                  {/* Window Dropdown */}
                   <div
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
                       isDark
@@ -129,20 +135,20 @@ export default function Home() {
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
 
-                  {/* Add Widget Button */}
+                  {/* Trigger Pipeline Button */}
                   <button
                     onClick={() => {
                       setActiveView('orchestration');
-                      showToast('Navegando a configuración de pipeline...');
+                      showToast('Navegando a consola de ejecución ELT...');
                     }}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-semibold transition shadow-2xs ${
                       isDark
-                        ? 'bg-[#131b2e] border-[#1f2d48] text-slate-200 hover:text-white hover:bg-[#1a253d]'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                        : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
                     }`}
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add widget</span>
+                    <Play className="w-3.5 h-3.5" />
+                    <span>Ejecutar Pipeline</span>
                   </button>
 
                   {/* Primary Blue Export Button */}
@@ -151,15 +157,15 @@ export default function Home() {
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm shadow-blue-500/25"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Export</span>
+                    <span>Exportar Gold CSV</span>
                   </a>
                 </div>
               </div>
 
-              {/* 1. Top 4 KPI Cards (Page Views, Visitors, Click, Orders) */}
+              {/* 1. Top 4 KPI Cards (Noticias NLP, Confianza FinBERT, Latencia, Lotes ELT) */}
               <ShopeersKpiCards metrics={metrics} isDark={isDark} />
 
-              {/* 2. Middle Row: Total Profit Chart (Left) + Most Day Active & Gauge (Right) */}
+              {/* 2. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <ProfitAndSourcesChart metrics={metrics} isDark={isDark} />
@@ -169,7 +175,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 3. Bottom Row: Best Selling Products Table (Left) + AI Assistant Orb (Right) */}
+              {/* 3. Bottom Row: Real-time FinBERT Headlines (Left) + AI Assistant Orb (Right) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <AssetFeedTable isDark={isDark} />
@@ -284,6 +290,26 @@ export default function Home() {
                 onSuccessMessage={showToast}
                 isDark={isDark}
               />
+            </div>
+          )}
+
+          {/* Subview: Documentation & Help Guide */}
+          {activeView === 'documentation' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
+                </button>
+              </div>
+              <DocumentationGuide isDark={isDark} onNavigate={(v) => setActiveView(v)} />
             </div>
           )}
         </main>
