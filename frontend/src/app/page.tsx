@@ -13,7 +13,7 @@ import { MarketTerminal } from '@/components/MarketTerminal';
 import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
 import { WarehouseOps } from '@/components/WarehouseOps';
-import { Calendar, ChevronDown, Plus, Download } from 'lucide-react';
+import { Calendar, ChevronDown, Plus, Download, ArrowLeft } from 'lucide-react';
 import { SystemMetrics, Diagnostics } from '@/types';
 import { fetchMetrics, fetchDiagnostics } from '@/lib/api';
 
@@ -107,7 +107,7 @@ export default function Home() {
                 <div className="flex flex-wrap items-center gap-2.5">
                   {/* Date Range Pill */}
                   <div
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
                       isDark
                         ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -119,7 +119,7 @@ export default function Home() {
 
                   {/* Range Dropdown */}
                   <div
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
                       isDark
                         ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -135,7 +135,7 @@ export default function Home() {
                       setActiveView('orchestration');
                       showToast('Navegando a configuración de pipeline...');
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition shadow-2xs ${
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-semibold transition shadow-2xs ${
                       isDark
                         ? 'bg-[#131b2e] border-[#1f2d48] text-slate-200 hover:text-white hover:bg-[#1a253d]'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -148,7 +148,7 @@ export default function Home() {
                   {/* Primary Blue Export Button */}
                   <a
                     href="/api/export-csv?symbol=BTCUSDT"
-                    className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm shadow-blue-500/25"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm shadow-blue-500/25"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Export</span>
@@ -184,79 +184,105 @@ export default function Home() {
 
           {/* Subview: Pipeline Orchestration */}
           {activeView === 'orchestration' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <PipelineRunner onSuccess={loadAll} />
+              <PipelineRunner onSuccess={loadAll} isDark={isDark} />
             </div>
           )}
 
           {/* Subview: Medallion Explorer */}
           {(activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <MedallionExplorer />
+              <MedallionExplorer isDark={isDark} />
             </div>
           )}
 
           {/* Subview: FinBERT Lab */}
           {activeView === 'nlp' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <FinbertLab />
+              <FinbertLab isDark={isDark} />
             </div>
           )}
 
           {/* Subview: Market Terminal */}
           {(activeView === 'terminal' || activeView === 'signals' || activeView === 'content') && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <MarketTerminal />
+              <MarketTerminal isDark={isDark} />
             </div>
           )}
 
           {/* Subview: Warehouse Ops */}
           {activeView === 'maintenance' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
               <WarehouseOps
                 diagnostics={diagnostics}
                 onRefresh={loadAll}
                 onSuccessMessage={showToast}
+                isDark={isDark}
               />
             </div>
           )}
