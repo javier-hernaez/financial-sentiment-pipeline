@@ -16,6 +16,7 @@ import {
   PanelLeftClose,
   Sparkles,
   Zap,
+  Cpu,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -43,10 +44,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const mainNav = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'orchestration', label: 'Lotes ELT', icon: Box, badge: '46' },
-    { id: 'terminal', label: 'Activos Spot', icon: LineChart },
-    { id: 'nlp', label: 'Fuentes NLP', icon: Users },
-    { id: 'content', label: 'Titulares RSS', icon: FileText },
+    { id: 'orchestration', label: 'Orquestación ELT', icon: Zap },
+    { id: 'terminal', label: 'Terminal de Mercado', icon: LineChart },
+    { id: 'nlp', label: 'Laboratorio FinBERT NLP', icon: Cpu },
+    { id: 'content', label: 'Feeds RSS & Titulares', icon: FileText },
     { id: 'medallion', label: 'Data Lake Bronze', icon: Database },
   ];
 

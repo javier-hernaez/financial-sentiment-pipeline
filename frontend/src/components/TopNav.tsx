@@ -201,143 +201,142 @@ export const TopNav: React.FC<TopNavProps> = ({
           )}
         </div>
 
-        {/* User Operator Avatar & Interactive Menu ("OP") */}
-        <div className="relative pl-2" ref={opMenuRef}>
+        {/* User Operator Avatar & Minimalist Profile Menu ("OP") */}
+        <div className="relative pl-1" ref={opMenuRef}>
           <button
             onClick={() => setIsOpMenuOpen(!isOpMenuOpen)}
-            className="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-blue-500/50 transition-all focus:outline-none"
-            title="Perfil del Operador (OP) - Clic para ver opciones"
+            className={`flex items-center gap-2 p-1 rounded-full border transition focus:outline-none ${
+              isDark
+                ? 'border-slate-800 hover:border-slate-700 bg-[#101726]'
+                : 'border-slate-200 hover:border-slate-300 bg-white'
+            }`}
+            title="Perfil del Operador"
             aria-expanded={isOpMenuOpen}
             aria-label="Perfil del Operador"
           >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 p-0.5 shadow-sm relative">
-              <div className="w-full h-full rounded-full bg-[#0b0f19] flex items-center justify-center text-xs font-bold text-white font-mono tracking-wider">
-                OP
-              </div>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0b0f19] absolute -bottom-0.5 -right-0.5" />
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-bold ${
+              isDark ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'
+            }`}>
+              OP
             </div>
           </button>
 
-          {/* Operator Dropdown Menu */}
+          {/* Minimalist Operator Dropdown Menu */}
           {isOpMenuOpen && (
             <div
-              className={`absolute right-0 mt-3 w-72 rounded-2xl border shadow-2xl p-3 z-50 ${
+              className={`absolute right-0 mt-2 w-72 rounded-xl border shadow-xl p-3 z-50 transition-all ${
                 isDark
-                  ? 'bg-[#101726] border-[#1e293b] text-slate-200'
-                  : 'bg-white border-slate-200 text-slate-800'
+                  ? 'bg-[#101726] border-slate-800 text-slate-200 shadow-black/50'
+                  : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
               }`}
             >
-              {/* Operator Identity Card */}
-              <div className={`p-3 rounded-xl border mb-2 flex items-center gap-3 ${
-                isDark ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-100'
-              }`}>
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-0.5 flex-shrink-0">
-                  <div className="w-full h-full rounded-[10px] bg-[#0b0f19] flex items-center justify-center text-xs font-bold text-white font-mono">
-                    OP
-                  </div>
+              {/* Operator Identity Header */}
+              <div className="pb-3 mb-2 border-b border-slate-800/40 px-1">
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Javier Hernáez
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    Online
+                  </span>
                 </div>
-                <div className="overflow-hidden">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold truncate">Operador Cuantitativo</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  </div>
-                  <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                    <Shield className="w-3 h-3 text-blue-400" />
-                    <span>Admin · Data Engineer</span>
-                  </div>
-                  <div className="text-[9px] font-mono text-emerald-400/90 mt-0.5">
-                    ● DuckDB Lakehouse Conectado
-                  </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  TFM · Pipeline ELT &amp; FinBERT Lakehouse
+                </p>
+                <div className="text-[10px] font-mono text-slate-500 mt-1 flex items-center gap-1.5">
+                  <Database className="w-3 h-3 text-blue-400" />
+                  <span>DuckDB local: data/gold/</span>
                 </div>
               </div>
 
-              {/* Navigation Items */}
-              <div className="space-y-1">
-                <button
-                  onClick={() => handleOpAction('documentation')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                    activeView === 'documentation'
-                      ? 'bg-blue-600 text-white'
-                      : isDark
-                      ? 'text-slate-300 hover:text-white hover:bg-[#162137]'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <BookOpen className="w-4 h-4 text-blue-400" />
-                  <div className="flex flex-col text-left">
-                    <span>Ayuda y Guía del Sistema</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Documentación y arquitectura</span>
-                  </div>
-                </button>
-
+              {/* Minimalist Navigation Items */}
+              <div className="space-y-0.5 text-xs">
                 <button
                   onClick={() => handleOpAction('dashboard')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition ${
                     activeView === 'dashboard'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-blue-600 text-white font-semibold'
                       : isDark
-                      ? 'text-slate-300 hover:text-white hover:bg-[#162137]'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'hover:bg-slate-800/60 text-slate-300'
+                      : 'hover:bg-slate-100 text-slate-700'
                   }`}
                 >
-                  <LayoutDashboard className="w-4 h-4 text-emerald-400" />
-                  <div className="flex flex-col text-left">
-                    <span>Dashboard Principal</span>
-                    <span className="text-[10px] text-slate-400 font-normal">KPIs, series y sentimiento</span>
-                  </div>
+                  <LayoutDashboard className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Dashboard Principal</span>
                 </button>
 
                 <button
                   onClick={() => handleOpAction('orchestration')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition ${
                     activeView === 'orchestration'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-blue-600 text-white font-semibold'
                       : isDark
-                      ? 'text-slate-300 hover:text-white hover:bg-[#162137]'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'hover:bg-slate-800/60 text-slate-300'
+                      : 'hover:bg-slate-100 text-slate-700'
                   }`}
                 >
-                  <Zap className="w-4 h-4 text-amber-400" />
-                  <div className="flex flex-col text-left">
-                    <span>Consola de Lotes ELT</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Ejecutar pipeline asíncrono</span>
-                  </div>
+                  <Zap className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Orquestación ELT</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpAction('nlp')}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition ${
+                    activeView === 'nlp'
+                      ? 'bg-blue-600 text-white font-semibold'
+                      : isDark
+                      ? 'hover:bg-slate-800/60 text-slate-300'
+                      : 'hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <Cpu className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Laboratorio FinBERT NLP</span>
                 </button>
 
                 <button
                   onClick={() => handleOpAction('maintenance')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition ${
                     activeView === 'maintenance'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-blue-600 text-white font-semibold'
                       : isDark
-                      ? 'text-slate-300 hover:text-white hover:bg-[#162137]'
-                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'hover:bg-slate-800/60 text-slate-300'
+                      : 'hover:bg-slate-100 text-slate-700'
                   }`}
                 >
-                  <Settings className="w-4 h-4 text-purple-400" />
-                  <div className="flex flex-col text-left">
-                    <span>Configuración &amp; Warehouse Ops</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Mantenimiento, VACUUM y tablas</span>
-                  </div>
+                  <Settings className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Mantenimiento DuckDB</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpAction('documentation')}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition ${
+                    activeView === 'documentation'
+                      ? 'bg-blue-600 text-white font-semibold'
+                      : isDark
+                      ? 'hover:bg-slate-800/60 text-slate-300'
+                      : 'hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Guía del Sistema &amp; Ayuda</span>
                 </button>
               </div>
 
-              {/* Bottom Quick Toggle for Theme */}
-              <div className="pt-2 mt-2 border-t border-slate-700/30 flex items-center justify-between text-xs px-2">
-                <span className="text-slate-400 text-[11px]">Tema de Interfaz</span>
+              {/* Minimalist Footer: Theme toggle */}
+              <div className="pt-2 mt-2 border-t border-slate-800/40 flex items-center justify-between px-1 text-xs">
+                <span className="text-slate-400 text-[11px]">Tema visual</span>
                 <button
                   onClick={onToggleTheme}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition ${
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-[11px] font-medium transition ${
                     isDark
-                      ? 'bg-[#0b0f19] border-[#1e293b] text-slate-300 hover:text-amber-400'
-                      : 'bg-slate-100 border-slate-200 text-slate-700 hover:text-blue-600'
+                      ? 'bg-slate-800/70 border-slate-700 text-slate-300 hover:text-white'
+                      : 'bg-slate-100 border-slate-200 text-slate-700 hover:text-slate-900'
                   }`}
                 >
-                  {isDark ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-blue-600" />}
+                  {isDark ? <Sun className="w-3 h-3 text-amber-400" /> : <Moon className="w-3 h-3 text-blue-600" />}
                   <span>{isDark ? 'Oscuro' : 'Claro'}</span>
                 </button>
               </div>
-
             </div>
           )}
         </div>

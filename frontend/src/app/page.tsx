@@ -14,6 +14,7 @@ import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
 import { WarehouseOps } from '@/components/WarehouseOps';
 import { DocumentationGuide } from '@/components/DocumentationGuide';
+import { EtlPipelineMonitorWidget } from '@/components/EtlPipelineMonitorWidget';
 import { Calendar, ChevronDown, Play, Download, ArrowLeft } from 'lucide-react';
 import { SystemMetrics, Diagnostics } from '@/types';
 import { fetchMetrics, fetchDiagnostics } from '@/lib/api';
@@ -162,10 +163,22 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 1. Top 4 KPI Cards (Noticias NLP, Confianza FinBERT, Latencia, Lotes ELT) */}
+              {/* 1. Top 4 KPI Cards (Bronze Ingestion, Silver NLP, FinBERT Inference, Gold DuckDB) */}
               <ShopeersKpiCards metrics={metrics} isDark={isDark} />
 
-              {/* 2. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
+              {/* 2. Graphical ETL Pipeline Monitoring & Operator Actions */}
+              <EtlPipelineMonitorWidget
+                metrics={metrics}
+                diagnostics={diagnostics}
+                isDark={isDark}
+                onNavigate={(v) => setActiveView(v)}
+                onTriggerPipeline={() => {
+                  setActiveView('orchestration');
+                  showToast('Iniciando consola de orquestación ELT...');
+                }}
+              />
+
+              {/* 3. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <ProfitAndSourcesChart metrics={metrics} isDark={isDark} />
@@ -175,7 +188,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 3. Bottom Row: Real-time FinBERT Headlines (Left) + AI Assistant Orb (Right) */}
+              {/* 4. Bottom Row: Real-time FinBERT Headlines (Left) + AI Assistant Orb (Right) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <AssetFeedTable isDark={isDark} />
@@ -248,8 +261,28 @@ export default function Home() {
             </div>
           )}
 
+          {/* Subview: Feeds RSS & Titulares */}
+          {activeView === 'content' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
+                </button>
+              </div>
+              <AssetFeedTable isDark={isDark} />
+            </div>
+          )}
+
           {/* Subview: Market Terminal */}
-          {(activeView === 'terminal' || activeView === 'signals' || activeView === 'content') && (
+          {(activeView === 'terminal' || activeView === 'signals') && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <button
