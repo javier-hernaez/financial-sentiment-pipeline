@@ -3,16 +3,17 @@
 import React, { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { TopNav } from '@/components/TopNav';
-import { HeroBanner } from '@/components/HeroBanner';
-import { KpiCardsRow } from '@/components/KpiCardsRow';
-import { MiddleSection } from '@/components/MiddleSection';
-import { QuickActionsAndLeaders } from '@/components/QuickActionsAndLeaders';
-import { PendingActions } from '@/components/PendingActions';
+import { ShopeersKpiCards } from '@/components/ShopeersKpiCards';
+import { ProfitAndSourcesChart } from '@/components/ProfitAndSourcesChart';
+import { IngestionBarAndGauge } from '@/components/IngestionBarAndGauge';
+import { AssetFeedTable } from '@/components/AssetFeedTable';
+import { AiAssistantOrb } from '@/components/AiAssistantOrb';
 import { PipelineRunner } from '@/components/PipelineRunner';
 import { MarketTerminal } from '@/components/MarketTerminal';
 import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
 import { WarehouseOps } from '@/components/WarehouseOps';
+import { Calendar, ChevronDown, Plus, Download } from 'lucide-react';
 import { SystemMetrics, Diagnostics } from '@/types';
 import { fetchMetrics, fetchDiagnostics } from '@/lib/api';
 
@@ -20,6 +21,9 @@ export default function Home() {
   const [activeView, setActiveView] = useState('dashboard');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const [timeRange, setTimeRange] = useState('Last 30 days');
+
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -47,14 +51,17 @@ export default function Home() {
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleTriggerStage = (stage: 'extract' | 'gold' | 'full') => {
-    setActiveView('orchestration');
-    showToast(`Navegando a Pipeline ELT para ejecutar fase: ${stage.toUpperCase()}`);
+  const toggleTheme = () => {
+    setIsDark(!isDark);
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col md:flex-row">
-      {/* Left Sidebar (Desktop + Mobile Drawer) */}
+    <div
+      className={`min-h-screen flex flex-col md:flex-row transition-colors duration-200 ${
+        isDark ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f4f5f7] text-slate-800'
+      }`}
+    >
+      {/* Left Sidebar */}
       <Sidebar
         activeView={activeView}
         setActiveView={setActiveView}
@@ -62,87 +69,126 @@ export default function Home() {
         setIsCollapsed={setIsCollapsed}
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
+        isDark={isDark}
+        onTriggerFullPipeline={() => {
+          setActiveView('orchestration');
+          showToast('Iniciando consola de orquestación ELT...');
+        }}
       />
 
       {/* Main Content Area */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ml-0 ${
-          isCollapsed ? 'md:ml-16' : 'md:ml-60'
+          isCollapsed ? 'md:ml-20' : 'md:ml-64'
         }`}
       >
         {/* Top Navbar */}
         <TopNav
-          title={
-            activeView === 'dashboard'
-              ? 'Dashboard Operacional'
-              : activeView === 'orchestration'
-              ? 'Orquestador ELT'
-              : activeView === 'medallion'
-              ? 'Explorador Medallion Lakehouse'
-              : activeView === 'nlp'
-              ? 'Laboratorio FinBERT NLP'
-              : activeView === 'terminal'
-              ? 'Terminal Cuantitativo de Mercado'
-              : 'Mantenimiento y DuckDB Ops'
-          }
-          subtitle={
-            activeView === 'dashboard'
-              ? 'Monitorización del lago de datos, ingesta de noticias y feature store'
-              : 'Gestión y análisis de datos en tiempo real'
-          }
           onToggleMobileMenu={() => setIsMobileOpen(!isMobileOpen)}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
         />
 
-        {/* Dynamic Body with Distinct Spacing between Sections */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-[1600px] w-full mx-auto">
+        {/* Dashboard Content Container */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto">
+          
+          {/* Main Dashboard View */}
           {activeView === 'dashboard' && (
-            <div className="space-y-8">
-              {/* SECTION 1: PRIMARY FOCAL POINT (Hero / Health / Core Numbers) */}
-              <HeroBanner
-                metrics={metrics}
-                onRefresh={loadAll}
-                isRefreshing={isRefreshing}
-              />
+            <div className="space-y-6">
+              
+              {/* Header Bar matching Shopeers: Title + Date Picker + Dropdowns + Add Widget + Export */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Dashboard
+                  </h1>
+                </div>
 
-              {/* Separator */}
-              <div className="border-t border-[#1a253a]" />
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Date Range Pill */}
+                  <div
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
+                      isDark
+                        ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Jan 1, 2025 - Feb 1, 2025</span>
+                  </div>
 
-              {/* SECTION 2: MEDALLION METRICS (4 KPI Cards with Progress) */}
-              <KpiCardsRow metrics={metrics} />
+                  {/* Range Dropdown */}
+                  <div
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
+                      isDark
+                        ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{timeRange}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
 
-              {/* Separator */}
-              <div className="border-t border-[#1a253a]" />
+                  {/* Add Widget Button */}
+                  <button
+                    onClick={() => {
+                      setActiveView('orchestration');
+                      showToast('Navegando a configuración de pipeline...');
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition shadow-2xs ${
+                      isDark
+                        ? 'bg-[#131b2e] border-[#1f2d48] text-slate-200 hover:text-white hover:bg-[#1a253d]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add widget</span>
+                  </button>
 
-              {/* SECTION 3: INGESTION PERFORMANCE + LIVE ACTIVITY */}
-              <MiddleSection onViewAllActivities={() => setActiveView('medallion')} />
+                  {/* Primary Blue Export Button */}
+                  <a
+                    href="/api/export-csv?symbol=BTCUSDT"
+                    className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm shadow-blue-500/25"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export</span>
+                  </a>
+                </div>
+              </div>
 
-              {/* Separator */}
-              <div className="border-t border-[#1a253a]" />
+              {/* 1. Top 4 KPI Cards (Page Views, Visitors, Click, Orders) */}
+              <ShopeersKpiCards metrics={metrics} isDark={isDark} />
 
-              {/* SECTION 4: ACTIONS & ASSETS */}
-              <QuickActionsAndLeaders
-                onTriggerStage={handleTriggerStage}
-                onOpenNlpLab={() => setActiveView('nlp')}
-              />
+              {/* 2. Middle Row: Total Profit Chart (Left) + Most Day Active & Gauge (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <ProfitAndSourcesChart metrics={metrics} isDark={isDark} />
+                </div>
+                <div className="lg:col-span-1">
+                  <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} />
+                </div>
+              </div>
 
-              {/* Separator */}
-              <div className="border-t border-[#1a253a]" />
+              {/* 3. Bottom Row: Best Selling Products Table (Left) + AI Assistant Orb (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <AssetFeedTable isDark={isDark} />
+                </div>
+                <div className="lg:col-span-1">
+                  <AiAssistantOrb isDark={isDark} />
+                </div>
+              </div>
 
-              {/* SECTION 5: PENDING ACTIONS & MAINTENANCE */}
-              <PendingActions
-                onShowToast={showToast}
-                onRefreshTelemetry={loadAll}
-              />
             </div>
           )}
 
           {/* Subview: Pipeline Orchestration */}
           {activeView === 'orchestration' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
                 >
                   ← Volver al Dashboard General
                 </button>
@@ -152,12 +198,12 @@ export default function Home() {
           )}
 
           {/* Subview: Medallion Explorer */}
-          {activeView === 'medallion' && (
+          {(activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
                 >
                   ← Volver al Dashboard General
                 </button>
@@ -169,10 +215,10 @@ export default function Home() {
           {/* Subview: FinBERT Lab */}
           {activeView === 'nlp' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
                 >
                   ← Volver al Dashboard General
                 </button>
@@ -182,12 +228,12 @@ export default function Home() {
           )}
 
           {/* Subview: Market Terminal */}
-          {activeView === 'terminal' && (
+          {(activeView === 'terminal' || activeView === 'signals' || activeView === 'content') && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
                 >
                   ← Volver al Dashboard General
                 </button>
@@ -199,10 +245,10 @@ export default function Home() {
           {/* Subview: Warehouse Ops */}
           {activeView === 'maintenance' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className="text-sm font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1.5 transition"
                 >
                   ← Volver al Dashboard General
                 </button>
@@ -218,7 +264,13 @@ export default function Home() {
 
         {/* Global Toast Notification */}
         {toastMsg && (
-          <div className="fixed bottom-5 right-5 z-50 bg-[#162137] border border-[#253758] text-white text-xs sm:text-sm font-mono px-4 py-3 rounded-lg shadow-2xl flex items-center justify-between gap-4 transition-all">
+          <div
+            className={`fixed bottom-5 right-5 z-50 text-xs sm:text-sm font-mono px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-4 transition-all border ${
+              isDark
+                ? 'bg-[#162137] border-[#253758] text-white'
+                : 'bg-white border-slate-200 text-slate-800'
+            }`}
+          >
             <span>{toastMsg}</span>
             <button
               onClick={() => setToastMsg(null)}
