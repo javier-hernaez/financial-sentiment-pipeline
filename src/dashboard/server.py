@@ -984,10 +984,11 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": str(exc)}, 500)
             return
 
-        elif path == "/api/status":
+        elif path in ("/api/status", "/api/health"):
             db_path = str(settings.duckdb_path)
             self._send_json(
                 {
+                    "status": "healthy",
                     "server": "online",
                     "port": 8080,
                     "duckdb_exists": os.path.exists(db_path),
