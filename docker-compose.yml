@@ -1,0 +1,30 @@
+﻿services:
+  app:
+    image: ghcr.io/javier-hernaez/financial-sentiment-pipeline:latest
+    container_name: market_sentiment_app
+    restart: unless-stopped
+    ports:
+      # Expone tanto el puerto 3000 como el 7860 hacia el contenedor
+      - "3000:7860"
+      - "7860:7860"
+    volumes:
+      # Persistencia de la base de datos DuckDB y data lake local
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - APP_ENV=production
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: market_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.docker/config.json:/config.json:ro
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=60
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_LABEL_ENABLE=true
+    command: --interval 60 --cleanup --label-enable
