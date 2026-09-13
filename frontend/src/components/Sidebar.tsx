@@ -1,15 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
-  PlayCircle,
+  Box,
   Layers,
-  Cpu,
-  TrendingUp,
+  Users,
+  FileText,
+  Database,
+  ChevronDown,
+  LineChart,
   Settings,
-  ChevronLeft,
+  HelpCircle,
   X,
+  PanelLeftClose,
+  Sparkles,
+  Zap,
+  Cpu,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,6 +26,8 @@ interface SidebarProps {
   setIsCollapsed: (collapsed: boolean) => void;
   isMobileOpen?: boolean;
   setIsMobileOpen?: (open: boolean) => void;
+  isDark?: boolean;
+  onTriggerFullPipeline?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -28,14 +37,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setIsCollapsed,
   isMobileOpen = false,
   setIsMobileOpen,
+  isDark = true,
+  onTriggerFullPipeline,
 }) => {
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard General', icon: LayoutDashboard },
-    { id: 'orchestration', label: 'Pipeline ELT', icon: PlayCircle },
-    { id: 'medallion', label: 'Medallion Lake', icon: Layers },
-    { id: 'nlp', label: 'FinBERT Lab', icon: Cpu },
-    { id: 'terminal', label: 'Market Signals', icon: TrendingUp },
-    { id: 'maintenance', label: 'Settings & Ops', icon: Settings },
+  const [isFinancesOpen, setIsFinancesOpen] = useState(true);
+
+  interface NavItem {
+    id: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+  }
+
+  const mainNav: NavItem[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'orchestration', label: 'Orquestación ELT', icon: Zap, badge: 'Live' },
+    { id: 'terminal', label: 'Terminal de Mercado', icon: LineChart },
+    { id: 'nlp', label: 'Laboratorio FinBERT NLP', icon: Cpu },
+    { id: 'content', label: 'Feeds RSS & Titulares', icon: FileText },
+    { id: 'medallion', label: 'Data Lake Bronze', icon: Database },
+  ];
+
+  const financesNav = [
+    { id: 'silver', label: 'Tablas Silver' },
+    { id: 'gold', label: 'Gold Feature Store' },
+    { id: 'signals', label: 'Señales Alpha' },
   ];
 
   const handleSelect = (id: string) => {
@@ -49,59 +75,66 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isMobileOpen && (
         <div
           onClick={() => setIsMobileOpen && setIsMobileOpen(false)}
-          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-xs"
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar Container */}
       <aside
-        className={`bg-[#0d1424] border-r border-[#1a243a] text-slate-300 flex flex-col justify-between transition-all duration-300 z-50 fixed inset-y-0 left-0 
-          ${isMobileOpen ? 'translate-x-0 w-64 shadow-2xl' : '-translate-x-full md:translate-x-0'} 
-          ${isCollapsed ? 'md:w-16' : 'md:w-60'}
-        `}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between transition-all duration-300 border-r ${
+          isDark
+            ? 'bg-[#0b0f19] border-[#1e293b] text-slate-300'
+            : 'bg-white border-slate-100 text-slate-600'
+        } ${isMobileOpen ? 'translate-x-0 w-64 shadow-2xl' : '-translate-x-full md:translate-x-0'} ${
+          isCollapsed ? 'md:w-20' : 'md:w-64'
+        }`}
       >
-        <div>
-          {/* Brand */}
-          <div className="h-16 flex items-center justify-between px-4 border-b border-[#1a243a]">
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+          
+          {/* Brand Header */}
+          <div className="flex items-center justify-between">
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-sm bg-[#162137] border border-[#233352] flex items-center justify-center text-slate-200 font-bold text-sm font-mono">
-                  MI
+                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
+                  <Database className="w-4 h-4" />
                 </div>
-                <div className="leading-tight">
-                  <span className="font-bold text-white text-sm block tracking-tight">Market Intel</span>
-                  <span className="text-xs text-slate-400 font-mono">Lakehouse v1.0</span>
-                </div>
+                <span className={`font-extrabold text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Market Intel
+                </span>
               </div>
             )}
 
             {isCollapsed && !isMobileOpen && (
-              <div className="w-8 h-8 rounded-sm bg-[#162137] border border-[#233352] flex items-center justify-center text-slate-200 font-bold text-sm font-mono mx-auto">
-                MI
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white mx-auto shadow-sm">
+                <Database className="w-4 h-4" />
               </div>
             )}
 
-            {/* Desktop collapse toggle */}
+            {/* Desktop Collapse Toggle */}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1.5 rounded-sm text-slate-400 hover:text-white hover:bg-[#162137] transition hidden md:flex items-center justify-center"
+              className={`p-1.5 rounded-lg border hidden md:flex items-center justify-center transition ${
+                isDark
+                  ? 'border-[#1e293b] text-slate-400 hover:text-white hover:bg-[#1a253a]'
+                  : 'border-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-50'
+              }`}
               title={isCollapsed ? 'Expandir' : 'Colapsar'}
             >
-              <ChevronLeft className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} />
+              <PanelLeftClose className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Mobile close */}
+            {/* Mobile Close Button */}
             <button
               onClick={() => setIsMobileOpen && setIsMobileOpen(false)}
-              className="p-1.5 rounded-sm text-slate-400 hover:text-white transition md:hidden flex items-center"
+              className="p-1.5 text-slate-400 hover:text-white md:hidden"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="p-2 space-y-1 mt-2">
-            {menuItems.map((item) => {
+          {/* Primary Nav List */}
+          <nav className="space-y-1">
+            {mainNav.map((item) => {
               const Icon = item.icon;
               const isSelected = activeView === item.id;
 
@@ -109,38 +142,136 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => handleSelect(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-all ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                     isSelected
-                      ? 'bg-[#1a263d] text-white border-l-2 border-[#4ade80] font-semibold shadow-sm'
-                      : 'text-slate-300 hover:bg-[#131b2d] hover:text-white border-l-2 border-transparent'
-                  } ${isCollapsed && !isMobileOpen ? 'justify-center px-0 border-l-0' : ''}`}
+                      ? isDark
+                        ? 'bg-blue-600/15 text-blue-400 font-bold'
+                        : 'bg-blue-50 text-blue-600 font-bold'
+                      : isDark
+                      ? 'text-slate-400 hover:text-white hover:bg-[#131b2e]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  } ${isCollapsed && !isMobileOpen ? 'justify-center px-0' : ''}`}
                   title={item.label}
                 >
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-[#4ade80]' : 'text-slate-400'}`} />
-                  {(!isCollapsed || isMobileOpen) && <span>{item.label}</span>}
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${isSelected ? 'text-blue-500' : 'text-slate-400'}`} />
+                    {(!isCollapsed || isMobileOpen) && <span>{item.label}</span>}
+                  </div>
+
+                  {(!isCollapsed || isMobileOpen) && item.badge && (
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        isDark ? 'bg-emerald-500/20 text-[#34d399]' : 'bg-emerald-100 text-emerald-800'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </nav>
+
+          {/* Secondary Sub-Section: Finances / Lake Layers */}
+          {(!isCollapsed || isMobileOpen) && (
+            <div className="space-y-1 pt-2">
+              <button
+                onClick={() => setIsFinancesOpen(!isFinancesOpen)}
+                className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold uppercase tracking-wider ${
+                  isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Almacén DuckDB</span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isFinancesOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isFinancesOpen && (
+                <div className="pl-6 space-y-1 border-l ml-4 border-slate-700/40">
+                  {financesNav.map((sub) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => handleSelect(sub.id)}
+                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                        activeView === sub.id
+                          ? 'text-blue-500 font-bold'
+                          : isDark
+                          ? 'text-slate-400 hover:text-white'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Bottom Settings Section */}
+          <div className="pt-2 border-t border-slate-700/30 space-y-1">
+            <button
+              onClick={() => handleSelect('maintenance')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
+                activeView === 'maintenance'
+                  ? isDark
+                    ? 'bg-blue-600/15 text-blue-400 font-bold'
+                    : 'bg-blue-50 text-blue-600 font-bold'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-[#131b2e]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              } ${isCollapsed && !isMobileOpen ? 'justify-center px-0' : ''}`}
+            >
+              <Settings className={`w-4 h-4 flex-shrink-0 ${activeView === 'maintenance' ? 'text-blue-500' : ''}`} />
+              {(!isCollapsed || isMobileOpen) && <span>Configuración</span>}
+            </button>
+
+            <button
+              onClick={() => handleSelect('documentation')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
+                activeView === 'documentation'
+                  ? isDark
+                    ? 'bg-blue-600/15 text-blue-400 font-bold'
+                    : 'bg-blue-50 text-blue-600 font-bold'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-[#131b2e]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              } ${isCollapsed && !isMobileOpen ? 'justify-center px-0' : ''}`}
+            >
+              <HelpCircle className={`w-4 h-4 flex-shrink-0 ${activeView === 'documentation' ? 'text-blue-500' : ''}`} />
+              {(!isCollapsed || isMobileOpen) && <span>Ayuda y Guía</span>}
+            </button>
+          </div>
+
         </div>
 
-        {/* Operator Profile */}
-        <div className="p-3 border-t border-[#1a243a]">
-          <div className={`flex items-center gap-2.5 p-2.5 rounded-sm bg-[#0e1628] border border-[#18233a] ${isCollapsed && !isMobileOpen ? 'justify-center' : ''}`}>
-            <div className="w-8 h-8 rounded-sm bg-[#162137] border border-[#233352] text-slate-200 flex items-center justify-center font-bold text-xs font-mono flex-shrink-0">
-              OP
-            </div>
-            {(!isCollapsed || isMobileOpen) && (
-              <div className="overflow-hidden">
-                <span className="text-sm font-semibold text-slate-200 block truncate">Admin Operator</span>
-                <span className="text-xs text-[#4ade80] font-mono flex items-center gap-1.5 font-bold">
-                  <span className="w-2 h-2 rounded-sm bg-[#22c55e]"></span>
-                  DuckDB Online
+        {/* Bottom Technical Status Footer */}
+        {(!isCollapsed || isMobileOpen) && (
+          <div className="p-3.5 border-t border-slate-800/40">
+            <div className={`p-3 rounded-lg border text-xs ${
+              isDark ? 'bg-[#101726] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+            }`}>
+              <div className="flex items-center justify-between font-mono text-[11px] mb-1">
+                <span className="flex items-center gap-1.5 font-bold text-sky-400">
+                  <Database className="w-3.5 h-3.5" />
+                  DuckDB Lakehouse
                 </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
               </div>
-            )}
+              <p className="text-[10px] text-slate-500 font-mono">
+                Almacenamiento columnar local
+              </p>
+              <button
+                onClick={onTriggerFullPipeline}
+                className="mt-2.5 w-full py-1.5 px-2 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-[11px] font-bold transition text-center"
+              >
+                Ejecutar Pipeline ELT
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </aside>
     </>
   );

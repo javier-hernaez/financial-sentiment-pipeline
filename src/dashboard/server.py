@@ -9,7 +9,7 @@ import sys
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 if sys.platform == "win32":
     try:
@@ -17,6 +17,9 @@ if sys.platform == "win32":
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
+
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import duckdb
 import httpx
@@ -32,8 +35,16 @@ from .admin_view import ADMIN_HTML_TEMPLATE
 
 console = Console()
 
-# Initialize NLP engine for sandbox testing
-sandbox_nlp = FinBERTEngine(force_mock=True)
+# Initialize NLP engine lazily on first request to speed up startup and avoid double-loading
+_sandbox_nlp: Optional[FinBERTEngine] = None
+
+
+def get_sandbox_nlp() -> FinBERTEngine:
+    global _sandbox_nlp
+    if _sandbox_nlp is None:
+        _sandbox_nlp = FinBERTEngine(force_mock=False)
+    return _sandbox_nlp
+
 
 ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="es">
@@ -90,8 +101,13 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
           Descargar CSV
         </button>
 
+        <a href="http://localhost:3000" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-mono font-semibold px-3.5 py-2 rounded-md shadow-sm transition flex items-center gap-1.5" title="Abrir Dashboard Principal (React)">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          <span>Dashboard Principal</span>
+        </a>
+
         <a href="/admin" aria-label="Ir al Panel de Control y Telemetría" class="bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-mono px-3.5 py-2 rounded-md border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-blue-500" title="Panel de Administración y Telemetría">
-          Panel de Control
+          Panel de Control ELT
         </a>
       </nav>
     </header>
@@ -695,6 +711,12 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
+    def handle(self):
+        try:
+            super().handle()
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            pass
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
@@ -962,10 +984,11 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": str(exc)}, 500)
             return
 
-        elif path == "/api/status":
+        elif path in ("/api/status", "/api/health"):
             db_path = str(settings.duckdb_path)
             self._send_json(
                 {
+                    "status": "healthy",
                     "server": "online",
                     "port": 8080,
                     "duckdb_exists": os.path.exists(db_path),
@@ -996,6 +1019,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             symbol = payload.get("symbol", "BTCUSDT")
             hours = int(payload.get("hours", 24))
 
+            pipeline = None
             try:
                 pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=True)
                 result = asyncio.run(pipeline.run())
@@ -1011,25 +1035,31 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 )
             except Exception as exc:
                 self._send_json({"error": str(exc)}, 500)
+            finally:
+                if pipeline:
+                    pipeline.close()
             return
 
         elif path == "/api/analyze-text":
-            text = payload.get("text", "")
-            cleaned = TextCleaner.clean_string(text)
-            preds = sandbox_nlp.predict_batch([cleaned])
-            res = (
-                preds[0]
-                if preds
-                else {
-                    "sentiment_score": 0.0,
-                    "sentiment_label": "neutral",
-                    "confidence": 0.5,
-                    "prob_positive": 0.33,
-                    "prob_negative": 0.33,
-                    "prob_neutral": 0.34,
-                }
-            )
-            self._send_json(res, 200)
+            try:
+                text = payload.get("text", "")
+                cleaned = TextCleaner.clean_string(text)
+                preds = get_sandbox_nlp().predict_batch([cleaned]) if cleaned else []
+                res = (
+                    preds[0]
+                    if preds
+                    else {
+                        "sentiment_score": 0.0,
+                        "sentiment_label": "neutral",
+                        "confidence": 0.7,
+                        "prob_positive": 0.15,
+                        "prob_negative": 0.15,
+                        "prob_neutral": 0.70,
+                    }
+                )
+                self._send_json(res, 200)
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, 500)
             return
 
         elif path == "/api/admin/run-stage":
@@ -1037,6 +1067,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             symbol = payload.get("symbol", "BTCUSDT").upper()
             hours = int(payload.get("hours", 24))
 
+            pipeline = None
             try:
                 import time
 
@@ -1044,25 +1075,42 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=True)
 
                 if stage == "extract":
-                    market_task = pipeline.binance_ext.extract(symbol=pipeline.symbol, limit=pipeline.hours)
-                    macro_task = pipeline.fear_greed_ext.extract(limit=10)
-                    social_task = pipeline.social_ext.extract(limit_per_sub=15)
-                    raw_market, raw_macro, raw_social = asyncio.run(
-                        asyncio.gather(market_task, macro_task, social_task)
+                    extracted = asyncio.run(pipeline.extract())
+                    bronze_res = pipeline.land_bronze(
+                        raw_market=extracted["market"],
+                        raw_macro=extracted["macro"],
+                        raw_social=extracted["social"],
                     )
-                    p_market = pipeline.lake.write_raw_records("market", raw_market)
-                    p_macro = pipeline.lake.write_raw_records("fear_greed", raw_macro)
-                    p_social = pipeline.lake.write_raw_records("social", raw_social)
                     elapsed = round(time.time() - t0, 2)
                     self._send_json(
                         {
                             "status": "success",
                             "stage": "extract",
                             "symbol": symbol,
-                            "candles": len(raw_market),
-                            "macro_records": len(raw_macro),
-                            "social_records": len(raw_social),
-                            "bronze_files": [p_market.name, p_macro.name, p_social.name],
+                            "candles": len(extracted["market"]),
+                            "macro_records": len(extracted["macro"]),
+                            "social_records": len(extracted["social"]),
+                            "bronze_files": bronze_res["files"],
+                            "elapsed_seconds": elapsed,
+                        },
+                        200,
+                    )
+                    return
+
+                elif stage == "transform":
+                    silver_res = pipeline.transform_silver()
+                    elapsed = round(time.time() - t0, 2)
+                    self._send_json(
+                        {
+                            "status": "success",
+                            "stage": "transform",
+                            "symbol": symbol,
+                            "candles_processed": silver_res["candles_processed"],
+                            "posts_processed": silver_res["posts_processed"],
+                            "macro_records": silver_res["macro_records"],
+                            "total_silver_market": silver_res["total_silver_market"],
+                            "total_silver_social": silver_res["total_silver_social"],
+                            "total_silver_macro": silver_res["total_silver_macro"],
                             "elapsed_seconds": elapsed,
                         },
                         200,
@@ -1070,17 +1118,14 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     return
 
                 elif stage == "gold":
-                    warehouse = MarketWarehouse()
-                    raw_gold = warehouse.query_gold(symbol=symbol, limit=hours)
-                    enriched = QuantSignalsEngine.calculate_signals(raw_gold)
-                    warehouse.close()
+                    enriched = pipeline.aggregate_gold()
                     elapsed = round(time.time() - t0, 2)
                     self._send_json(
                         {
                             "status": "success",
                             "stage": "gold",
                             "symbol": symbol,
-                            "consolidated_hours": len(raw_gold),
+                            "consolidated_hours": len(enriched),
                             "elapsed_seconds": elapsed,
                         },
                         200,
@@ -1101,13 +1146,16 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                             "total_silver_market": result.get("total_silver_market", 0),
                             "total_silver_social": result.get("total_silver_social", 0),
                             "total_silver_macro": result.get("total_silver_macro", 0),
-                            "elapsed_seconds": result["elapsed_seconds"],
+                            "elapsed_seconds": round(result["elapsed_seconds"], 2),
                         },
                         200,
                     )
                     return
             except Exception as exc:
-                self._send_json({"error": str(exc)}, 500)
+                self._send_json({"error": str(exc), "stage": stage}, 500)
+            finally:
+                if pipeline:
+                    pipeline.close()
             return
 
         elif path == "/api/admin/warehouse-ops":
@@ -1122,21 +1170,27 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     conn = duckdb.connect(db_path)
                     conn.execute("VACUUM;")
                     conn.close()
-                    self._send_json({"status": "success", "message": "DuckDB VACUUM ejecutado con éxito. Espacio compactado."}, 200)
+                    self._send_json(
+                        {"status": "success", "message": "DuckDB VACUUM ejecutado con éxito. Espacio compactado."}, 200
+                    )
                     return
 
                 elif action == "checkpoint":
                     conn = duckdb.connect(db_path)
                     conn.execute("CHECKPOINT;")
                     conn.close()
-                    self._send_json({"status": "success", "message": "DuckDB CHECKPOINT ejecutado. WAL sincronizado al disco."}, 200)
+                    self._send_json(
+                        {"status": "success", "message": "DuckDB CHECKPOINT ejecutado. WAL sincronizado al disco."}, 200
+                    )
                     return
 
                 elif action == "refresh_views":
                     warehouse = MarketWarehouse()
                     warehouse._init_schema()
                     warehouse.close()
-                    self._send_json({"status": "success", "message": "Esquemas y vistas analíticas Gold recalculadas."}, 200)
+                    self._send_json(
+                        {"status": "success", "message": "Esquemas y vistas analíticas Gold recalculadas."}, 200
+                    )
                     return
 
                 elif action == "clear_table":
@@ -1171,17 +1225,28 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _send_json(self, data: Any, status_code: int = 200):
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(json.dumps(data, default=str).encode("utf-8"))
+        try:
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(data, default=str).encode("utf-8"))
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            pass
+
+
+class QuietHTTPServer(HTTPServer):
+    def handle_error(self, request, client_address):
+        exc_type, _, _ = sys.exc_info()
+        if exc_type in (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            return  # Silently ignore aborted/reset browser requests
+        super().handle_error(request, client_address)
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8080):
     """Starts the advanced dashboard HTTP server."""
     server_address = (host, port)
-    httpd = HTTPServer(server_address, AdvancedDashboardHandler)
+    httpd = QuietHTTPServer(server_address, AdvancedDashboardHandler)
     console.print(
         f"[bold green][OK] Advanced Market Intelligence Terminal running on http://{host}:{port}[/bold green]"
     )

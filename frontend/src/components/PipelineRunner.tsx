@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Play, Terminal, ArrowRight } from 'lucide-react';
+import { Play, Terminal, ArrowRight, Layers, Database, Sparkles, Cpu } from 'lucide-react';
 import { runStage } from '@/lib/api';
 
 interface PipelineRunnerProps {
   onSuccess: () => void;
+  isDark?: boolean;
 }
 
 interface LogEntry {
@@ -15,7 +16,7 @@ interface LogEntry {
   message: string;
 }
 
-export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => {
+export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDark = true }) => {
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [hours, setHours] = useState(24);
   const [isRunning, setIsRunning] = useState(false);
@@ -41,7 +42,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
     ]);
   };
 
-  const handleRunStage = async (stage: 'extract' | 'gold' | 'full') => {
+  const handleRunStage = async (stage: 'extract' | 'transform' | 'gold' | 'full') => {
     setIsRunning(true);
     setActiveStage(stage);
     addLog(`Iniciando fase [${stage.toUpperCase()}] para ${symbol} (${hours} horas)...`, 'info');
@@ -51,6 +52,11 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
       if (stage === 'extract') {
         addLog(
           `Extracción completada en ${res.elapsed_seconds}s: ${res.candles} velas, ${res.macro_records} macro, ${res.social_records} noticias en tiempo real.`,
+          'success'
+        );
+      } else if (stage === 'transform') {
+        addLog(
+          `Transformación Silver completada en ${res.elapsed_seconds}s: ${res.candles_processed} velas, ${res.posts_processed} noticias vectorizadas con FinBERT.`,
           'success'
         );
       } else if (stage === 'gold') {
@@ -78,23 +84,36 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Pipeline Execution Parameters */}
-        <div className="bg-[#131b2e] border border-[#1e2a42] rounded p-5 space-y-5 lg:col-span-1">
+        <div
+          className={`p-6 rounded-2xl border transition-all duration-200 space-y-5 lg:col-span-1 ${
+            isDark
+              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
+              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+          }`}
+        >
           <div>
-            <h3 className="text-base font-bold text-white tracking-tight">Parámetros de Ingesta</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Control de extracción, enriquecimiento y capas analíticas.</p>
+            <h3 className={`text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Parámetros de Ingesta
+            </h3>
+            <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Control de extracción, enriquecimiento y capas analíticas.
+            </p>
           </div>
 
           <div className="space-y-4">
             {/* Asset Selection */}
             <div>
-              <label htmlFor="select-asset" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
+              <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Activo Financiero
               </label>
               <select
-                id="select-asset"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value)}
-                className="w-full bg-[#0e1628] border border-[#1e2a42] text-white text-xs font-mono rounded-sm px-3 py-2 outline-none focus:border-slate-500 cursor-pointer transition"
+                className={`w-full text-xs font-mono rounded-xl px-3.5 py-2.5 outline-none transition cursor-pointer border ${
+                  isDark
+                    ? 'bg-[#0e1628] border-[#1f2d48] text-white focus:border-blue-500'
+                    : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500'
+                }`}
               >
                 <option value="BTCUSDT">BTC / USDT · Bitcoin Spot</option>
                 <option value="ETHUSDT">ETH / USDT · Ethereum Spot</option>
@@ -104,7 +123,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
 
             {/* Time Horizon Selection */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
+              <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Ventana de Tiempo
               </label>
               <div className="grid grid-cols-4 gap-2">
@@ -113,10 +132,12 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
                     key={h}
                     type="button"
                     onClick={() => setHours(h)}
-                    className={`text-xs font-mono py-1.5 rounded-sm border transition ${
+                    className={`text-xs font-mono py-2 rounded-xl border font-bold transition ${
                       hours === h
-                        ? 'border-[#15803d] bg-[#052e16] text-[#4ade80] font-bold'
-                        : 'border-[#1e2a42] bg-[#0e1628] text-slate-300 hover:text-white'
+                        ? 'border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                        : isDark
+                        ? 'border-[#1f2d48] bg-[#0e1628] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     {h}h
@@ -126,18 +147,18 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
             </div>
 
             {/* Feed Status Information */}
-            <div className="border-t border-[#1e2a42] pt-4 space-y-2.5">
+            <div className={`pt-4 space-y-2.5 border-t ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-400">Noticias en Vivo:</span>
-                <span className="text-[#4ade80] font-bold">CoinTelegraph & CoinDesk</span>
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Noticias en Vivo:</span>
+                <span className="text-emerald-500 font-bold">CoinTelegraph &amp; Desk</span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-400">Precios de Mercado:</span>
-                <span className="text-slate-200 font-medium">Binance Public REST</span>
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Precios Spot:</span>
+                <span className={isDark ? 'text-slate-200' : 'text-slate-700'}>Binance REST v3</span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-400">Motor NLP:</span>
-                <span className="text-slate-200 font-medium">FinBERT Local</span>
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Motor NLP:</span>
+                <span className="text-blue-500 font-bold">FinBERT Engine</span>
               </div>
             </div>
 
@@ -146,13 +167,13 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
               <button
                 onClick={() => handleRunStage('full')}
                 disabled={isRunning}
-                className="w-full py-2.5 px-4 bg-[#1e3a5f] hover:bg-[#254673] active:bg-[#1a3353] disabled:opacity-50 text-white text-xs font-bold rounded-sm border border-[#2e5282] shadow-sm flex items-center justify-center gap-2 transition"
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition"
               >
                 <Play className={`w-3.5 h-3.5 ${isRunning && activeStage === 'full' ? 'animate-spin' : ''}`} />
                 <span>
                   {isRunning && activeStage === 'full'
                     ? 'Ejecutando Pipeline Completo...'
-                    : 'Ejecutar Pipeline Completo (End-to-End)'}
+                    : 'Ejecutar Pipeline Completo'}
                 </span>
               </button>
             </div>
@@ -163,28 +184,42 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
         <div className="lg:col-span-2 space-y-6">
           
           {/* Modular Stages Grid */}
-          <div className="bg-[#131b2e] border border-[#1e2a42] rounded p-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono mb-3">
+          <div
+            className={`p-6 rounded-2xl border transition-all duration-200 ${
+              isDark
+                ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
+                : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+            }`}
+          >
+            <h3 className={`text-sm font-bold uppercase tracking-wider font-mono mb-4 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
               Ejecución Modular por Capas
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Bronze Stage */}
-              <div className="bg-[#0e1628] border border-[#1e2a42] rounded p-4 flex flex-col justify-between space-y-3">
+              <div
+                className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition ${
+                  isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200/80'
+                }`}
+              >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200 font-mono">1. BRONZE LAKE</span>
-                    <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#052e16] px-1.5 py-0.5 border border-[#16a34a] rounded-sm">RAW</span>
+                    <span className="text-xs font-bold font-mono text-amber-500">1. BRONZE LAKE</span>
+                    <span className="text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full">RAW</span>
                   </div>
-                  <h4 className="text-xs font-bold text-white mt-2">Extracción Inmutable</h4>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Descarga en paralelo de velas Binance y noticias RSS a ficheros Parquet.
+                  <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Extracción Inmutable</h4>
+                  <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Descarga en paralelo de velas Binance y feeds RSS a ficheros Parquet.
                   </p>
                 </div>
                 <button
                   onClick={() => handleRunStage('extract')}
                   disabled={isRunning}
-                  className="w-full py-2 px-3 bg-[#162137] hover:bg-[#1e2d4a] disabled:opacity-40 text-xs font-semibold text-slate-200 rounded-sm border border-[#233352] transition flex items-center justify-center gap-1.5"
+                  className={`w-full py-2 px-3 text-xs font-bold rounded-xl border transition flex items-center justify-center gap-1.5 ${
+                    isDark
+                      ? 'bg-[#162137] hover:bg-[#1e2d4a] text-slate-200 border-[#233352]'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
+                  }`}
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                   <span>Extraer a Bronze</span>
@@ -192,21 +227,29 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
               </div>
 
               {/* Silver Stage */}
-              <div className="bg-[#0e1628] border border-[#1e2a42] rounded p-4 flex flex-col justify-between space-y-3">
+              <div
+                className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition ${
+                  isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200/80'
+                }`}
+              >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200 font-mono">2. SILVER TABLES</span>
-                    <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#052e16] px-1.5 py-0.5 border border-[#16a34a] rounded-sm">NLP</span>
+                    <span className="text-xs font-bold font-mono text-blue-500">2. SILVER TABLES</span>
+                    <span className="text-[10px] font-mono font-bold bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">NLP</span>
                   </div>
-                  <h4 className="text-xs font-bold text-white mt-2">Limpieza y Scoring</h4>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Normalización con Polars, clasificación FinBERT y tablas relacionales DuckDB.
+                  <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Limpieza y Scoring</h4>
+                  <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Normalización con Polars, inferencia FinBERT y tablas DuckDB.
                   </p>
                 </div>
                 <button
-                  onClick={() => handleRunStage('full')}
+                  onClick={() => handleRunStage('transform')}
                   disabled={isRunning}
-                  className="w-full py-2 px-3 bg-[#162137] hover:bg-[#1e2d4a] disabled:opacity-40 text-xs font-semibold text-slate-200 rounded-sm border border-[#233352] transition flex items-center justify-center gap-1.5"
+                  className={`w-full py-2 px-3 text-xs font-bold rounded-xl border transition flex items-center justify-center gap-1.5 ${
+                    isDark
+                      ? 'bg-[#162137] hover:bg-[#1e2d4a] text-slate-200 border-[#233352]'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
+                  }`}
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                   <span>Procesar Silver</span>
@@ -214,21 +257,29 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
               </div>
 
               {/* Gold Stage */}
-              <div className="bg-[#0e1628] border border-[#1e2a42] rounded p-4 flex flex-col justify-between space-y-3">
+              <div
+                className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition ${
+                  isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200/80'
+                }`}
+              >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200 font-mono">3. GOLD FEATURES</span>
-                    <span className="text-xs font-mono font-bold text-[#4ade80] bg-[#052e16] px-1.5 py-0.5 border border-[#16a34a] rounded-sm">GOLD</span>
+                    <span className="text-xs font-bold font-mono text-emerald-500">3. GOLD FEATURES</span>
+                    <span className="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-500 px-2 py-0.5 rounded-full">GOLD</span>
                   </div>
-                  <h4 className="text-xs font-bold text-white mt-2">Feature Store</h4>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Feature Store</h4>
+                  <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     Alineación horaria de retornos, polaridad y señales cuantitativas alpha.
                   </p>
                 </div>
                 <button
                   onClick={() => handleRunStage('gold')}
                   disabled={isRunning}
-                  className="w-full py-2 px-3 bg-[#162137] hover:bg-[#1e2d4a] disabled:opacity-40 text-xs font-semibold text-slate-200 rounded-sm border border-[#233352] transition flex items-center justify-center gap-1.5"
+                  className={`w-full py-2 px-3 text-xs font-bold rounded-xl border transition flex items-center justify-center gap-1.5 ${
+                    isDark
+                      ? 'bg-[#162137] hover:bg-[#1e2d4a] text-slate-200 border-[#233352]'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
+                  }`}
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                   <span>Actualizar Gold</span>
@@ -238,31 +289,43 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess }) => 
           </div>
 
           {/* Real-time Log Stream Console */}
-          <div className="bg-[#131b2e] border border-[#1e2a42] rounded p-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+          <div
+            className={`p-6 rounded-2xl border transition-all duration-200 ${
+              isDark
+                ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
+                : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+            }`}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-700/20">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-sm bg-[#22c55e]"></span>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 font-mono flex items-center gap-1.5">
-                  <Terminal className="w-3.5 h-3.5 text-slate-300" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <h3 className={`text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                  <Terminal className="w-3.5 h-3.5 text-blue-500" />
                   Registro de Operaciones
                 </h3>
               </div>
               <button
                 onClick={() => setLogs([])}
-                className="text-xs text-slate-400 hover:text-white font-mono transition"
+                className={`text-xs font-mono transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 Limpiar consola
               </button>
             </div>
 
-            <div className="mt-3 bg-[#0a0f1d] border border-[#1e2a42] rounded-sm p-3 font-mono text-xs text-slate-300 h-64 overflow-y-auto space-y-2">
+            <div
+              className={`mt-3 rounded-xl p-4 font-mono text-xs h-64 overflow-y-auto space-y-2 border ${
+                isDark
+                  ? 'bg-[#0a0f1d] border-[#1f2d48] text-slate-300'
+                  : 'bg-slate-900 border-slate-800 text-slate-200'
+              }`}
+            >
               {logs.length === 0 ? (
                 <div className="text-slate-500">No hay eventos registrados en la sesión.</div>
               ) : (
                 logs.map((log) => {
                   let colorClass = 'text-slate-300';
-                  if (log.type === 'success') colorClass = 'text-[#4ade80] font-bold';
-                  if (log.type === 'error') colorClass = 'text-[#f87171] font-bold';
+                  if (log.type === 'success') colorClass = 'text-emerald-400 font-bold';
+                  if (log.type === 'error') colorClass = 'text-rose-400 font-bold';
                   if (log.type === 'warning') colorClass = 'text-amber-400 font-bold';
 
                   return (

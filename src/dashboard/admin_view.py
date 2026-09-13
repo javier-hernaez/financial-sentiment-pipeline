@@ -76,7 +76,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Top Navigation Bar (Google Cloud Style) -->
   <header class="border-b border-google-border bg-google-surface sticky top-0 z-30 flex-none" role="banner">
     <div class="max-w-[1520px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-      
+
       <!-- Brand & Project Breadcrumbs -->
       <div class="flex items-center gap-3">
         <a href="/" class="flex items-center gap-2.5 text-white group" title="Regresar al Terminal">
@@ -105,6 +105,15 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
 
       <!-- Quick Global Actions -->
       <div class="flex items-center gap-2.5">
+        <a href="http://localhost:3000" class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 rounded-md transition shadow-sm" title="Abrir Dashboard Principal (React)">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          <span>Dashboard Principal</span>
+        </a>
+
         <button onclick="refreshAll()" id="btn-refresh-global" class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-white bg-google-surfaceHigh hover:bg-google-surfaceHighest px-3 py-1.5 rounded-md border border-google-border transition" title="Actualizar métricas y telemetría">
           <svg id="icon-refresh" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
@@ -218,7 +227,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
     <!-- ============================================================= -->
     <section id="panel-orchestration" class="space-y-6" role="tabpanel" aria-labelledby="tab-btn-orchestration">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         <!-- Left: Execution Configuration Card -->
         <div class="bg-google-surface border border-google-border rounded-xl p-5 space-y-5 lg:col-span-1">
           <div>
@@ -277,12 +286,12 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
 
         <!-- Center/Right: Modular Stage Triggers & Real-time Live Log -->
         <div class="lg:col-span-2 space-y-6">
-          
+
           <!-- Stage Cards (Granular Execution) -->
           <div class="bg-google-surface border border-google-border rounded-xl p-5">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono mb-4">Ejecución Modular por Fases</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              
+
               <!-- Phase 1: Extract & Bronze -->
               <div class="bg-google-surfaceHigh border border-google-border rounded-lg p-4 flex flex-col justify-between space-y-3">
                 <div>
@@ -340,7 +349,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
               </div>
               <button onclick="clearConsoleLog()" class="text-[11px] text-slate-400 hover:text-white font-mono transition">Limpiar registro</button>
             </div>
-            
+
             <div id="orchestrator-log" class="mt-3 bg-[#080b12] border border-google-borderSubtle rounded-lg p-3 font-mono text-xs text-slate-300 h-64 overflow-y-auto space-y-1.5">
               <div class="text-slate-500">[SISTEMA] Consola inicializada. Esperando acciones del operador...</div>
             </div>
@@ -354,7 +363,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
     <!-- TAB 2: EXPLORADOR MEDALLION (DATA LAKE & DUCKDB)              -->
     <!-- ============================================================= -->
     <section id="panel-medallion" class="hidden space-y-6" role="tabpanel" aria-labelledby="tab-btn-medallion">
-      
+
       <!-- Layer Switcher Bar -->
       <div class="flex flex-wrap items-center justify-between gap-4 bg-google-surface border border-google-border rounded-xl p-4">
         <div class="flex items-center gap-2">
@@ -450,7 +459,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
     <!-- ============================================================= -->
     <section id="panel-maintenance" class="hidden space-y-6" role="tabpanel" aria-labelledby="tab-btn-maintenance">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
+
         <!-- DuckDB VACUUM Card -->
         <div class="bg-google-surface border border-google-border rounded-xl p-5 flex flex-col justify-between space-y-4">
           <div>
@@ -530,7 +539,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
     <!-- ============================================================= -->
     <section id="panel-nlp" class="hidden space-y-6" role="tabpanel" aria-labelledby="tab-btn-nlp">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         <!-- Interactive FinBERT Sandbox -->
         <div class="bg-google-surface border border-google-border rounded-xl p-5 space-y-4">
           <div>
@@ -624,7 +633,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
     <!-- TAB 5: TELEMETRÍA Y CONECTIVIDAD                             -->
     <!-- ============================================================= -->
     <section id="panel-telemetry" class="hidden space-y-6" role="tabpanel" aria-labelledby="tab-btn-telemetry">
-      
+
       <div class="flex justify-between items-center">
         <div>
           <h2 class="text-base font-semibold text-white tracking-tight">Estado de Conectividad con Orígenes Externos</h2>
@@ -636,7 +645,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         <!-- Binance API -->
         <div class="bg-google-surface border border-google-border rounded-xl p-4 space-y-3">
           <div class="flex justify-between items-center">
@@ -822,7 +831,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
       const sb = document.getElementById('snackbar');
       const msgEl = document.getElementById('snackbar-msg');
       msgEl.textContent = msg;
-      
+
       if (type === 'error') {
         sb.className = 'fixed bottom-6 left-6 z-50 bg-rose-950 border border-rose-700 text-rose-200 text-xs font-mono px-4 py-3 rounded-lg shadow-xl flex items-center justify-between gap-4 transition-all duration-300 transform translate-y-0 opacity-100';
       } else {
@@ -883,11 +892,20 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({stage, symbol, hours})
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          let errDetail = `HTTP ${res.status}`;
+          try {
+            const errJson = await res.json();
+            if (errJson && errJson.error) errDetail = errJson.error;
+          } catch(e) {}
+          throw new Error(errDetail);
+        }
         const data = await res.json();
 
         if (stage === 'extract') {
           logMessage(`Extracción completada: ${data.candles} velas, ${data.macro_records} macro, ${data.social_records} posts en ${data.elapsed_seconds}s.`, 'success');
+        } else if (stage === 'transform') {
+          logMessage(`Transformación Silver completada: ${data.candles_processed} velas, ${data.posts_processed} noticias vectorizadas con FinBERT en ${data.elapsed_seconds}s.`, 'success');
         } else if (stage === 'gold') {
           logMessage(`Capa Gold recalculada: ${data.consolidated_hours} registros horarios consolidados en ${data.elapsed_seconds}s.`, 'success');
         } else {
@@ -1034,7 +1052,7 @@ ADMIN_HTML_TEMPLATE = """<!DOCTYPE html>
         const res = await fetch('/api/admin/bronze-tree');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        
+
         document.getElementById('bronze-tree-count').textContent = `${data.total_files} particiones Parquet`;
         const bodyEl = document.getElementById('bronze-tree-body');
         bodyEl.innerHTML = '';

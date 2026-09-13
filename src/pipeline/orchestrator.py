@@ -40,21 +40,25 @@ class MarketIntelligencePipeline:
         self.fear_greed_ext = FearGreedExtractor()
         self.social_ext = SocialRedditExtractor()
 
-    async def run(self) -> Dict[str, Any]:
-        """
-        Executes the full ELT cycle asynchronously.
-        1. Async Extraction of Market, Social & Macro data in parallel.
-        2. Ingestion into Bronze Data Lake (Parquet).
-        3. Text cleaning (Polars) and NLP Sentiment Scoring (FinBERT).
-        4. Upsert into DuckDB Silver Layer.
-        5. Consolidation into Gold Layer.
-        """
-        start_time = datetime.now(timezone.utc)
-        console.rule(f"[bold green]Starting Market Intelligence Pipeline ({self.symbol})[/bold green]")
+    def __enter__(self):
+        return self
 
-        # -------------------------------------------------------------
-        # 1. Extraction Layer (Parallel Asyncio)
-        # -------------------------------------------------------------
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self) -> None:
+        """Closes warehouse connection and releases database locks cleanly."""
+        if hasattr(self, "warehouse") and self.warehouse is not None:
+            try:
+                self.warehouse.close()
+            except Exception:
+                pass
+
+    async def extract(self) -> Dict[str, Any]:
+        """
+        Executes parallel extraction of Market, Fear & Greed, and Social feeds.
+        Must be called within an active async event loop.
+        """
         console.print("[bold blue]1. Extracting parallel data streams...[/bold blue]")
         market_task = self.binance_ext.extract(symbol=self.symbol, limit=self.hours)
         macro_task = self.fear_greed_ext.extract(limit=10)
@@ -68,52 +72,144 @@ class MarketIntelligencePipeline:
         console.print(f"   [green][OK][/green] Extracted {len(raw_macro)} macro Fear & Greed records")
         console.print(f"   [green][OK][/green] Extracted {len(raw_social)} social posts/comments")
 
-        # -------------------------------------------------------------
-        # 2. Bronze Data Lake Landing (Immutable Parquet)
-        # -------------------------------------------------------------
-        console.print("[bold blue]2. Storing raw data in Bronze Lake...[/bold blue]")
-        self.lake.write_raw_records("market", raw_market)
-        self.lake.write_raw_records("fear_greed", raw_macro)
-        self.lake.write_raw_records("social", raw_social)
+        return {
+            "market": raw_market,
+            "macro": raw_macro,
+            "social": raw_social,
+        }
 
-        # -------------------------------------------------------------
-        # 3. Silver Layer Transformations & NLP Enrichment
-        # -------------------------------------------------------------
+    def land_bronze(
+        self,
+        raw_market: Any,
+        raw_macro: Any,
+        raw_social: Any,
+    ) -> Dict[str, Any]:
+        """Lands extracted records into the Bronze Data Lake (immutable Parquet)."""
+        console.print("[bold blue]2. Storing raw data in Bronze Lake...[/bold blue]")
+        p_market = self.lake.write_raw_records("market", raw_market) if raw_market else None
+        p_macro = self.lake.write_raw_records("fear_greed", raw_macro) if raw_macro else None
+        p_social = self.lake.write_raw_records("social", raw_social) if raw_social else None
+
+        files = [p.name for p in [p_market, p_macro, p_social] if p is not None]
+        return {
+            "market_path": p_market,
+            "macro_path": p_macro,
+            "social_path": p_social,
+            "files": files,
+        }
+
+    def transform_silver(
+        self,
+        raw_market: Optional[Any] = None,
+        raw_macro: Optional[Any] = None,
+        raw_social: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """
+        Transforms raw records (or latest Bronze partitions) into DuckDB Silver tables.
+        Applies text cleaning and FinBERT NLP sentiment scoring.
+        """
         console.print("[bold blue]3. Transforming & Enriching into Silver Layer...[/bold blue]")
 
         # 3a. Market Prices
-        df_market = pl.DataFrame(raw_market)
-        total_market = self.warehouse.upsert_market_prices(df_market)
+        if raw_market is not None:
+            df_market = pl.DataFrame(raw_market) if not isinstance(raw_market, pl.DataFrame) else raw_market
+        else:
+            df_market = self.lake.read_latest_partition("market")
+
+        total_market = (
+            self.warehouse.upsert_market_prices(df_market) if df_market is not None and not df_market.is_empty() else 0
+        )
 
         # 3b. Fear & Greed
-        df_macro = pl.DataFrame(raw_macro)
-        total_macro = self.warehouse.upsert_fear_greed(df_macro)
+        if raw_macro is not None:
+            df_macro = pl.DataFrame(raw_macro) if not isinstance(raw_macro, pl.DataFrame) else raw_macro
+        else:
+            df_macro = self.lake.read_latest_partition("fear_greed")
+
+        total_macro = (
+            self.warehouse.upsert_fear_greed(df_macro) if df_macro is not None and not df_macro.is_empty() else 0
+        )
 
         # 3c. Social NLP Enrichment with Polars & FinBERT
-        df_social_raw = pl.DataFrame(raw_social)
-        df_social_cleaned = TextCleaner.clean_polars_column(df_social_raw, title_col="title", body_col="text_body")
-        console.print("   -> Running batch sentiment inference (FinBERT)...")
-        df_social_scored = self.nlp_engine.score_dataframe(df_social_cleaned)
-        total_social = self.warehouse.upsert_social_sentiment(df_social_scored)
+        if raw_social is not None:
+            df_social_raw = pl.DataFrame(raw_social) if not isinstance(raw_social, pl.DataFrame) else raw_social
+        else:
+            df_social_raw = self.lake.read_latest_partition("social")
 
-        # -------------------------------------------------------------
-        # 4. Gold Analytics Consolidation & Alpha Signal Generation
-        # -------------------------------------------------------------
-        console.print("[bold blue]4. Generating Gold Layer Feature Store & Alpha Signals...[/bold blue]")
-        gold_df_raw = self.warehouse.query_gold(symbol=self.symbol, limit=self.hours)
-        gold_df = QuantSignalsEngine.calculate_signals(gold_df_raw)
+        if df_social_raw is not None and not df_social_raw.is_empty():
+            df_social_cleaned = TextCleaner.clean_polars_column(df_social_raw, title_col="title", body_col="text_body")
+            console.print("   -> Running batch sentiment inference (FinBERT)...")
+            df_social_scored = self.nlp_engine.score_dataframe(df_social_cleaned)
+            total_social = self.warehouse.upsert_social_sentiment(df_social_scored)
+            posts_processed = len(df_social_raw)
+        else:
+            total_social = 0
+            posts_processed = 0
 
-        elapsed_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
-        console.print(f"[bold green][OK] Pipeline completed in {elapsed_seconds:.2f}s[/bold green]")
+        candles_processed = len(df_market) if df_market is not None else 0
+        macro_records = len(df_macro) if df_macro is not None else 0
 
         return {
-            "symbol": self.symbol,
-            "candles_processed": len(raw_market),
-            "posts_processed": len(raw_social),
-            "macro_records": len(raw_macro),
             "total_silver_market": total_market,
             "total_silver_social": total_social,
             "total_silver_macro": total_macro,
-            "gold_preview": gold_df,
-            "elapsed_seconds": elapsed_seconds,
+            "candles_processed": candles_processed,
+            "posts_processed": posts_processed,
+            "macro_records": macro_records,
         }
+
+    def aggregate_gold(self) -> pl.DataFrame:
+        """Consolidates Silver tables into Gold Layer feature store and computes quantitative signals."""
+        console.print("[bold blue]4. Generating Gold Layer Feature Store & Alpha Signals...[/bold blue]")
+        gold_df_raw = self.warehouse.query_gold(symbol=self.symbol, limit=self.hours)
+        return QuantSignalsEngine.calculate_signals(gold_df_raw)
+
+    async def run(self) -> Dict[str, Any]:
+        """
+        Executes the full ELT cycle asynchronously.
+        1. Async Extraction of Market, Social & Macro data in parallel.
+        2. Ingestion into Bronze Data Lake (Parquet).
+        3. Text cleaning (Polars) and NLP Sentiment Scoring (FinBERT).
+        4. Upsert into DuckDB Silver Layer.
+        5. Consolidation into Gold Layer.
+        """
+        start_time = datetime.now(timezone.utc)
+        console.rule(f"[bold green]Starting Market Intelligence Pipeline ({self.symbol})[/bold green]")
+
+        try:
+            # 1. Extraction Layer
+            extracted = await self.extract()
+
+            # 2. Bronze Data Lake Landing
+            self.land_bronze(
+                raw_market=extracted["market"],
+                raw_macro=extracted["macro"],
+                raw_social=extracted["social"],
+            )
+
+            # 3. Silver Layer Transformations & NLP Enrichment
+            silver_res = self.transform_silver(
+                raw_market=extracted["market"],
+                raw_macro=extracted["macro"],
+                raw_social=extracted["social"],
+            )
+
+            # 4. Gold Analytics Consolidation & Alpha Signal Generation
+            gold_df = self.aggregate_gold()
+
+            elapsed_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
+            console.print(f"[bold green][OK] Pipeline completed in {elapsed_seconds:.2f}s[/bold green]")
+
+            return {
+                "symbol": self.symbol,
+                "candles_processed": silver_res["candles_processed"],
+                "posts_processed": silver_res["posts_processed"],
+                "macro_records": silver_res["macro_records"],
+                "total_silver_market": silver_res["total_silver_market"],
+                "total_silver_social": silver_res["total_silver_social"],
+                "total_silver_macro": silver_res["total_silver_macro"],
+                "gold_preview": gold_df,
+                "elapsed_seconds": elapsed_seconds,
+            }
+        finally:
+            self.close()

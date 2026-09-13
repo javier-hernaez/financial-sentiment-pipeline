@@ -1,31 +1,47 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/Sidebar';
 import { TopNav } from '@/components/TopNav';
-import { HeroBanner } from '@/components/HeroBanner';
-import { KpiCardsRow } from '@/components/KpiCardsRow';
-import { MiddleSection } from '@/components/MiddleSection';
-import { QuickActionsAndLeaders } from '@/components/QuickActionsAndLeaders';
-import { PendingActions } from '@/components/PendingActions';
+import { ShopeersKpiCards } from '@/components/ShopeersKpiCards';
+import { IngestionBarAndGauge } from '@/components/IngestionBarAndGauge';
+import { AssetFeedTable } from '@/components/AssetFeedTable';
 import { PipelineRunner } from '@/components/PipelineRunner';
-import { MarketTerminal } from '@/components/MarketTerminal';
+
+const ProfitAndSourcesChart = dynamic(
+  () => import('@/components/ProfitAndSourcesChart').then((m) => m.ProfitAndSourcesChart),
+  { ssr: false }
+);
+
+const MarketTerminal = dynamic(
+  () => import('@/components/MarketTerminal').then((m) => m.MarketTerminal),
+  { ssr: false }
+);
 import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
 import { WarehouseOps } from '@/components/WarehouseOps';
+import { DocumentationGuide } from '@/components/DocumentationGuide';
+import { EtlPipelineMonitorWidget } from '@/components/EtlPipelineMonitorWidget';
+import { Calendar, ChevronDown, Play, Download, ArrowLeft } from 'lucide-react';
 import { SystemMetrics, Diagnostics } from '@/types';
 import { fetchMetrics, fetchDiagnostics } from '@/lib/api';
 
 export default function Home() {
+  const [isMounted, setIsMounted] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const [timeRange, setTimeRange] = useState('Últimas 24 horas');
+
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    setIsMounted(true);
     loadAll();
   }, []);
 
@@ -47,14 +63,28 @@ export default function Home() {
     setTimeout(() => setToastMsg(null), 4500);
   };
 
-  const handleTriggerStage = (stage: 'extract' | 'gold' | 'full') => {
-    setActiveView('orchestration');
-    showToast(`Navegando a Pipeline ELT para ejecutar fase: ${stage.toUpperCase()}`);
+  const toggleTheme = () => {
+    setIsDark(!isDark);
   };
 
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-slate-400 font-mono text-xs">
+          <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+          <span>Iniciando Terminal Cuantitativo...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#0a0f1d] text-slate-200 flex flex-col md:flex-row">
-      {/* Left Sidebar (Desktop + Mobile Drawer) */}
+    <div
+      className={`min-h-screen flex flex-col md:flex-row transition-colors duration-200 ${
+        isDark ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f4f5f7] text-slate-800'
+      }`}
+    >
+      {/* Left Sidebar */}
       <Sidebar
         activeView={activeView}
         setActiveView={setActiveView}
@@ -62,163 +92,342 @@ export default function Home() {
         setIsCollapsed={setIsCollapsed}
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
+        isDark={isDark}
+        onTriggerFullPipeline={() => {
+          setActiveView('orchestration');
+          showToast('Iniciando consola de orquestación ELT...');
+        }}
       />
 
       {/* Main Content Area */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ml-0 ${
-          isCollapsed ? 'md:ml-16' : 'md:ml-60'
+          isCollapsed ? 'md:ml-20' : 'md:ml-64'
         }`}
       >
         {/* Top Navbar */}
         <TopNav
-          title={
-            activeView === 'dashboard'
-              ? 'Dashboard Operacional'
-              : activeView === 'orchestration'
-              ? 'Orquestador ELT'
-              : activeView === 'medallion'
-              ? 'Explorador Medallion Lakehouse'
-              : activeView === 'nlp'
-              ? 'Laboratorio FinBERT NLP'
-              : activeView === 'terminal'
-              ? 'Terminal Cuantitativo de Mercado'
-              : 'Mantenimiento y DuckDB Ops'
-          }
-          subtitle={
-            activeView === 'dashboard'
-              ? 'Monitorización del lago de datos, ingesta de noticias y feature store'
-              : 'Gestión y análisis de datos en tiempo real'
-          }
           onToggleMobileMenu={() => setIsMobileOpen(!isMobileOpen)}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          onNavigate={(v) => setActiveView(v)}
+          activeView={activeView}
         />
 
-        {/* Dynamic Body with Distinct Spacing between Sections */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-8 max-w-[1600px] w-full mx-auto">
+        {/* Dashboard Content Container */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto">
+          
+          {/* Main Dashboard View */}
           {activeView === 'dashboard' && (
-            <div className="space-y-8">
-              {/* SECTION 1: PRIMARY FOCAL POINT (Hero / Health / Core Numbers) */}
-              <HeroBanner
+            <div className="space-y-6">
+              
+              {/* Header Bar: Title + Date Range + Window + Run Pipeline + Export CSV */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Dashboard de Sentimiento &amp; Pipeline ELT
+                  </h1>
+                  <p className={`text-xs mt-1 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Lago de Datos Medallion · FinBERT NLP · Almacenamiento DuckDB
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Date Range Pill */}
+                  <div
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-md border text-xs font-medium cursor-pointer shadow-2xs ${
+                      isDark
+                        ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>En Tiempo Real · Lote Activo</span>
+                  </div>
+
+                  {/* Window Dropdown */}
+                  <div
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-xs font-medium cursor-pointer shadow-2xs ${
+                      isDark
+                        ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{timeRange}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+
+                  {/* Trigger Pipeline Button */}
+                  <button
+                    onClick={() => {
+                      setActiveView('orchestration');
+                      showToast('Navegando a consola de ejecución ELT...');
+                    }}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-xs font-semibold transition shadow-2xs ${
+                      isDark
+                        ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
+                        : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    <span>Ejecutar Pipeline</span>
+                  </button>
+
+                  {/* Primary Blue Export Button */}
+                  <a
+                    href="/api/export-csv?symbol=BTCUSDT"
+                    className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Exportar Gold CSV</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* 1. Top 4 KPI Cards (Bronze Ingestion, Silver NLP, FinBERT Inference, Gold DuckDB) */}
+              <ShopeersKpiCards metrics={metrics} isDark={isDark} />
+
+              {/* 2. Graphical ETL Pipeline Monitoring & Operator Actions */}
+              <EtlPipelineMonitorWidget
                 metrics={metrics}
-                onRefresh={loadAll}
-                isRefreshing={isRefreshing}
+                diagnostics={diagnostics}
+                isDark={isDark}
+                onNavigate={(v) => setActiveView(v)}
+                onTriggerPipeline={() => {
+                  setActiveView('orchestration');
+                  showToast('Iniciando consola de orquestación ELT...');
+                }}
               />
 
-              {/* Separator */}
-              <div className="border-t border-[#1a253a]" />
+              {/* 3. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <ProfitAndSourcesChart metrics={metrics} isDark={isDark} />
+                </div>
+                <div className="lg:col-span-1">
+                  <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} />
+                </div>
+              </div>
 
-              {/* SECTION 2: MEDALLION METRICS (4 KPI Cards with Progress) */}
-              <KpiCardsRow metrics={metrics} />
+              {/* 4. Bottom Row: Real-time FinBERT Headlines & RSS Feeds (Full-width for readability) */}
+              <div className="w-full">
+                <AssetFeedTable isDark={isDark} />
+              </div>
 
-              {/* Separator */}
-              <div className="border-t border-[#1a253a]" />
-
-              {/* SECTION 3: INGESTION PERFORMANCE + LIVE ACTIVITY */}
-              <MiddleSection onViewAllActivities={() => setActiveView('medallion')} />
-
-              {/* Separator */}
-              <div className="border-t border-[#1a253a]" />
-
-              {/* SECTION 4: ACTIONS & ASSETS */}
-              <QuickActionsAndLeaders
-                onTriggerStage={handleTriggerStage}
-                onOpenNlpLab={() => setActiveView('nlp')}
-              />
-
-              {/* Separator */}
-              <div className="border-t border-[#1a253a]" />
-
-              {/* SECTION 5: PENDING ACTIONS & MAINTENANCE */}
-              <PendingActions
-                onShowToast={showToast}
-                onRefreshTelemetry={loadAll}
-              />
             </div>
           )}
 
           {/* Subview: Pipeline Orchestration */}
           {activeView === 'orchestration' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Orquestación y Pipeline de Datos (ELT)
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Lanza extracciones bajo demanda, revisa los logs de ingestión y procesa lotes hacia DuckDB.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <PipelineRunner onSuccess={loadAll} />
+              <PipelineRunner onSuccess={loadAll} isDark={isDark} />
             </div>
           )}
 
           {/* Subview: Medallion Explorer */}
-          {activeView === 'medallion' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+          {(activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Data Lake &amp; Feature Store DuckDB
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Inspecciona particiones Bronze (Parquet), registros limpios Silver y agregaciones analíticas Gold.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <MedallionExplorer />
+              <MedallionExplorer isDark={isDark} />
             </div>
           )}
 
           {/* Subview: FinBERT Lab */}
           {activeView === 'nlp' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Laboratorio FinBERT (Scoring NLP)
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Introduce cualquier titular o texto financiero para evaluar la polaridad inferida por el modelo.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <FinbertLab />
+              <FinbertLab isDark={isDark} />
+            </div>
+          )}
+
+          {/* Subview: Feeds RSS & Titulares */}
+          {activeView === 'content' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Feeds RSS &amp; Titulares Procesados
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Visualización de texto completo, fecha exacta y etiqueta de sentimiento asignada.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
+                </button>
+              </div>
+              <AssetFeedTable isDark={isDark} />
             </div>
           )}
 
           {/* Subview: Market Terminal */}
-          {activeView === 'terminal' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+          {(activeView === 'terminal' || activeView === 'signals') && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Terminal Cuantitativo de Mercado
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Velas horarias OHLCV sincronizadas con la polaridad social y detección de divergencias.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <MarketTerminal />
+              <MarketTerminal isDark={isDark} />
             </div>
           )}
 
           {/* Subview: Warehouse Ops */}
           {activeView === 'maintenance' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1e2a42]">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Mantenimiento y Diagnóstico DuckDB
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Operaciones VACUUM, CHECKPOINT y estado de salud de endpoints analíticos.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className="text-sm font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition"
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
                 >
-                  ← Volver al Dashboard General
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
                 </button>
               </div>
               <WarehouseOps
                 diagnostics={diagnostics}
                 onRefresh={loadAll}
                 onSuccessMessage={showToast}
+                isDark={isDark}
               />
+            </div>
+          )}
+
+          {/* Subview: Documentation & Help Guide */}
+          {activeView === 'documentation' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Manual y Documentación del Sistema
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Guía de referencia de ingeniería de datos, especificaciones del modelo y comandos de terminal.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
+                    isDark
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Volver al Dashboard</span>
+                </button>
+              </div>
+              <DocumentationGuide isDark={isDark} />
             </div>
           )}
         </main>
 
         {/* Global Toast Notification */}
         {toastMsg && (
-          <div className="fixed bottom-5 right-5 z-50 bg-[#162137] border border-[#253758] text-white text-xs sm:text-sm font-mono px-4 py-3 rounded-lg shadow-2xl flex items-center justify-between gap-4 transition-all">
+          <div
+            className={`fixed bottom-5 right-5 z-50 text-xs sm:text-sm font-mono px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-4 transition-all border ${
+              isDark
+                ? 'bg-[#162137] border-[#253758] text-white'
+                : 'bg-white border-slate-200 text-slate-800'
+            }`}
+          >
             <span>{toastMsg}</span>
             <button
               onClick={() => setToastMsg(null)}

@@ -61,7 +61,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                 )
             return extracted
 
-        except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+        except (httpx.HTTPStatusError, httpx.RequestError):
             # Reddit frequently returns 403; return empty so live news can take precedence
             return []
 
@@ -74,7 +74,9 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         try:
             res = httpx.get(
                 url,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"},
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                },
                 follow_redirects=True,
                 timeout=8.0,
             )
@@ -96,6 +98,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                 desc = (desc_el.text or "").strip() if desc_el is not None else ""
                 # Strip basic HTML tags from description if any
                 import re
+
                 desc_clean = re.sub(r"<[^>]+>", "", desc)[:400]
 
                 dt = datetime.now(timezone.utc)

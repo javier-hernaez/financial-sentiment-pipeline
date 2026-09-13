@@ -1,67 +1,289 @@
 'use client';
 
-import React from 'react';
-import { Search, Bell, Menu } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Search,
+  Bell,
+  Sun,
+  Moon,
+  Menu,
+  BookOpen,
+  Settings,
+  Zap,
+  LayoutDashboard,
+  Shield,
+  Activity,
+  CheckCircle2,
+  X,
+  ExternalLink,
+  Database,
+  Cpu,
+} from 'lucide-react';
 
 interface TopNavProps {
-  title?: string;
-  subtitle?: string;
   onSearch?: (query: string) => void;
   onToggleMobileMenu?: () => void;
+  isDark?: boolean;
+  onToggleTheme?: () => void;
+  onNavigate?: (view: string) => void;
+  activeView?: string;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
-  title = 'Dashboard',
-  subtitle = 'Gestión y control del lakehouse analítico',
   onSearch,
   onToggleMobileMenu,
+  isDark = true,
+  onToggleTheme,
+  onNavigate,
+  activeView = 'dashboard',
 }) => {
+  const [isOpMenuOpen, setIsOpMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const opMenuRef = useRef<HTMLDivElement>(null);
+  const notifMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (opMenuRef.current && !opMenuRef.current.contains(event.target as Node)) {
+        setIsOpMenuOpen(false);
+      }
+      if (notifMenuRef.current && !notifMenuRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleOpAction = (view: string) => {
+    setIsOpMenuOpen(false);
+    onNavigate?.(view);
+  };
+
   return (
-    <header className="h-16 flex items-center justify-between px-4 sm:px-6 bg-[#0d1424] border-b border-[#1a243a] sticky top-0 z-30">
-      {/* Left */}
-      <div className="flex items-center gap-3">
+    <header
+      className={`h-16 flex items-center justify-between px-4 sm:px-8 border-b transition-colors duration-200 sticky top-0 z-30 ${
+        isDark
+          ? 'bg-[#0b0f19]/90 border-[#1e293b] backdrop-blur-md'
+          : 'bg-white/90 border-slate-100 backdrop-blur-md'
+      }`}
+    >
+      {/* Left: Mobile Menu & Search Input */}
+      <div className="flex items-center gap-3 flex-1 max-w-md">
         <button
           onClick={onToggleMobileMenu}
-          className="p-2 rounded-sm bg-[#162137] border border-[#233352] text-slate-300 hover:text-white md:hidden transition"
+          className={`p-2 rounded-xl border md:hidden transition ${
+            isDark
+              ? 'border-[#1e293b] text-slate-300 hover:bg-[#131b2e]'
+              : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+          }`}
           aria-label="Abrir menú"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div>
-          <h1 className="text-base sm:text-xl font-bold text-white tracking-tight">{title}</h1>
-          <p className="text-xs sm:text-sm text-slate-400 hidden sm:block">{subtitle}</p>
+        {/* Search Bar with ⌘K Badge */}
+        <div className="relative w-full max-w-sm">
+          <div
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-full border transition-all ${
+              isDark
+                ? 'bg-[#131b2e] border-[#1e293b] focus-within:border-blue-500'
+                : 'bg-slate-50 border-slate-200 focus-within:border-blue-500'
+            }`}
+          >
+            <Search className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
+            <input
+              type="text"
+              placeholder="Buscar métricas, tablas, feeds..."
+              onChange={(e) => onSearch?.(e.target.value)}
+              className={`w-full bg-transparent text-xs outline-none ${
+                isDark ? 'text-white placeholder:text-slate-400' : 'text-slate-800 placeholder:text-slate-400'
+              }`}
+            />
+            <span
+              className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${
+                isDark
+                  ? 'bg-[#0b0f19] text-slate-400 border-[#1e293b]'
+                  : 'bg-white text-slate-400 border-slate-200 shadow-2xs'
+              }`}
+            >
+              ⌘K
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Right */}
+      {/* Right Actions: Theme Toggle, Notifications, User Avatar (OP) */}
       <div className="flex items-center gap-3">
-        {/* Search */}
-        <div className="relative hidden lg:block">
-          <input
-            type="text"
-            placeholder="Buscar tablas, símbolos, métricas..."
-            onChange={(e) => onSearch?.(e.target.value)}
-            className="w-72 bg-[#0e1628] border border-[#1b263e] text-sm text-slate-200 rounded-sm pl-9 pr-3 py-2 outline-none focus:border-slate-500 transition placeholder:text-slate-500 font-mono"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-        </div>
-
-        {/* Notifications */}
+        {/* Theme Toggle Button (Sun/Moon) */}
         <button
-          className="relative p-2 rounded-sm bg-[#0e1628] hover:bg-[#162238] text-slate-300 hover:text-white border border-[#1b263e] transition"
-          title="Notificaciones"
+          onClick={onToggleTheme}
+          className={`p-2 rounded-full border transition ${
+            isDark
+              ? 'border-[#1e293b] text-slate-300 hover:text-amber-400 hover:bg-[#131b2e]'
+              : 'border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50'
+          }`}
+          title={isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
         >
-          <Bell className="w-4 h-4" />
-          <span className="w-2 h-2 rounded-sm bg-[#22c55e] absolute top-1.5 right-1.5"></span>
+          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* Avatar */}
-        <div className="flex items-center gap-2 pl-3 border-l border-[#1a243a]">
-          <div className="w-8 h-8 rounded-sm bg-[#162137] border border-[#233352] text-slate-200 flex items-center justify-center font-bold text-xs font-mono">
-            AD
-          </div>
-          <span className="text-xs font-semibold text-slate-200 hidden sm:inline-block">Admin</span>
+        {/* Notifications Popover */}
+        <div className="relative" ref={notifMenuRef}>
+          <button
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className={`relative p-2 rounded-full border transition ${
+              isDark
+                ? 'border-[#1e293b] text-slate-300 hover:text-white hover:bg-[#131b2e]'
+                : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+            title="Notificaciones del Sistema"
+            aria-expanded={isNotificationsOpen}
+          >
+            <Bell className="w-4 h-4" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 absolute top-1.5 right-1.5 ring-2 ring-[#0b0f19]" />
+          </button>
+
+          {isNotificationsOpen && (
+            <div
+              className={`absolute right-0 mt-3 w-80 rounded-2xl border shadow-2xl p-4 z-50 ${
+                isDark
+                  ? 'bg-[#101726] border-[#1e293b] text-slate-200'
+                  : 'bg-white border-slate-200 text-slate-800'
+              }`}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-bold">Estado del Sistema</span>
+                </div>
+                <button
+                  onClick={() => setIsNotificationsOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="py-3 space-y-2 text-xs">
+                <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-100'}`}>
+                  <div className="flex items-center justify-between text-emerald-400 font-bold text-[11px]">
+                    <span>DuckDB Feature Store</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Almacén columnar listo para consultas analíticas.</p>
+                </div>
+
+                <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-100'}`}>
+                  <div className="flex items-center justify-between text-blue-400 font-bold text-[11px]">
+                    <span>FinBERT Transformers</span>
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Motor de inferencia y scoring financiero activo.</p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-700/30 flex justify-between">
+                <button
+                  onClick={() => {
+                    setIsNotificationsOpen(false);
+                    onNavigate?.('documentation');
+                  }}
+                  className="text-[11px] font-bold text-blue-400 hover:text-blue-300"
+                >
+                  Ver Guía del Sistema →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Operator Profile Button & Dropdown */}
+        <div className="relative pl-1" ref={opMenuRef}>
+          <button
+            onClick={() => setIsOpMenuOpen(!isOpMenuOpen)}
+            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs font-mono transition focus:outline-none ${
+              isDark
+                ? 'border-slate-800 hover:border-slate-700 bg-[#101726] text-slate-300 hover:text-white'
+                : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
+            }`}
+            title="Perfil del Operador"
+            aria-expanded={isOpMenuOpen}
+            aria-label="Perfil del Operador"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="font-sans font-medium text-xs">Javier H.</span>
+          </button>
+
+          {/* Minimalist Operator Dropdown Menu */}
+          {isOpMenuOpen && (
+            <div
+              className={`absolute right-0 mt-2 w-64 rounded-md border shadow-xl p-3 z-50 transition-all ${
+                isDark
+                  ? 'bg-[#101726] border-slate-800 text-slate-200 shadow-black/80'
+                  : 'bg-white border-slate-200 text-slate-800 shadow-slate-300/50'
+              }`}
+            >
+              {/* Operator Identity Header */}
+              <div className="pb-2.5 mb-2 border-b border-slate-800/40 px-1">
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Javier Hernáez
+                  </span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    Operador
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  TFM · Ingeniero de Datos
+                </p>
+              </div>
+
+              {/* System Session Metadata */}
+              <div className="space-y-1.5 text-[11px] font-mono py-1 px-1 text-slate-400">
+                <div className="flex items-center justify-between">
+                  <span>Almacén:</span>
+                  <span className="text-slate-300 font-bold">DuckDB Gold</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Modelo NLP:</span>
+                  <span className="text-slate-300 font-bold">FinBERT</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Pipeline:</span>
+                  <span className="text-emerald-400 font-bold">Medallion ELT</span>
+                </div>
+              </div>
+
+              {/* Direct Actions */}
+              <div className="pt-2 mt-2 border-t border-slate-800/40 space-y-1 text-xs">
+                <button
+                  onClick={() => handleOpAction('documentation')}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition ${
+                    isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Documentación &amp; Ayuda</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpAction('maintenance')}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition ${
+                    isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <Settings className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Mantenimiento DuckDB</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
