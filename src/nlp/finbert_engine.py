@@ -36,9 +36,9 @@ class FinBERTEngine:
     def _try_load_model(self) -> None:
         """Attempts to load HuggingFace Transformers and FinBERT weights."""
         try:
+            import logging
             import os
             import warnings
-            import logging
 
             os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
             warnings.filterwarnings("ignore")
