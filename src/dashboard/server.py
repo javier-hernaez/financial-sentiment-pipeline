@@ -9,7 +9,7 @@ import sys
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 if sys.platform == "win32":
     try:
@@ -32,8 +32,15 @@ from .admin_view import ADMIN_HTML_TEMPLATE
 
 console = Console()
 
-# Initialize NLP engine for sandbox testing (Real FinBERT Transformer with fallback)
-sandbox_nlp = FinBERTEngine(force_mock=False)
+# Initialize NLP engine lazily on first request to speed up startup and avoid double-loading
+_sandbox_nlp: Optional[FinBERTEngine] = None
+
+
+def get_sandbox_nlp() -> FinBERTEngine:
+    global _sandbox_nlp
+    if _sandbox_nlp is None:
+        _sandbox_nlp = FinBERTEngine(force_mock=False)
+    return _sandbox_nlp
 
 ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="es">
@@ -695,6 +702,12 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
+    def handle(self):
+        try:
+            super().handle()
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            pass
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
@@ -1021,7 +1034,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             try:
                 text = payload.get("text", "")
                 cleaned = TextCleaner.clean_string(text)
-                preds = sandbox_nlp.predict_batch([cleaned]) if cleaned else []
+                preds = get_sandbox_nlp().predict_batch([cleaned]) if cleaned else []
                 res = (
                     preds[0]
                     if preds
@@ -1196,11 +1209,14 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _send_json(self, data: Any, status_code: int = 200):
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(json.dumps(data, default=str).encode("utf-8"))
+        try:
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(data, default=str).encode("utf-8"))
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            pass
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8080):

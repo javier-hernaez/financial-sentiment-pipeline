@@ -42,9 +42,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isFinancesOpen, setIsFinancesOpen] = useState(true);
 
-  const mainNav = [
+  interface NavItem {
+    id: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge?: string;
+  }
+
+  const mainNav: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'orchestration', label: 'Orquestación ELT', icon: Zap },
+    { id: 'orchestration', label: 'Orquestación ELT', icon: Zap, badge: 'Live' },
     { id: 'terminal', label: 'Terminal de Mercado', icon: LineChart },
     { id: 'nlp', label: 'Laboratorio FinBERT NLP', icon: Cpu },
     { id: 'content', label: 'Feeds RSS & Titulares', icon: FileText },

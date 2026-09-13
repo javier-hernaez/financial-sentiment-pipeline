@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   X,
   ExternalLink,
+  Database,
+  Cpu,
 } from 'lucide-react';
 
 interface TopNavProps {

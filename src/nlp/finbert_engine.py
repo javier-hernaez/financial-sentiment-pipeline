@@ -36,6 +36,11 @@ class FinBERTEngine:
     def _try_load_model(self) -> None:
         """Attempts to load HuggingFace Transformers and FinBERT weights."""
         try:
+            import os
+            import warnings
+            os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+            warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")
+            warnings.filterwarnings("ignore", category=UserWarning, module="huggingface_hub")
             import torch  # noqa: F401
             from transformers import AutoModelForSequenceClassification, AutoTokenizer
 

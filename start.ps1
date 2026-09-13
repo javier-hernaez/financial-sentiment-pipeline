@@ -11,6 +11,8 @@
 
 $ErrorActionPreference = "Stop"
 $Host.UI.RawUI.WindowTitle = "Market Intelligence Platform • Launcher"
+$env:NEXT_TELEMETRY_DISABLED = "1"
+$env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "   MARKET INTELLIGENCE PLATFORM • INICIO DE SERVICIOS    " -ForegroundColor Cyan
