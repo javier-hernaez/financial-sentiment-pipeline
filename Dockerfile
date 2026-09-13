@@ -40,12 +40,11 @@ RUN npm ci
 COPY --chown=user:user frontend/ ./
 RUN npm run build
 
-# Copy project source and data
+# Copy project source and setup data directory
 WORKDIR /app
 COPY --chown=user:user src/ ./src/
-COPY --chown=user:user data/ ./data/
 COPY --chown=user:user start.sh ./
-RUN chmod +x start.sh
+RUN chmod +x start.sh && mkdir -p /app/data/bronze /app/data/silver /app/data/gold
 
 EXPOSE 7860
 
