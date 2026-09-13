@@ -23,10 +23,15 @@ interface MarketTerminalProps {
 }
 
 export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true }) => {
+  const [isMounted, setIsMounted] = useState(false);
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [hours, setHours] = useState(24);
   const [data, setData] = useState<GoldRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -109,7 +114,7 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
 
         <a
           href={`/api/export-csv?symbol=${symbol}`}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm shadow-blue-500/25 flex items-center gap-1.5"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold rounded-md transition shadow-sm flex items-center gap-1.5"
         >
           <Download className="w-3.5 h-3.5" />
           Descargar CSV
@@ -121,10 +126,10 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
         
         {/* Price Card */}
         <div
-          className={`p-5 rounded-2xl border transition-all duration-200 space-y-1 ${
+          className={`p-5 rounded-lg border transition-all duration-200 space-y-1 ${
             isDark
-              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+              : 'bg-white border-slate-200 text-slate-800 shadow-sm'
           }`}
         >
           <span className={`text-xs uppercase tracking-wider font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -135,12 +140,12 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
           </div>
           <div className="flex items-center gap-2 text-xs font-mono font-bold pt-1">
             {priceChange >= 0 ? (
-              <span className="text-emerald-500 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1">
                 <TrendingUp className="w-3.5 h-3.5" />
                 +{priceChangePct.toFixed(2)}%
               </span>
             ) : (
-              <span className="text-rose-500 bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="text-rose-400 bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-md flex items-center gap-1">
                 <TrendingDown className="w-3.5 h-3.5" />
                 {priceChangePct.toFixed(2)}%
               </span>
@@ -151,17 +156,17 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
 
         {/* Sentiment Card */}
         <div
-          className={`p-5 rounded-2xl border transition-all duration-200 space-y-1 ${
+          className={`p-5 rounded-lg border transition-all duration-200 space-y-1 ${
             isDark
-              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+              : 'bg-white border-slate-200 text-slate-800 shadow-sm'
           }`}
         >
           <span className={`text-xs uppercase tracking-wider font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Sentimiento FinBERT (1h)
           </span>
           <div className={`text-2xl sm:text-3xl font-black font-mono font-tabular ${
-            latest && latest.avg_hourly_sentiment >= 0 ? 'text-emerald-500' : 'text-rose-500'
+            latest && latest.avg_hourly_sentiment >= 0 ? 'text-emerald-400' : 'text-rose-400'
           }`}>
             {latest ? (latest.avg_hourly_sentiment > 0 ? `+${latest.avg_hourly_sentiment.toFixed(2)}` : latest.avg_hourly_sentiment.toFixed(2)) : '0.00'}
           </div>
@@ -175,26 +180,26 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
 
         {/* Fear & Greed Card */}
         <div
-          className={`p-5 rounded-2xl border transition-all duration-200 space-y-1 ${
+          className={`p-5 rounded-lg border transition-all duration-200 space-y-1 ${
             isDark
-              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+              : 'bg-white border-slate-200 text-slate-800 shadow-sm'
           }`}
         >
           <span className={`text-xs uppercase tracking-wider font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Índice Miedo y Codicia
           </span>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-500 font-tabular">
+            <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-400 font-tabular">
               {latest?.fear_and_greed_score ?? 68}
             </span>
             <span className={`text-xs font-bold uppercase font-mono ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
               / 100 ({latest?.fear_and_greed_classification || 'Codicia Moderada'})
             </span>
           </div>
-          <div className={`w-full rounded-full h-2 mt-2 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+          <div className={`w-full rounded-md h-2 mt-2 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
             <div
-              className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+              className="bg-emerald-500 h-full rounded-md transition-all duration-300"
               style={{ width: `${latest?.fear_and_greed_score ?? 68}%` }}
             ></div>
           </div>
@@ -202,10 +207,10 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
 
         {/* Quantitative Alpha Signal Card */}
         <div
-          className={`p-5 rounded-2xl border transition-all duration-200 space-y-1 ${
+          className={`p-5 rounded-lg border transition-all duration-200 space-y-1 ${
             isDark
-              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+              : 'bg-white border-slate-200 text-slate-800 shadow-sm'
           }`}
         >
           <span className={`text-xs uppercase tracking-wider font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -213,12 +218,12 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
           </span>
           <div className="text-sm font-bold font-mono mt-1 tracking-tight flex items-center gap-1.5">
             {latest?.alpha_divergence_flag ? (
-              <span className="text-rose-500 bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="text-rose-400 bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-md flex items-center gap-1 font-bold">
                 <ShieldAlert className="w-4 h-4" />
                 DIVERGENCIA DETECTADA
               </span>
             ) : (
-              <span className="text-emerald-500 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1 font-bold">
                 <CheckCircle className="w-4 h-4" />
                 FLUJO ALINEADO
               </span>
@@ -237,10 +242,10 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
         
         {/* Price Trend Chart */}
         <div
-          className={`p-6 rounded-2xl border transition-all duration-200 space-y-3 ${
+          className={`p-5 rounded-lg border transition-all duration-200 space-y-3 ${
             isDark
-              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+              : 'bg-white border-slate-200 text-slate-800 shadow-sm'
           }`}
         >
           <div className={`flex justify-between items-center pb-2 border-b ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
@@ -251,7 +256,7 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
           </div>
 
           <div className="h-64 w-full">
-            {isLoading ? (
+            {isLoading || !isMounted ? (
               <div className="h-full flex items-center justify-center text-slate-500 font-mono text-xs">Cargando serie...</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -276,7 +281,7 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
                     contentStyle={{
                       backgroundColor: isDark ? '#0e1628' : '#ffffff',
                       borderColor: isDark ? '#1f2d48' : '#e2e8f0',
-                      borderRadius: '12px',
+                      borderRadius: '8px',
                       fontSize: '11px',
                       fontFamily: 'monospace',
                       color: isDark ? '#f8fafc' : '#0f172a',
@@ -299,10 +304,10 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
 
         {/* FinBERT Hourly Sentiment Momentum Chart */}
         <div
-          className={`p-6 rounded-2xl border transition-all duration-200 space-y-3 ${
+          className={`p-5 rounded-lg border transition-all duration-200 space-y-3 ${
             isDark
-              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+              : 'bg-white border-slate-200 text-slate-800 shadow-sm'
           }`}
         >
           <div className={`flex justify-between items-center pb-2 border-b ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
@@ -313,7 +318,7 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
           </div>
 
           <div className="h-64 w-full">
-            {isLoading ? (
+            {isLoading || !isMounted ? (
               <div className="h-full flex items-center justify-center text-slate-500 font-mono text-xs">Cargando sentimiento...</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -326,7 +331,7 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
                     contentStyle={{
                       backgroundColor: isDark ? '#0e1628' : '#ffffff',
                       borderColor: isDark ? '#1f2d48' : '#e2e8f0',
-                      borderRadius: '12px',
+                      borderRadius: '8px',
                       fontSize: '11px',
                       fontFamily: 'monospace',
                       color: isDark ? '#f8fafc' : '#0f172a',

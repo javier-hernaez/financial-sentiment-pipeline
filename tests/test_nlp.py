@@ -115,4 +115,3 @@ def test_finbert_batch_throughput_consistency():
     for b, i in zip(batch_res, indiv_res):
         assert b["sentiment_label"] == i["sentiment_label"]
         assert abs(b["sentiment_score"] - i["sentiment_score"]) < 1e-4
-

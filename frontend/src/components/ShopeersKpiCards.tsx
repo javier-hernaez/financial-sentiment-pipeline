@@ -56,18 +56,18 @@ export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isD
         return (
           <div
             key={i}
-            className={`p-5 rounded-2xl border transition-all duration-200 ${
+            className={`p-5 rounded-lg border transition-all duration-200 ${
               isDark
-                ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20 hover:border-[#2a3c60]'
-                : 'bg-white border-slate-100 text-slate-800 shadow-sm hover:shadow-md'
+                ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md hover:border-[#2a3c60]'
+                : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:shadow-md'
             }`}
           >
             {/* Header: Title and Icon */}
             <div className="flex items-center justify-between">
-              <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 {c.title}
               </span>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${c.iconBg}`}>
+              <div className={`w-8 h-8 rounded-md flex items-center justify-center ${c.iconBg}`}>
                 <Icon className="w-4 h-4" />
               </div>
             </div>
@@ -79,14 +79,14 @@ export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isD
               </span>
 
               <span
-                className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-md ${
                   c.isPositive
                     ? isDark
-                      ? 'bg-emerald-500/15 text-[#34d399] border border-emerald-500/30'
-                      : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                     : isDark
-                    ? 'bg-rose-500/15 text-[#f87171] border border-rose-500/30'
-                    : 'bg-rose-50 text-rose-700 border border-rose-100'
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                    : 'bg-rose-100 text-rose-800 border border-rose-300'
                 }`}
               >
                 <ArrowUpRight className="w-3 h-3" />

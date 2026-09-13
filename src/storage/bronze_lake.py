@@ -31,7 +31,9 @@ class BronzeDataLake:
         Partition layout: data/bronze/{source}/year=YYYY/month=MM/day=DD/{source}_{timestamp}.parquet
         """
         if not records:
-            console.print(f"[yellow][BronzeLake] Advertencia: No se recibieron registros para el origen: {source}[/yellow]")
+            console.print(
+                f"[yellow][BronzeLake] Advertencia: No se recibieron registros para el origen: {source}[/yellow]"
+            )
             return None
 
         now = datetime.now(timezone.utc)

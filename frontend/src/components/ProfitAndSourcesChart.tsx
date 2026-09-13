@@ -25,6 +25,12 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
   metrics,
   isDark = true,
 }) => {
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Timeline data: Sentiment score (-1.0 to +1.0 scaled to 0-100 index) & Articles processed
   const chartData = [
     { day: '1 Jan', score: 58, rawScore: '+0.58', articles: 120 },
@@ -40,10 +46,10 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
 
   return (
     <div
-      className={`p-6 rounded-2xl border transition-all duration-200 ${
+      className={`p-5 rounded-lg border transition-all duration-200 ${
         isDark
-          ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-          : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+          ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+          : 'bg-white border-slate-200 text-slate-800 shadow-sm'
       }`}
     >
       {/* Top Header: Sentiment Index & Pipeline Velocity */}
@@ -87,79 +93,85 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
 
       {/* Main Dual-Line Area Chart: Sentiment Curve + Ingestion Volume */}
       <div className="h-64 w-full mt-6">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-            <defs>
-              <linearGradient id="sentimentGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={isDark ? 0.35 : 0.2} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke={isDark ? '#1e293b' : '#f1f5f9'}
-            />
-            <XAxis
-              dataKey="day"
-              stroke={isDark ? '#64748b' : '#94a3b8'}
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              stroke={isDark ? '#64748b' : '#94a3b8'}
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(val) => `${val}%`}
-            />
-            <Tooltip
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                  const item = payload[0].payload;
-                  return (
-                    <div
-                      className={`p-3 rounded-xl border shadow-xl text-xs font-mono space-y-1.5 ${
-                        isDark
-                          ? 'bg-[#0e1628] border-[#223354] text-white'
-                          : 'bg-white border-slate-200 text-slate-800'
-                      }`}
-                    >
-                      <div className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                        {label}, 2025 · Batch Pipeline
+        {isMounted ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+              <defs>
+                <linearGradient id="sentimentGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={isDark ? 0.35 : 0.2} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke={isDark ? '#1e293b' : '#f1f5f9'}
+              />
+              <XAxis
+                dataKey="day"
+                stroke={isDark ? '#64748b' : '#94a3b8'}
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke={isDark ? '#64748b' : '#94a3b8'}
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(val) => `${val}%`}
+              />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const item = payload[0].payload;
+                    return (
+                      <div
+                        className={`p-3 rounded-md border shadow-xl text-xs font-mono space-y-1.5 ${
+                          isDark
+                            ? 'bg-[#0e1628] border-[#223354] text-white'
+                            : 'bg-white border-slate-200 text-slate-800'
+                        }`}
+                      >
+                        <div className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                          {label}, 2025 · Batch Pipeline
+                        </div>
+                        <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                          <span>—</span>
+                          <span>Score FinBERT: {item.rawScore} (Bullish)</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-blue-400">
+                          <span>⋯</span>
+                          <span>{item.articles} titulares analizados</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                        <span>—</span>
-                        <span>Score FinBERT: {item.rawScore} (Bullish)</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-blue-400">
-                        <span>⋯</span>
-                        <span>{item.articles} titulares analizados</span>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="score"
-              stroke="#10b981"
-              strokeWidth={2.5}
-              fill="url(#sentimentGrad)"
-            />
-            <Line
-              type="monotone"
-              dataKey="articles"
-              stroke={isDark ? '#3b82f6' : '#2563eb'}
-              strokeWidth={1.5}
-              strokeDasharray="4 4"
-              dot={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="score"
+                stroke="#10b981"
+                strokeWidth={2.5}
+                fill="url(#sentimentGrad)"
+              />
+              <Line
+                type="monotone"
+                dataKey="articles"
+                stroke={isDark ? '#3b82f6' : '#2563eb'}
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                dot={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-xs font-mono text-slate-500">
+            Cargando visualización...
+          </div>
+        )}
       </div>
 
       {/* Bottom Segment: Sentiment Distribution (replacing Retailers/Distributors/Wholesalers) */}

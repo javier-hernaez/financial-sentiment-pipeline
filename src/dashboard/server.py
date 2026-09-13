@@ -18,6 +18,9 @@ if sys.platform == "win32":
     except Exception:
         pass
 
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
 import duckdb
 import httpx
 from rich.console import Console
@@ -41,6 +44,7 @@ def get_sandbox_nlp() -> FinBERTEngine:
     if _sandbox_nlp is None:
         _sandbox_nlp = FinBERTEngine(force_mock=False)
     return _sandbox_nlp
+
 
 ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="es">
@@ -97,8 +101,13 @@ ADVANCED_HTML_TEMPLATE = """<!DOCTYPE html>
           Descargar CSV
         </button>
 
+        <a href="http://localhost:3000" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-mono font-semibold px-3.5 py-2 rounded-md shadow-sm transition flex items-center gap-1.5" title="Abrir Dashboard Principal (React)">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          <span>Dashboard Principal</span>
+        </a>
+
         <a href="/admin" aria-label="Ir al Panel de Control y Telemetría" class="bg-slate-800 hover:bg-slate-700 text-blue-400 text-xs font-mono px-3.5 py-2 rounded-md border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-blue-500" title="Panel de Administración y Telemetría">
-          Panel de Control
+          Panel de Control ELT
         </a>
       </nav>
     </header>
@@ -1160,21 +1169,27 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     conn = duckdb.connect(db_path)
                     conn.execute("VACUUM;")
                     conn.close()
-                    self._send_json({"status": "success", "message": "DuckDB VACUUM ejecutado con éxito. Espacio compactado."}, 200)
+                    self._send_json(
+                        {"status": "success", "message": "DuckDB VACUUM ejecutado con éxito. Espacio compactado."}, 200
+                    )
                     return
 
                 elif action == "checkpoint":
                     conn = duckdb.connect(db_path)
                     conn.execute("CHECKPOINT;")
                     conn.close()
-                    self._send_json({"status": "success", "message": "DuckDB CHECKPOINT ejecutado. WAL sincronizado al disco."}, 200)
+                    self._send_json(
+                        {"status": "success", "message": "DuckDB CHECKPOINT ejecutado. WAL sincronizado al disco."}, 200
+                    )
                     return
 
                 elif action == "refresh_views":
                     warehouse = MarketWarehouse()
                     warehouse._init_schema()
                     warehouse.close()
-                    self._send_json({"status": "success", "message": "Esquemas y vistas analíticas Gold recalculadas."}, 200)
+                    self._send_json(
+                        {"status": "success", "message": "Esquemas y vistas analíticas Gold recalculadas."}, 200
+                    )
                     return
 
                 elif action == "clear_table":
@@ -1219,10 +1234,18 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             pass
 
 
+class QuietHTTPServer(HTTPServer):
+    def handle_error(self, request, client_address):
+        exc_type, _, _ = sys.exc_info()
+        if exc_type in (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+            return  # Silently ignore aborted/reset browser requests
+        super().handle_error(request, client_address)
+
+
 def run_server(host: str = "127.0.0.1", port: int = 8080):
     """Starts the advanced dashboard HTTP server."""
     server_address = (host, port)
-    httpd = HTTPServer(server_address, AdvancedDashboardHandler)
+    httpd = QuietHTTPServer(server_address, AdvancedDashboardHandler)
     console.print(
         f"[bold green][OK] Advanced Market Intelligence Terminal running on http://{host}:{port}[/bold green]"
     )

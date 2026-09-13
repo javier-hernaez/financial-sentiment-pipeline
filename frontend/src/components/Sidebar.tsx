@@ -95,8 +95,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center justify-between">
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
-                  <Sparkles className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
+                  <Database className="w-4 h-4" />
                 </div>
                 <span className={`font-extrabold text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Market Intel
@@ -105,8 +105,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
 
             {isCollapsed && !isMobileOpen && (
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white mx-auto shadow-md shadow-blue-500/25">
-                <Sparkles className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white mx-auto shadow-sm">
+                <Database className="w-4 h-4" />
               </div>
             )}
 
@@ -247,30 +247,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         </div>
 
-        {/* Bottom Promo Card: 'Upgrade to Premium' -> 'DuckDB Lakehouse Online' */}
+        {/* Bottom Technical Status Footer */}
         {(!isCollapsed || isMobileOpen) && (
-          <div className="p-4">
-            <div
-              className="p-4 rounded-2xl text-white space-y-3 relative overflow-hidden shadow-xl"
-              style={{
-                background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-              }}
-            >
-              <div className="w-7 h-7 rounded-lg bg-blue-500/30 flex items-center justify-center text-blue-300">
-                <Zap className="w-4 h-4" />
+          <div className="p-3.5 border-t border-slate-800/40">
+            <div className={`p-3 rounded-lg border text-xs ${
+              isDark ? 'bg-[#101726] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+            }`}>
+              <div className="flex items-center justify-between font-mono text-[11px] mb-1">
+                <span className="flex items-center gap-1.5 font-bold text-sky-400">
+                  <Database className="w-3.5 h-3.5" />
+                  DuckDB Lakehouse
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-white">DuckDB Lakehouse</h4>
-                <p className="text-[11px] text-blue-200/70 mt-0.5 leading-relaxed">
-                  3,084 KB almacenamiento columnar optimizado.
-                </p>
-              </div>
+              <p className="text-[10px] text-slate-500 font-mono">
+                Almacenamiento columnar local
+              </p>
               <button
                 onClick={onTriggerFullPipeline}
-                className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-md shadow-blue-600/30"
+                className="mt-2.5 w-full py-1.5 px-2 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-[11px] font-bold transition text-center"
               >
-                Ejecutar Pipeline
+                Ejecutar Pipeline ELT
               </button>
             </div>
           </div>

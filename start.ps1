@@ -82,12 +82,14 @@ if ($backendReady) {
 
 # 5. Iniciar el Frontend (Next.js 3000)
 Write-Host "`n[3/3] Iniciando Frontend Next.js (Dashboard en puerto 3000)..." -ForegroundColor Green
+$startCmd = if (Test-Path (Join-Path $FRONTEND_DIR ".next")) { "npm run start" } else { "npm run dev" }
+
 $frontendProcess = Start-Process -FilePath "cmd.exe" `
-    -ArgumentList "/c", "npm run dev" `
+    -ArgumentList "/c", $startCmd `
     -WorkingDirectory $FRONTEND_DIR `
     -PassThru
 
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 2
 
 # 6. Abrir en el navegador
 Write-Host "`n==========================================================" -ForegroundColor Green

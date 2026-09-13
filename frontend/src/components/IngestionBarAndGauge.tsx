@@ -35,10 +35,10 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
       
       {/* 1. Pipeline Ingestion Velocity by Day */}
       <div
-        className={`p-6 rounded-2xl border transition-all duration-200 ${
+        className={`p-5 rounded-lg border transition-all duration-200 ${
           isDark
-            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-            : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+            : 'bg-white border-slate-200 text-slate-800 shadow-sm'
         }`}
       >
         <div className="flex items-center justify-between">
@@ -65,9 +65,9 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
                 </div>
               )}
               <div
-                className={`w-full max-w-[28px] rounded-lg transition-all duration-300 ${
+                className={`w-full max-w-[28px] rounded-md transition-all duration-300 ${
                   item.active
-                    ? 'bg-blue-600 shadow-lg shadow-blue-500/30'
+                    ? 'bg-blue-600 shadow-sm'
                     : isDark
                     ? 'bg-[#1c273e] hover:bg-[#253554]'
                     : 'bg-slate-100 hover:bg-slate-200'
@@ -92,10 +92,10 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
 
       {/* 2. Sentiment Consensus Speedometer */}
       <div
-        className={`p-6 rounded-2xl border transition-all duration-200 ${
+        className={`p-5 rounded-lg border transition-all duration-200 ${
           isDark
-            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-            : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+            : 'bg-white border-slate-200 text-slate-800 shadow-sm'
         }`}
       >
         <div className="flex items-center justify-between">

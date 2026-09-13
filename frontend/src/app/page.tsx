@@ -1,15 +1,23 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/Sidebar';
 import { TopNav } from '@/components/TopNav';
 import { ShopeersKpiCards } from '@/components/ShopeersKpiCards';
-import { ProfitAndSourcesChart } from '@/components/ProfitAndSourcesChart';
 import { IngestionBarAndGauge } from '@/components/IngestionBarAndGauge';
 import { AssetFeedTable } from '@/components/AssetFeedTable';
-import { AiAssistantOrb } from '@/components/AiAssistantOrb';
 import { PipelineRunner } from '@/components/PipelineRunner';
-import { MarketTerminal } from '@/components/MarketTerminal';
+
+const ProfitAndSourcesChart = dynamic(
+  () => import('@/components/ProfitAndSourcesChart').then((m) => m.ProfitAndSourcesChart),
+  { ssr: false }
+);
+
+const MarketTerminal = dynamic(
+  () => import('@/components/MarketTerminal').then((m) => m.MarketTerminal),
+  { ssr: false }
+);
 import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
 import { WarehouseOps } from '@/components/WarehouseOps';
@@ -20,6 +28,7 @@ import { SystemMetrics, Diagnostics } from '@/types';
 import { fetchMetrics, fetchDiagnostics } from '@/lib/api';
 
 export default function Home() {
+  const [isMounted, setIsMounted] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -32,6 +41,7 @@ export default function Home() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    setIsMounted(true);
     loadAll();
   }, []);
 
@@ -56,6 +66,17 @@ export default function Home() {
   const toggleTheme = () => {
     setIsDark(!isDark);
   };
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-slate-400 font-mono text-xs">
+          <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+          <span>Iniciando Terminal Cuantitativo...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -114,7 +135,7 @@ export default function Home() {
                 <div className="flex flex-wrap items-center gap-2.5">
                   {/* Date Range Pill */}
                   <div
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-md border text-xs font-medium cursor-pointer shadow-2xs ${
                       isDark
                         ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -126,7 +147,7 @@ export default function Home() {
 
                   {/* Window Dropdown */}
                   <div
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium cursor-pointer shadow-2xs ${
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-xs font-medium cursor-pointer shadow-2xs ${
                       isDark
                         ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -142,7 +163,7 @@ export default function Home() {
                       setActiveView('orchestration');
                       showToast('Navegando a consola de ejecución ELT...');
                     }}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-semibold transition shadow-2xs ${
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-xs font-semibold transition shadow-2xs ${
                       isDark
                         ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
                         : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
@@ -155,7 +176,7 @@ export default function Home() {
                   {/* Primary Blue Export Button */}
                   <a
                     href="/api/export-csv?symbol=BTCUSDT"
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm shadow-blue-500/25"
+                    className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Exportar Gold CSV</span>
@@ -188,14 +209,9 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 4. Bottom Row: Real-time FinBERT Headlines (Left) + AI Assistant Orb (Right) */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <AssetFeedTable isDark={isDark} />
-                </div>
-                <div className="lg:col-span-1">
-                  <AiAssistantOrb isDark={isDark} />
-                </div>
+              {/* 4. Bottom Row: Real-time FinBERT Headlines & RSS Feeds (Full-width for readability) */}
+              <div className="w-full">
+                <AssetFeedTable isDark={isDark} />
               </div>
 
             </div>
@@ -204,13 +220,21 @@ export default function Home() {
           {/* Subview: Pipeline Orchestration */}
           {activeView === 'orchestration' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Orquestación y Pipeline de Datos (ELT)
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Lanza extracciones bajo demanda, revisa los logs de ingestión y procesa lotes hacia DuckDB.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
                     isDark
-                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
-                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -224,13 +248,21 @@ export default function Home() {
           {/* Subview: Medallion Explorer */}
           {(activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Data Lake &amp; Feature Store DuckDB
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Inspecciona particiones Bronze (Parquet), registros limpios Silver y agregaciones analíticas Gold.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
                     isDark
-                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
-                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -244,13 +276,21 @@ export default function Home() {
           {/* Subview: FinBERT Lab */}
           {activeView === 'nlp' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Laboratorio FinBERT (Scoring NLP)
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Introduce cualquier titular o texto financiero para evaluar la polaridad inferida por el modelo.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
                     isDark
-                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
-                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -264,13 +304,21 @@ export default function Home() {
           {/* Subview: Feeds RSS & Titulares */}
           {activeView === 'content' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Feeds RSS &amp; Titulares Procesados
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Visualización de texto completo, fecha exacta y etiqueta de sentimiento asignada.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
                     isDark
-                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
-                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -284,13 +332,21 @@ export default function Home() {
           {/* Subview: Market Terminal */}
           {(activeView === 'terminal' || activeView === 'signals') && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Terminal Cuantitativo de Mercado
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Velas horarias OHLCV sincronizadas con la polaridad social y detección de divergencias.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
                     isDark
-                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
-                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -304,13 +360,21 @@ export default function Home() {
           {/* Subview: Warehouse Ops */}
           {activeView === 'maintenance' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Mantenimiento y Diagnóstico DuckDB
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Operaciones VACUUM, CHECKPOINT y estado de salud de endpoints analíticos.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
                     isDark
-                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
-                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -329,20 +393,28 @@ export default function Home() {
           {/* Subview: Documentation & Help Guide */}
           {activeView === 'documentation' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+                <div>
+                  <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Manual y Documentación del Sistema
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Guía de referencia de ingeniería de datos, especificaciones del modelo y comandos de terminal.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveView('dashboard')}
-                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
+                  className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
                     isDark
-                      ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
-                      : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                      ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <DocumentationGuide isDark={isDark} onNavigate={(v) => setActiveView(v)} />
+              <DocumentationGuide isDark={isDark} />
             </div>
           )}
         </main>

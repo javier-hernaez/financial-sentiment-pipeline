@@ -162,10 +162,10 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
 
   return (
     <div
-      className={`p-6 rounded-2xl border transition-all duration-200 overflow-hidden ${
+      className={`p-5 rounded-lg border transition-all duration-200 overflow-hidden ${
         isDark
-          ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-          : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+          ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+          : 'bg-white border-slate-200 text-slate-800 shadow-sm'
       }`}
     >
       {/* Header */}
@@ -184,7 +184,7 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
 
         <button
           onClick={fetchRealHeadlines}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-semibold transition ${
             isDark
               ? 'border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
               : 'border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -254,7 +254,7 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                 {/* POLARITY with Strong Contrast Badges */}
                 <td className="py-3.5 pr-3 align-top whitespace-nowrap">
                   <span
-                    className={`inline-flex items-center gap-1 font-mono font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
+                    className={`inline-flex items-center gap-1 font-mono font-bold px-2.5 py-0.5 rounded-md text-[11px] ${
                       row.label === 'BULLISH'
                         ? isDark
                           ? 'bg-emerald-950/70 text-[#10b981] border border-emerald-500/40'

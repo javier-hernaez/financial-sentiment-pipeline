@@ -117,9 +117,7 @@ class MarketIntelligencePipeline:
             df_market = self.lake.read_latest_partition("market")
 
         total_market = (
-            self.warehouse.upsert_market_prices(df_market)
-            if df_market is not None and not df_market.is_empty()
-            else 0
+            self.warehouse.upsert_market_prices(df_market) if df_market is not None and not df_market.is_empty() else 0
         )
 
         # 3b. Fear & Greed
@@ -129,9 +127,7 @@ class MarketIntelligencePipeline:
             df_macro = self.lake.read_latest_partition("fear_greed")
 
         total_macro = (
-            self.warehouse.upsert_fear_greed(df_macro)
-            if df_macro is not None and not df_macro.is_empty()
-            else 0
+            self.warehouse.upsert_fear_greed(df_macro) if df_macro is not None and not df_macro.is_empty() else 0
         )
 
         # 3c. Social NLP Enrichment with Polars & FinBERT

@@ -27,29 +27,29 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
 
   return (
     <div
-      className={`p-6 rounded-2xl border transition-all duration-200 ${
+      className={`p-5 rounded-lg border transition-all duration-200 ${
         isDark
-          ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-          : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+          ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+          : 'bg-white border-slate-200 text-slate-800 shadow-sm'
       }`}
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-700/20">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Monitoreo Gráfico del Pipeline ELT (Arquitectura Medallion)
             </h3>
           </div>
-          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>
             Flujo end-to-end: Ingesta de fuentes crudas → Inferencia FinBERT → Almacén analítico DuckDB
           </p>
         </div>
 
         <button
           onClick={onTriggerPipeline}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm"
         >
           <Play className="w-3.5 h-3.5 fill-current" />
           <span>Ejecutar Pipeline Completo</span>
@@ -62,7 +62,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
         {/* Stage 1: Bronze Data Lake */}
         <div
           onClick={() => onNavigate('medallion')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+          className={`p-4 rounded-md border transition-all cursor-pointer ${
             isDark
               ? 'bg-[#0f1626] border-[#1e293b] hover:border-blue-500/50 hover:bg-[#152037]'
               : 'bg-slate-50/80 border-slate-200/80 hover:border-blue-400 hover:bg-slate-100'
@@ -72,7 +72,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
             <span className="text-[11px] font-mono font-bold text-blue-400 uppercase tracking-wider">
               1. Extracción Bronze
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
               <CheckCircle2 className="w-2.5 h-2.5" /> Activo
             </span>
           </div>
@@ -106,7 +106,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
         {/* Stage 2: Silver NLP Transformation */}
         <div
           onClick={() => onNavigate('nlp')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+          className={`p-4 rounded-md border transition-all cursor-pointer ${
             isDark
               ? 'bg-[#0f1626] border-[#1e293b] hover:border-purple-500/50 hover:bg-[#152037]'
               : 'bg-slate-50/80 border-slate-200/80 hover:border-purple-400 hover:bg-slate-100'
@@ -116,13 +116,13 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
             <span className="text-[11px] font-mono font-bold text-purple-400 uppercase tracking-wider">
               2. Scoring FinBERT (Silver)
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-400 bg-purple-500/15 px-2 py-0.5 rounded-md border border-purple-500/30">
               <CheckCircle2 className="w-2.5 h-2.5" /> 94.2% Confianza
             </span>
           </div>
 
           <div className="mt-3 flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+            <div className={`w-9 h-9 rounded-md flex items-center justify-center ${
               isDark ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-50 text-purple-600'
             }`}>
               <Cpu className="w-5 h-5" />
@@ -150,7 +150,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
         {/* Stage 3: Gold Lakehouse Consolidation */}
         <div
           onClick={() => onNavigate('gold')}
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+          className={`p-4 rounded-md border transition-all cursor-pointer ${
             isDark
               ? 'bg-[#0f1626] border-[#1e293b] hover:border-emerald-500/50 hover:bg-[#152037]'
               : 'bg-slate-50/80 border-slate-200/80 hover:border-emerald-400 hover:bg-slate-100'
@@ -160,7 +160,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
             <span className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
               3. Feature Store Gold (DuckDB)
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
               <CheckCircle2 className="w-2.5 h-2.5" /> Consolidado
             </span>
           </div>
@@ -208,7 +208,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
           {/* Action 1 */}
           <button
             onClick={() => onNavigate('orchestration')}
-            className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+            className={`p-3 rounded-md border text-left transition flex items-start gap-2.5 ${
               isDark
                 ? 'bg-[#0f1626] border-slate-800 hover:border-blue-500 hover:bg-[#152037]'
                 : 'bg-white border-slate-200 hover:border-blue-400 hover:bg-slate-50'
@@ -226,7 +226,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
           {/* Action 2 */}
           <button
             onClick={() => onNavigate('nlp')}
-            className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+            className={`p-3 rounded-md border text-left transition flex items-start gap-2.5 ${
               isDark
                 ? 'bg-[#0f1626] border-slate-800 hover:border-purple-500 hover:bg-[#152037]'
                 : 'bg-white border-slate-200 hover:border-purple-400 hover:bg-slate-50'
@@ -244,7 +244,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
           {/* Action 3 */}
           <button
             onClick={() => onNavigate('terminal')}
-            className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+            className={`p-3 rounded-md border text-left transition flex items-start gap-2.5 ${
               isDark
                 ? 'bg-[#0f1626] border-slate-800 hover:border-emerald-500 hover:bg-[#152037]'
                 : 'bg-white border-slate-200 hover:border-emerald-400 hover:bg-slate-50'
@@ -262,7 +262,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
           {/* Action 4 */}
           <a
             href="/api/export-csv?symbol=BTCUSDT"
-            className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+            className={`p-3 rounded-md border text-left transition flex items-start gap-2.5 ${
               isDark
                 ? 'bg-[#0f1626] border-slate-800 hover:border-amber-500 hover:bg-[#152037]'
                 : 'bg-white border-slate-200 hover:border-amber-400 hover:bg-slate-50'
