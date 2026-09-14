@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Database, Cpu, Layers, ArrowRight, Play, FileDown, LineChart, CheckCircle2 } from 'lucide-react';
+import { Database, Cpu, Layers, Play, CheckCircle2 } from 'lucide-react';
 import { SystemMetrics, Diagnostics } from '@/types';
 
 interface EtlPipelineMonitorWidgetProps {
@@ -191,92 +191,6 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
           </div>
         </div>
 
-      </div>
-
-      {/* User Actions Guide: "¿Qué puedes hacer aquí?" */}
-      <div className={`mt-5 pt-4 border-t ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
-        <div className="flex items-center justify-between mb-3">
-          <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Acciones Clave del Operador (¿Qué puedes hacer en la plataforma?)
-          </span>
-          <span className={`text-[11px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            Accesos directos
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          {/* Action 1 */}
-          <button
-            onClick={() => onNavigate('orchestration')}
-            className={`p-3 rounded-md border text-left transition flex items-start gap-2.5 ${
-              isDark
-                ? 'bg-[#0f1626] border-slate-800 hover:border-blue-500 hover:bg-[#152037]'
-                : 'bg-white border-slate-200 hover:border-blue-400 hover:bg-slate-50'
-            }`}
-          >
-            <Play className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <div className="font-bold">Lanzar Pipeline ELT</div>
-              <div className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Ejecuta ingesta de feeds y scoring con logs en tiempo real.
-              </div>
-            </div>
-          </button>
-
-          {/* Action 2 */}
-          <button
-            onClick={() => onNavigate('nlp')}
-            className={`p-3 rounded-md border text-left transition flex items-start gap-2.5 ${
-              isDark
-                ? 'bg-[#0f1626] border-slate-800 hover:border-purple-500 hover:bg-[#152037]'
-                : 'bg-white border-slate-200 hover:border-purple-400 hover:bg-slate-50'
-            }`}
-          >
-            <Cpu className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <div className="font-bold">Laboratorio FinBERT</div>
-              <div className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Escribe cualquier titular y obtén su polaridad semántica al instante.
-              </div>
-            </div>
-          </button>
-
-          {/* Action 3 */}
-          <button
-            onClick={() => onNavigate('terminal')}
-            className={`p-3 rounded-md border text-left transition flex items-start gap-2.5 ${
-              isDark
-                ? 'bg-[#0f1626] border-slate-800 hover:border-emerald-500 hover:bg-[#152037]'
-                : 'bg-white border-slate-200 hover:border-emerald-400 hover:bg-slate-50'
-            }`}
-          >
-            <LineChart className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <div className="font-bold">Terminal de Mercado</div>
-              <div className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Inspecciona velas horarias y señales cuantitativas de divergencia.
-              </div>
-            </div>
-          </button>
-
-          {/* Action 4 */}
-          <a
-            href="/api/export-csv?symbol=BTCUSDT"
-            className={`p-3 rounded-md border text-left transition flex items-start gap-2.5 ${
-              isDark
-                ? 'bg-[#0f1626] border-slate-800 hover:border-amber-500 hover:bg-[#152037]'
-                : 'bg-white border-slate-200 hover:border-amber-400 hover:bg-slate-50'
-            }`}
-          >
-            <FileDown className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <div className="font-bold">Exportar Gold CSV</div>
-              <div className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Descarga el dataset final consolidado para análisis cuantitativo.
-              </div>
-            </div>
-          </a>
-        </div>
       </div>
     </div>
   );

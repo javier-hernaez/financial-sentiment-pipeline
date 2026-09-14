@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Play, Terminal, ArrowRight, Layers, Database, Sparkles, Cpu } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Terminal, ArrowRight, Layers, Database, Sparkles, Cpu, CheckCircle2, AlertCircle, Info, AlertTriangle, Trash2 } from 'lucide-react';
 import { runStage } from '@/lib/api';
 
 interface PipelineRunnerProps {
@@ -14,6 +14,7 @@ interface LogEntry {
   timestamp: string;
   type: 'info' | 'success' | 'warning' | 'error';
   message: string;
+  stage?: string;
 }
 
 export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDark = true }) => {
@@ -24,20 +25,26 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
   const [logs, setLogs] = useState<LogEntry[]>([
     {
       id: '1',
-      timestamp: new Date().toLocaleTimeString(),
+      timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       type: 'info',
       message: 'Consola de orquestación inicializada. Sistema listo para procesar lotes.',
     },
   ]);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
-  const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', stage?: string) => {
     setLogs((prev) => [
       ...prev,
       {
         id: Math.random().toString(),
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         type,
         message,
+        stage,
       },
     ]);
   };
@@ -45,34 +52,47 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
   const handleRunStage = async (stage: 'extract' | 'transform' | 'gold' | 'full') => {
     setIsRunning(true);
     setActiveStage(stage);
-    addLog(`Iniciando fase [${stage.toUpperCase()}] para ${symbol} (${hours} horas)...`, 'info');
+    
+    if (stage === 'extract') {
+      addLog(`[EXTRACT] Conectando con endpoints externos: Binance REST v3 (${symbol}, ${hours}h), Alternative.me (Fear & Greed) y 12 feeds RSS financieros...`, 'info', 'extract');
+    } else if (stage === 'transform') {
+      addLog(`[TRANSFORM] Leyendo particiones crudas de Bronze Lake. Iniciando normalización de esquemas con Polars y vectorización FinBERT...`, 'info', 'transform');
+    } else if (stage === 'gold') {
+      addLog(`[GOLD] Ejecutando agregación analítica ACID en DuckDB: cruzando series temporales de precios con sentimiento FinBERT ponderado...`, 'info', 'gold');
+    } else {
+      addLog(`[PIPELINE] Orquestando ciclo completo ELT (Bronze -> Silver -> Gold) para ${symbol} en ventana de ${hours} horas...`, 'info', 'full');
+    }
 
     try {
       const res = await runStage(stage, symbol, hours);
       if (stage === 'extract') {
         addLog(
-          `Extracción completada en ${res.elapsed_seconds}s: ${res.candles} velas, ${res.macro_records} macro, ${res.social_records} noticias en tiempo real.`,
-          'success'
+          `[EXTRACT] Ingesta inmutable finalizada en ${res.elapsed_seconds}s. Se persistieron en disco (formato Parquet): ${res.candles} velas horarias OHLCV, ${res.macro_records} registros del índice macro Fear & Greed y ${res.social_records} artículos/titulares de feeds de noticias y comunidades.`,
+          'success',
+          stage
         );
       } else if (stage === 'transform') {
         addLog(
-          `Transformación Silver completada en ${res.elapsed_seconds}s: ${res.candles_processed} velas, ${res.posts_processed} noticias vectorizadas con FinBERT.`,
-          'success'
+          `[TRANSFORM] Limpieza y scoring completados en ${res.elapsed_seconds}s: ${res.candles_processed} velas de mercado validadas en Silver, y ${res.posts_processed} textos analizados token a token con inferencia local FinBERT (clasificación de polaridad Alcista/Bajista/Neutral y cálculo de score de confianza) persistidos en DuckDB.`,
+          'success',
+          stage
         );
       } else if (stage === 'gold') {
         addLog(
-          `Consolidación Gold finalizada: ${res.consolidated_hours} registros horarios agregados en ${res.elapsed_seconds}s.`,
-          'success'
+          `[GOLD] Consolidación analítica finalizada en ${res.elapsed_seconds}s: Se generó la vista materializada gold_hourly_market_sentiment con ${res.consolidated_hours} horas agregadas, integrando retornos horarios, volumen social, polaridad media y métricas macro sincronizadas.`,
+          'success',
+          stage
         );
       } else {
         addLog(
-          `Pipeline Completo finalizado en ${res.elapsed_seconds}s: ${res.candles_processed} velas, ${res.posts_processed} noticias vectorizadas con FinBERT.`,
-          'success'
+          `[PIPELINE] Ciclo ELT integral completado con éxito en ${res.elapsed_seconds}s: Se extrajeron datos crudos a Bronze, se procesaron ${res.candles_processed} velas y ${res.posts_processed} noticias con inferencia FinBERT en Silver, y se consolidaron los indicadores en la capa analítica Gold de DuckDB.`,
+          'success',
+          stage
         );
       }
       onSuccess();
     } catch (err: any) {
-      addLog(`Fallo al ejecutar fase ${stage}: ${err.message || err}`, 'error');
+      addLog(`[ERROR] Fallo durante la ejecución de la fase [${stage.toUpperCase()}]: ${err.message || err}. Comprueba la conectividad de red o la disponibilidad del almacén DuckDB.`, 'error', stage);
     } finally {
       setIsRunning(false);
       setActiveStage(null);
@@ -269,7 +289,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                   </div>
                   <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Feature Store</h4>
                   <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Alineación horaria de retornos, polaridad y señales cuantitativas alpha.
+                    Alineación horaria de retornos OHLCV y agregaciones de polaridad FinBERT en DuckDB.
                   </p>
                 </div>
                 <button
@@ -298,43 +318,90 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-700/20">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <h3 className={`text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                   <Terminal className="w-3.5 h-3.5 text-blue-500" />
-                  Registro de Operaciones
+                  Registro de Operaciones ELT
                 </h3>
               </div>
               <button
                 onClick={() => setLogs([])}
-                className={`text-xs font-mono transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`flex items-center gap-1 text-xs font-mono transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                Limpiar consola
+                <Trash2 className="w-3 h-3" />
+                Limpiar
               </button>
             </div>
 
             <div
-              className={`mt-3 rounded-xl p-4 font-mono text-xs h-64 overflow-y-auto space-y-2 border ${
+              className={`mt-3 rounded-xl font-mono text-xs h-72 overflow-y-auto border ${
                 isDark
-                  ? 'bg-[#0a0f1d] border-[#1f2d48] text-slate-300'
-                  : 'bg-slate-900 border-slate-800 text-slate-200'
+                  ? 'bg-[#050b18] border-[#1a2640]'
+                  : 'bg-slate-950 border-slate-800'
               }`}
             >
-              {logs.length === 0 ? (
-                <div className="text-slate-500">No hay eventos registrados en la sesión.</div>
-              ) : (
-                logs.map((log) => {
-                  let colorClass = 'text-slate-300';
-                  if (log.type === 'success') colorClass = 'text-emerald-400 font-bold';
-                  if (log.type === 'error') colorClass = 'text-rose-400 font-bold';
-                  if (log.type === 'warning') colorClass = 'text-amber-400 font-bold';
+              {/* Header bar */}
+              <div className={`sticky top-0 px-4 py-1.5 text-[10px] flex items-center gap-3 border-b ${
+                isDark ? 'bg-[#0a0f1d] border-[#1a2640] text-slate-500' : 'bg-slate-900 border-slate-800 text-slate-400'
+              }`}>
+                <span>TIMESTAMP</span>
+                <span>·</span>
+                <span>FASE</span>
+                <span>·</span>
+                <span>EVENTO</span>
+              </div>
 
-                  return (
-                    <div key={log.id} className="flex items-start gap-2">
-                      <span className="text-slate-500 whitespace-nowrap">[{log.timestamp}]</span>
-                      <span className={colorClass}>{log.message}</span>
-                    </div>
-                  );
-                })
+              {logs.length === 0 ? (
+                <div className="px-4 py-6 text-slate-600 text-center">
+                  Sin eventos. Ejecuta una fase del pipeline para ver los logs en tiempo real.
+                </div>
+              ) : (
+                <div className="px-2 py-2 space-y-0.5">
+                  {logs.map((log, idx) => {
+                    const Icon =
+                      log.type === 'success' ? CheckCircle2
+                      : log.type === 'error' ? AlertCircle
+                      : log.type === 'warning' ? AlertTriangle
+                      : Info;
+                    const iconColor =
+                      log.type === 'success' ? 'text-emerald-400'
+                      : log.type === 'error' ? 'text-rose-400'
+                      : log.type === 'warning' ? 'text-amber-400'
+                      : 'text-blue-400';
+                    const textColor =
+                      log.type === 'success' ? 'text-emerald-300'
+                      : log.type === 'error' ? 'text-rose-300'
+                      : log.type === 'warning' ? 'text-amber-300'
+                      : 'text-slate-300';
+                    const stageBadgeColor =
+                      log.stage === 'extract' ? 'bg-amber-500/20 text-amber-300'
+                      : log.stage === 'transform' ? 'bg-blue-500/20 text-blue-300'
+                      : log.stage === 'gold' ? 'bg-yellow-500/20 text-yellow-300'
+                      : log.stage === 'full' ? 'bg-purple-500/20 text-purple-300'
+                      : null;
+
+                    return (
+                      <div
+                        key={log.id}
+                        className={`flex items-start gap-2 px-3 py-1.5 rounded-md transition-colors ${
+                          idx === logs.length - 1
+                            ? isDark ? 'bg-white/5' : 'bg-slate-800/60'
+                            : ''
+                        }`}
+                      >
+                        <Icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${iconColor}`} />
+                        <span className="text-slate-500 whitespace-nowrap text-[10px] mt-0.5">{log.timestamp}</span>
+                        {stageBadgeColor && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase flex-shrink-0 ${stageBadgeColor}`}>
+                            {log.stage}
+                          </span>
+                        )}
+                        <span className={`${textColor} leading-relaxed`}>{log.message}</span>
+                      </div>
+                    );
+                  })}
+                  <div ref={logEndRef} />
+                </div>
               )}
             </div>
           </div>

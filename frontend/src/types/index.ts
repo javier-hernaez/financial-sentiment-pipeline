@@ -14,11 +14,10 @@ export interface GoldRecord {
   neutral_mentions: number;
   fear_and_greed_score: number | null;
   fear_and_greed_classification: string | null;
-  // Quant signals computed dynamically
+  // Dynamic metrics computed for analytics
   hourly_return?: number;
   realized_volatility_6h?: number;
   sentiment_momentum_3h?: number;
-  alpha_divergence_flag?: boolean;
 }
 
 export interface SystemMetrics {

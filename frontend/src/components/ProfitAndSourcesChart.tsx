@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -11,8 +11,9 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import { ArrowUpRight, MoreHorizontal, Cpu, TrendingUp, MinusCircle, TrendingDown } from 'lucide-react';
+import { ArrowUpRight, Cpu, TrendingUp, MinusCircle, TrendingDown, RefreshCw } from 'lucide-react';
 import { GoldRecord, SystemMetrics } from '@/types';
+import { fetchGoldData } from '@/lib/api';
 
 interface ProfitAndSourcesChartProps {
   records?: GoldRecord[];
@@ -21,28 +22,69 @@ interface ProfitAndSourcesChartProps {
 }
 
 export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
-  records = [],
+  records: initialRecords,
   metrics,
   isDark = true,
 }) => {
-  const [isMounted, setIsMounted] = React.useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [records, setRecords] = useState<GoldRecord[]>(initialRecords || []);
+  const [isLoading, setIsLoading] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setIsMounted(true);
-  }, []);
+    if (!initialRecords || initialRecords.length === 0) {
+      loadRealData();
+    }
+  }, [initialRecords]);
 
-  // Timeline data: Sentiment score (-1.0 to +1.0 scaled to 0-100 index) & Articles processed
-  const chartData = [
-    { day: '1 Jan', score: 58, rawScore: '+0.58', articles: 120 },
-    { day: '4 Jan', score: 62, rawScore: '+0.62', articles: 135 },
-    { day: '8 Jan', score: 79, rawScore: '+0.79', articles: 180 },
-    { day: '11 Jan', score: 71, rawScore: '+0.71', articles: 154 },
-    { day: '15 Jan', score: 85, rawScore: '+0.85', articles: 210 },
-    { day: '18 Jan', score: 82, rawScore: '+0.82', articles: 245 },
-    { day: '22 Jan', score: 76, rawScore: '+0.76', articles: 190 },
-    { day: '25 Jan', score: 88, rawScore: '+0.88', articles: 270 },
-    { day: '29 Jan', score: 92, rawScore: '+0.92', articles: 310 },
-  ];
+  const loadRealData = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchGoldData('BTCUSDT', 24);
+      if (Array.isArray(data)) {
+        setRecords([...data].reverse());
+      }
+    } catch (err) {
+      console.warn('Error loading real Gold chart data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Compute real metrics — coerce to number to avoid string concatenation if backend returns strings
+  const totalBull = records.reduce((acc, r) => acc + (Number(r.bullish_mentions) || 0), 0);
+  const totalBear = records.reduce((acc, r) => acc + (Number(r.bearish_mentions) || 0), 0);
+  const totalNeutral = records.reduce((acc, r) => acc + (Number(r.neutral_mentions) || 0), 0);
+  const totalMentions = totalBull + totalBear + totalNeutral;
+
+  const bullPct = totalMentions > 0 ? ((totalBull / totalMentions) * 100).toFixed(1) : '0.0';
+  const neutralPct = totalMentions > 0 ? ((totalNeutral / totalMentions) * 100).toFixed(1) : '0.0';
+  const bearPct = totalMentions > 0 ? ((totalBear / totalMentions) * 100).toFixed(1) : '0.0';
+
+  const latest = records.length > 0 ? records[records.length - 1] : null;
+  const avgSentiment =
+    records.length > 0
+      ? records.reduce((acc, r) => acc + r.avg_hourly_sentiment, 0) / records.length
+      : 0;
+
+  const sentimentLabel =
+    avgSentiment > 0.15
+      ? 'Consenso Alcista (Bullish)'
+      : avgSentiment < -0.15
+      ? 'Consenso Bajista (Bearish)'
+      : 'Consenso Neutral';
+
+  const chartData = records.map((d) => {
+    const timeLabel = d.timestamp_hour ? d.timestamp_hour.slice(11, 16) : '';
+    const scoreScaled = Math.round(((d.avg_hourly_sentiment + 1) / 2) * 100);
+    return {
+      day: timeLabel || (d.timestamp_hour ? d.timestamp_hour.slice(5, 10) : '00:00'),
+      score: scoreScaled,
+      rawScore: d.avg_hourly_sentiment > 0 ? `+${d.avg_hourly_sentiment.toFixed(2)}` : d.avg_hourly_sentiment.toFixed(2),
+      articles: d.social_volume_mentions || 0,
+      sentiment: d.avg_hourly_sentiment,
+    };
+  });
 
   return (
     <div
@@ -57,43 +99,62 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
         <div>
           <span className={`text-sm font-medium flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             <Cpu className="w-4 h-4 text-blue-500" />
-            Polaridad FinBERT Agregada &amp; Flujo de Noticias
+            Polaridad FinBERT Agregada &amp; Flujo de Noticias (DuckDB Gold)
           </span>
           <div className="mt-1 flex items-baseline gap-3 flex-wrap">
-            <span className="text-3xl sm:text-4xl font-extrabold tracking-tight font-mono text-emerald-400">
-              +0.82
+            <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-mono ${
+              avgSentiment >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            }`}>
+              {avgSentiment > 0 ? `+${avgSentiment.toFixed(2)}` : avgSentiment.toFixed(2)}
             </span>
             <span className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              (Consenso Fuertemente Alcista)
+              ({sentimentLabel})
             </span>
-            <span
-              className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                isDark
-                  ? 'bg-emerald-500/15 text-[#34d399] border border-emerald-500/30'
-                  : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-              }`}
-            >
-              <ArrowUpRight className="w-3 h-3" />
-              +18.4% vs. ventana anterior
-            </span>
+            {latest && (
+              <span
+                className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  latest.avg_hourly_sentiment >= 0
+                    ? isDark
+                      ? 'bg-emerald-500/15 text-[#34d399] border border-emerald-500/30'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                    : isDark
+                    ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                    : 'bg-rose-50 text-rose-700 border border-rose-100'
+                }`}
+              >
+                <ArrowUpRight className="w-3 h-3" />
+                Última hora: {latest.avg_hourly_sentiment > 0 ? `+${latest.avg_hourly_sentiment.toFixed(2)}` : latest.avg_hourly_sentiment.toFixed(2)}
+              </span>
+            )}
           </div>
         </div>
 
         <button
-          className={`p-1.5 rounded-lg border transition ${
+          onClick={loadRealData}
+          className={`p-2 rounded-lg border transition ${
             isDark
               ? 'border-[#1f2d48] text-slate-400 hover:text-white hover:bg-[#1a253d]'
-              : 'border-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-50'
+              : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
-          title="Opciones de visualización"
+          title="Recargar datos de sentimiento"
         >
-          <MoreHorizontal className="w-5 h-5" />
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Main Dual-Line Area Chart: Sentiment Curve + Ingestion Volume */}
       <div className="h-64 w-full mt-6">
-        {isMounted ? (
+        {!isMounted || isLoading ? (
+          <div className="h-full w-full flex items-center justify-center text-xs font-mono text-slate-500">
+            <RefreshCw className="w-4 h-4 animate-spin text-blue-400 mr-2" />
+            Cargando serie analítica real...
+          </div>
+        ) : chartData.length === 0 ? (
+          <div className="h-full w-full flex flex-col items-center justify-center text-xs font-mono text-slate-500 space-y-1">
+            <span className="font-bold">Sin datos históricos en DuckDB</span>
+            <span>Ejecute el pipeline ELT para consolidar horas y sentimiento.</span>
+          </div>
+        ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
               <defs>
@@ -134,15 +195,15 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
                         }`}
                       >
                         <div className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                          {label}, 2025 · Batch Pipeline
+                          {label} · Consolidado DuckDB Gold
                         </div>
                         <div className="flex items-center gap-2 text-emerald-400 font-bold">
                           <span>—</span>
-                          <span>Score FinBERT: {item.rawScore} (Bullish)</span>
+                          <span>Score FinBERT: {item.rawScore}</span>
                         </div>
                         <div className="flex items-center gap-2 text-blue-400">
                           <span>⋯</span>
-                          <span>{item.articles} titulares analizados</span>
+                          <span>{item.articles} artículos analizados</span>
                         </div>
                       </div>
                     );
@@ -167,21 +228,17 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
               />
             </AreaChart>
           </ResponsiveContainer>
-        ) : (
-          <div className="h-full w-full flex items-center justify-center text-xs font-mono text-slate-500">
-            Cargando visualización...
-          </div>
         )}
       </div>
 
-      {/* Bottom Segment: Sentiment Distribution (replacing Retailers/Distributors/Wholesalers) */}
+      {/* Bottom Segment: Sentiment Distribution from Real DuckDB records */}
       <div className={`mt-6 pt-5 border-t ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
         <div className="flex items-center justify-between mb-4">
           <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Distribución de Polaridad en Noticias (FinBERT)
+            Distribución Real de Polaridad FinBERT
           </span>
           <span className={`text-xs font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            Ventana 30 días
+            {totalMentions} menciones analizadas en DuckDB
           </span>
         </div>
 
@@ -194,32 +251,42 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
               </div>
               <div>
                 <div className="text-base font-bold font-mono text-emerald-400">
-                  68.4%
+                  {bullPct}%
                 </div>
                 <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Bullish (2,884 noticias)
+                  Bullish ({totalBull} menciones)
                 </div>
               </div>
             </div>
-            <div className="w-full h-1 bg-emerald-500 rounded-full" />
+            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+              <div
+                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${bullPct}%` }}
+              />
+            </div>
           </div>
 
           {/* Segment 2: Neutral */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded flex items-center justify-center bg-blue-500/15 text-blue-400">
+              <div className="w-5 h-5 rounded flex items-center justify-center bg-amber-500/15 text-amber-400">
                 <MinusCircle className="w-3.5 h-3.5" />
               </div>
               <div>
-                <div className="text-base font-bold font-mono text-blue-400">
-                  21.8%
+                <div className="text-base font-bold font-mono text-amber-400">
+                  {neutralPct}%
                 </div>
                 <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Neutral (1,432 noticias)
+                  Neutral ({totalNeutral} menciones)
                 </div>
               </div>
             </div>
-            <div className="w-full h-1 bg-blue-500 rounded-full" />
+            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+              <div
+                className="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${neutralPct}%` }}
+              />
+            </div>
           </div>
 
           {/* Segment 3: Bearish */}
@@ -230,14 +297,19 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
               </div>
               <div>
                 <div className="text-base font-bold font-mono text-rose-400">
-                  9.8%
+                  {bearPct}%
                 </div>
                 <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Bearish (562 noticias)
+                  Bearish ({totalBear} menciones)
                 </div>
               </div>
             </div>
-            <div className="w-full h-1 bg-rose-500 rounded-full" />
+            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+              <div
+                className="bg-rose-500 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${bearPct}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
