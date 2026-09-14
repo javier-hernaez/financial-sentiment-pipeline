@@ -918,10 +918,15 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
                 where_sql = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
-                count_sql = f"SELECT COUNT(*) FROM {table}{where_sql}"
-                total_count = conn.execute(count_sql, params).fetchone()[0]
+                order_by_sql = ""
+                if table == "silver_social_sentiment":
+                    order_by_sql = " ORDER BY created_utc DESC"
+                elif table in ("gold_hourly_market_sentiment", "silver_market_prices"):
+                    order_by_sql = " ORDER BY timestamp_hour DESC"
+                elif table == "silver_fear_greed":
+                    order_by_sql = " ORDER BY date DESC"
 
-                query_sql = f"SELECT * FROM {table}{where_sql} LIMIT {limit} OFFSET {offset}"
+                query_sql = f"SELECT * FROM {table}{where_sql}{order_by_sql} LIMIT {limit} OFFSET {offset}"
                 result = conn.execute(query_sql, params)
                 columns = [desc[0] for desc in result.description]
                 raw_rows = result.fetchall()

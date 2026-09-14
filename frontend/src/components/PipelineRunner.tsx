@@ -52,38 +52,47 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
   const handleRunStage = async (stage: 'extract' | 'transform' | 'gold' | 'full') => {
     setIsRunning(true);
     setActiveStage(stage);
-    addLog(`Iniciando fase [${stage.toUpperCase()}] para ${symbol} (${hours} horas)...`, 'info', stage);
+    
+    if (stage === 'extract') {
+      addLog(`[EXTRACT] Conectando con endpoints externos: Binance REST v3 (${symbol}, ${hours}h), Alternative.me (Fear & Greed) y 12 feeds RSS financieros...`, 'info', 'extract');
+    } else if (stage === 'transform') {
+      addLog(`[TRANSFORM] Leyendo particiones crudas de Bronze Lake. Iniciando normalización de esquemas con Polars y vectorización FinBERT...`, 'info', 'transform');
+    } else if (stage === 'gold') {
+      addLog(`[GOLD] Ejecutando agregación analítica ACID en DuckDB: cruzando series temporales de precios con sentimiento FinBERT ponderado...`, 'info', 'gold');
+    } else {
+      addLog(`[PIPELINE] Orquestando ciclo completo ELT (Bronze -> Silver -> Gold) para ${symbol} en ventana de ${hours} horas...`, 'info', 'full');
+    }
 
     try {
       const res = await runStage(stage, symbol, hours);
       if (stage === 'extract') {
         addLog(
-          `Extracción completada en ${res.elapsed_seconds}s: ${res.candles} velas, ${res.macro_records} macro, ${res.social_records} noticias en tiempo real.`,
+          `[EXTRACT] Ingesta inmutable finalizada en ${res.elapsed_seconds}s. Se persistieron en disco (formato Parquet): ${res.candles} velas horarias OHLCV, ${res.macro_records} registros del índice macro Fear & Greed y ${res.social_records} artículos/titulares de feeds de noticias y comunidades.`,
           'success',
           stage
         );
       } else if (stage === 'transform') {
         addLog(
-          `Transformación Silver completada en ${res.elapsed_seconds}s: ${res.candles_processed} velas, ${res.posts_processed} noticias vectorizadas con FinBERT.`,
+          `[TRANSFORM] Limpieza y scoring completados en ${res.elapsed_seconds}s: ${res.candles_processed} velas de mercado validadas en Silver, y ${res.posts_processed} textos analizados token a token con inferencia local FinBERT (clasificación de polaridad Alcista/Bajista/Neutral y cálculo de score de confianza) persistidos en DuckDB.`,
           'success',
           stage
         );
       } else if (stage === 'gold') {
         addLog(
-          `Consolidación Gold finalizada: ${res.consolidated_hours} registros horarios agregados en ${res.elapsed_seconds}s.`,
+          `[GOLD] Consolidación analítica finalizada en ${res.elapsed_seconds}s: Se generó la vista materializada gold_hourly_market_sentiment con ${res.consolidated_hours} horas agregadas, integrando retornos horarios, volumen social, polaridad media y métricas macro sincronizadas.`,
           'success',
           stage
         );
       } else {
         addLog(
-          `Pipeline Completo finalizado en ${res.elapsed_seconds}s: ${res.candles_processed} velas, ${res.posts_processed} noticias vectorizadas con FinBERT.`,
+          `[PIPELINE] Ciclo ELT integral completado con éxito en ${res.elapsed_seconds}s: Se extrajeron datos crudos a Bronze, se procesaron ${res.candles_processed} velas y ${res.posts_processed} noticias con inferencia FinBERT en Silver, y se consolidaron los indicadores en la capa analítica Gold de DuckDB.`,
           'success',
           stage
         );
       }
       onSuccess();
     } catch (err: any) {
-      addLog(`Fallo al ejecutar fase ${stage}: ${err.message || err}`, 'error', stage);
+      addLog(`[ERROR] Fallo durante la ejecución de la fase [${stage.toUpperCase()}]: ${err.message || err}. Comprueba la conectividad de red o la disponibilidad del almacén DuckDB.`, 'error', stage);
     } finally {
       setIsRunning(false);
       setActiveStage(null);

@@ -35,6 +35,11 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             "Altcoin",
             "investing",
             "Finance",
+            "btc",
+            "ethfinance",
+            "solana",
+            "StockMarket",
+            "economics",
         ]
 
     async def extract_subreddit(self, subreddit: str, limit: int = 25, category: str = "hot") -> List[Dict[str, Any]]:
@@ -176,6 +181,8 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             ("beincrypto", "https://beincrypto.com/feed/"),
             ("newsbtc", "https://www.newsbtc.com/feed/"),
             ("bankless", "https://www.banklesshq.com/feed"),
+            ("yahoofinance", "https://finance.yahoo.com/news/rssindex"),
+            ("marketwatch", "https://feeds.content.dowjones.io/public/rss/mw_topstories"),
         ]
 
         for name, url in rss_feeds:

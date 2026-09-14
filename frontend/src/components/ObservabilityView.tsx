@@ -187,20 +187,20 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({
           {/* Real-time News Feeds */}
           <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200'}`}>
             <div className="flex justify-between items-center">
-              <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Feeds RSS (10 fuentes)</span>
+              <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Feeds Noticias &amp; Social (12 fuentes)</span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                 ACTIVO
               </span>
             </div>
             <div className="pt-1 text-slate-400 flex items-center justify-between">
               <span>Fuentes:</span>
-              <strong className="text-emerald-400 text-[10px]">CT, CoinDesk, Decrypt...</strong>
+              <strong className="text-emerald-400 text-[10px]">Yahoo Fin, MarketWatch, CT, Desk...</strong>
             </div>
             <div className="flex items-center gap-1 text-[10px] text-slate-500">
               <Clock className="w-3 h-3" />
               <span>Último ping: {lastChecked ?? '—'}</span>
             </div>
-            <div className="text-[10px] text-slate-500">10 canales RSS activos</div>
+            <div className="text-[10px] text-slate-500">12 canales RSS y 13 comunidades Reddit</div>
           </div>
 
           {/* DuckDB Local Access */}
