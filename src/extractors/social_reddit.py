@@ -96,7 +96,9 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                 timeout=10.0,
             )
             if res.status_code != 200:
-                console.print(f"[yellow][SocialExtractor] Aviso: Feed {source_name} respondió con código HTTP {res.status_code}[/yellow]")
+                console.print(
+                    f"[yellow][SocialExtractor] Aviso: Feed {source_name} respondió con código HTTP {res.status_code}[/yellow]"
+                )
                 return []
 
             root = ET.fromstring(res.text)
@@ -197,6 +199,8 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         if not all_posts:
             console.print("[yellow][SocialNews] No se pudieron extraer noticias en este ciclo (sin mock).[/yellow]")
         else:
-            console.print(f"[green][OK][/green] Ingeridos {len(all_posts)} artículos y menciones reales en tiempo real.")
+            console.print(
+                f"[green][OK][/green] Ingeridos {len(all_posts)} artículos y menciones reales en tiempo real."
+            )
 
         return all_posts
