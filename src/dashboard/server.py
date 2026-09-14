@@ -1021,7 +1021,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
             pipeline = None
             try:
-                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=True)
+                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=False)
                 result = asyncio.run(pipeline.run())
                 self._send_json(
                     {
@@ -1072,7 +1072,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 import time
 
                 t0 = time.time()
-                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=True)
+                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=False)
 
                 if stage == "extract":
                     extracted = asyncio.run(pipeline.extract())

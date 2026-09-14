@@ -26,7 +26,16 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             base_url=base_url,
             headers={"User-Agent": settings.reddit_user_agent},
         )
-        self.subreddits = subreddits or ["CryptoCurrency", "wallstreetbets", "Bitcoin"]
+        self.subreddits = subreddits or [
+            "CryptoCurrency",
+            "wallstreetbets",
+            "Bitcoin",
+            "ethereum",
+            "CryptoMarkets",
+            "Altcoin",
+            "investing",
+            "Finance",
+        ]
 
     async def extract_subreddit(self, subreddit: str, limit: int = 25, category: str = "hot") -> List[Dict[str, Any]]:
         """Extracts posts from a specific subreddit."""
@@ -65,22 +74,24 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             # Reddit frequently returns 403; return empty so live news can take precedence
             return []
 
-    def _extract_live_news_rss(self, url: str, source_name: str, limit: int = 15) -> List[Dict[str, Any]]:
-        """Extracts real-time crypto headlines and summaries from authoritative financial RSS feeds."""
+    def _extract_live_news_rss(self, url: str, source_name: str, limit: int = 35) -> List[Dict[str, Any]]:
+        """Extracts real-time financial and crypto headlines with full article content from authoritative RSS feeds."""
         import email.utils
         import hashlib
+        import re
         import xml.etree.ElementTree as ET
 
         try:
             res = httpx.get(
                 url,
                 headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 },
                 follow_redirects=True,
-                timeout=8.0,
+                timeout=10.0,
             )
             if res.status_code != 200:
+                console.print(f"[yellow][SocialExtractor] Aviso: Feed {source_name} respondió con código HTTP {res.status_code}[/yellow]")
                 return []
 
             root = ET.fromstring(res.text)
@@ -91,15 +102,28 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                 pub_el = el.find("pubDate")
                 guid_el = el.find("guid")
 
+                # Try to get extended content encoded tag if available
+                content_encoded = el.find("{http://purl.org/rss/1.0/modules/content/}encoded")
+                if content_encoded is None:
+                    content_encoded = el.find("encoded")
+                if content_encoded is None:
+                    content_encoded = el.find("content")
+
                 title = (title_el.text or "").strip() if title_el is not None else ""
                 if not title:
                     continue
 
-                desc = (desc_el.text or "").strip() if desc_el is not None else ""
-                # Strip basic HTML tags from description if any
-                import re
+                # Prefer content_encoded if present, otherwise description
+                raw_body = ""
+                if content_encoded is not None and content_encoded.text:
+                    raw_body = content_encoded.text
+                elif desc_el is not None and desc_el.text:
+                    raw_body = desc_el.text
 
-                desc_clean = re.sub(r"<[^>]+>", "", desc)[:400]
+                # Strip HTML tags and normalize whitespace
+                body_clean = re.sub(r"<[^>]+>", " ", raw_body)
+                body_clean = re.sub(r"&[a-z]+;", " ", body_clean)
+                body_clean = re.sub(r"\s+", " ", body_clean).strip()
 
                 dt = datetime.now(timezone.utc)
                 if pub_el is not None and pub_el.text:
@@ -117,12 +141,13 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                         "post_id": f"{source_name}_{post_hash}",
                         "subreddit": source_name,
                         "title": title,
-                        "text_body": desc_clean,
+                        "text_body": body_clean[:1500] if body_clean else "",
                         "author": source_name.capitalize(),
                         "upvotes": 120,
                         "upvote_ratio": 0.95,
                         "num_comments": 18,
                         "created_utc": dt.isoformat(),
+                        "ingested_at": datetime.now(timezone.utc).isoformat(),
                         "timestamp_hour": dt.strftime("%Y-%m-%d %H:00:00"),
                     }
                 )
@@ -131,106 +156,40 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             console.print(f"[yellow][SocialExtractor] Aviso: No se pudo consultar {source_name} ({exc})[/yellow]")
             return []
 
-    def _generate_fallback_buffer(self, subreddit: str, count: int = 10) -> List[Dict[str, Any]]:
-        """Generates realistic market commentary if all live news APIs are completely offline."""
-        samples = [
-            (
-                "Bitcoin surges past key resistance as institutional inflows hit new record high",
-                "bullish momentum looks strong, holding long positions.",
-                150,
-            ),
-            (
-                "Market correction underway: BTC drops 3% after sudden liquidation cascade",
-                "Bearish divergence on the 4h timeframe, watch out for the support level.",
-                85,
-            ),
-            (
-                "Federal Reserve holds interest rates steady, crypto markets trade sideways",
-                "Consolidation phase continues in a narrow range with low volatility.",
-                42,
-            ),
-            (
-                "Massive whale transaction moving 10,000 BTC to cold storage",
-                "Supply shock incoming. Bullish signal for the coming weeks.",
-                210,
-            ),
-            (
-                "Regulatory concerns escalate as SEC probes decentralized exchange protocol",
-                "Fear spreading in altcoins, risk-off sentiment dominating.",
-                95,
-            ),
-            (
-                "Ethereum and layer 2 network activity breaks all-time daily volume record",
-                "Adoption metric growing, extremely optimistic for the quarter.",
-                180,
-            ),
-            (
-                "Traders taking profit after massive weekly rally in tech and crypto",
-                "Short term pullback expected before next leg up.",
-                60,
-            ),
-            (
-                "CPI inflation data comes in cooler than expected, risk assets jump",
-                "DXY plunging, markets turning strongly green today.",
-                320,
-            ),
-        ]
-
-        now = time.time()
-        results = []
-        for i in range(count):
-            title, body, upvotes = samples[i % len(samples)]
-            ts = now - (i * 3600)
-            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-            hour_str = dt.strftime("%Y-%m-%d %H:00:00")
-
-            results.append(
-                {
-                    "source": "reddit_synthetic_feed",
-                    "post_id": f"synth_{subreddit.lower()}_{i}_{int(ts)}",
-                    "subreddit": subreddit,
-                    "title": title,
-                    "text_body": body,
-                    "author": f"trader_{i}",
-                    "upvotes": upvotes,
-                    "upvote_ratio": 0.92,
-                    "num_comments": upvotes // 5,
-                    "created_utc": dt.isoformat(),
-                    "timestamp_hour": hour_str,
-                }
-            )
-        return results
-
-    async def extract(self, limit_per_sub: int = 15) -> List[Dict[str, Any]]:
+    async def extract(self, limit_per_sub: int = 35) -> List[Dict[str, Any]]:
         """
         Extracts real-time financial news and community sentiment posts.
-        Priority:
-        1. Live real-time RSS from CoinTelegraph & CoinDesk (unblocked, real market news).
-        2. Live Reddit posts (if reachable without 403).
-        3. Synthetic fallback only if network is completely down.
+        Fetches multiple authoritative financial and crypto RSS feeds with full content.
+        Zero mock data: If feeds fail or return empty, returns actual fetched items without synthetic mock data.
         """
         all_posts: List[Dict[str, Any]] = []
 
-        # 1. Primary: Extract live financial news
-        cointelegraph_posts = self._extract_live_news_rss(
-            "https://cointelegraph.com/rss", source_name="cointelegraph", limit=limit_per_sub
-        )
-        coindesk_posts = self._extract_live_news_rss(
-            "https://www.coindesk.com/arc/outboundfeeds/rss/", source_name="coindesk", limit=limit_per_sub
-        )
-        all_posts.extend(cointelegraph_posts)
-        all_posts.extend(coindesk_posts)
+        # Authoritative real-time RSS feeds
+        rss_feeds = [
+            ("cointelegraph", "https://cointelegraph.com/rss"),
+            ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
+            ("decrypt", "https://decrypt.co/feed"),
+            ("cryptoslate", "https://cryptoslate.com/feed/"),
+            ("bitcoinmagazine", "https://bitcoinmagazine.com/feed"),
+            ("theblock", "https://www.theblock.co/rss.xml"),
+            ("blockworks", "https://blockworks.co/feed"),
+            ("beincrypto", "https://beincrypto.com/feed/"),
+            ("newsbtc", "https://www.newsbtc.com/feed/"),
+            ("bankless", "https://www.banklesshq.com/feed"),
+        ]
 
-        # 2. Secondary: Attempt Reddit subreddits
-        for sub in self.subreddits:
-            posts = await self.extract_subreddit(subreddit=sub, limit=5)
+        for name, url in rss_feeds:
+            posts = self._extract_live_news_rss(url=url, source_name=name, limit=limit_per_sub)
             all_posts.extend(posts)
 
-        # 3. Fallback: If no posts from any live source, activate synthetic buffer
-        if not all_posts:
-            console.print("[yellow][SocialNews] No live feeds reached. Activating resilient fallback buffer.[/yellow]")
-            for sub in self.subreddits:
-                all_posts.extend(self._generate_fallback_buffer(subreddit=sub, count=limit_per_sub))
+        # Secondary: Attempt Reddit subreddits if reachable
+        for sub in self.subreddits:
+            posts = await self.extract_subreddit(subreddit=sub, limit=10)
+            all_posts.extend(posts)
 
-        console.print(f"[green][OK][/green] Ingeridos {len(all_posts)} artículos y menciones en tiempo real.")
+        if not all_posts:
+            console.print("[yellow][SocialNews] No se pudieron extraer noticias en este ciclo (sin mock).[/yellow]")
+        else:
+            console.print(f"[green][OK][/green] Ingeridos {len(all_posts)} artículos y menciones reales en tiempo real.")
+
         return all_posts

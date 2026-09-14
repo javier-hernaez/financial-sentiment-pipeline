@@ -20,12 +20,34 @@ const MarketTerminal = dynamic(
 );
 import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
-import { WarehouseOps } from '@/components/WarehouseOps';
+import { ObservabilityView } from '@/components/ObservabilityView';
 import { DocumentationGuide } from '@/components/DocumentationGuide';
 import { EtlPipelineMonitorWidget } from '@/components/EtlPipelineMonitorWidget';
-import { Calendar, ChevronDown, Play, Download, ArrowLeft } from 'lucide-react';
+import {
+  Calendar,
+  ChevronDown,
+  Play,
+  Download,
+  ArrowLeft,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  X,
+  RefreshCw,
+  Info,
+} from 'lucide-react';
 import { SystemMetrics, Diagnostics } from '@/types';
 import { fetchMetrics, fetchDiagnostics } from '@/lib/api';
+
+export interface CentralAlert {
+  id: string;
+  type: 'error' | 'warning' | 'info' | 'success';
+  title: string;
+  message: string;
+  timestamp: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
 
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
@@ -38,7 +60,7 @@ export default function Home() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [systemAlert, setSystemAlert] = useState<CentralAlert | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -51,16 +73,38 @@ export default function Home() {
       const [m, d] = await Promise.all([fetchMetrics(), fetchDiagnostics()]);
       setMetrics(m);
       setDiagnostics(d);
+      if (systemAlert?.id === 'telemetry_error') {
+        setSystemAlert(null);
+      }
     } catch (err) {
       console.error('Error fetching global telemetry:', err);
+      setSystemAlert({
+        id: 'telemetry_error',
+        type: 'error',
+        title: 'Error de Comunicación con el Servidor Analítico (DuckDB / FastAPI)',
+        message: 'No se pudo contactar con los endpoints de telemetría (http://localhost:8080/api). Verifica que el backend esté activo.',
+        timestamp: new Date().toLocaleTimeString(),
+        actionLabel: 'Reintentar Conexión',
+        onAction: () => loadAll(),
+      });
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 4500);
+  const handleSystemAlert = (msg: string, type: 'error' | 'warning' | 'info' | 'success' = 'info') => {
+    setSystemAlert({
+      id: `alert_${Date.now()}`,
+      type,
+      title:
+        type === 'error'
+          ? 'Error del Sistema'
+          : type === 'success'
+          ? 'Operación Completada'
+          : 'Aviso del Sistema',
+      message: msg,
+      timestamp: new Date().toLocaleTimeString(),
+    });
   };
 
   const toggleTheme = () => {
@@ -95,7 +139,6 @@ export default function Home() {
         isDark={isDark}
         onTriggerFullPipeline={() => {
           setActiveView('orchestration');
-          showToast('Iniciando consola de orquestación ELT...');
         }}
       />
 
@@ -115,8 +158,70 @@ export default function Home() {
         />
 
         {/* Dashboard Content Container */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto">
           
+          {/* Centralized System Alert Banner (Single prominent error/status notification center) */}
+          {systemAlert && (
+            <div
+              role="alert"
+              className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg transition-all ${
+                systemAlert.type === 'error'
+                  ? isDark
+                    ? 'bg-rose-950/40 border-rose-600/50 text-rose-100 shadow-rose-950/20'
+                    : 'bg-rose-50 border-rose-300 text-rose-900 shadow-rose-100'
+                  : systemAlert.type === 'warning'
+                  ? isDark
+                    ? 'bg-amber-950/40 border-amber-600/50 text-amber-100 shadow-amber-950/20'
+                    : 'bg-amber-50 border-amber-300 text-amber-900 shadow-amber-100'
+                  : systemAlert.type === 'success'
+                  ? isDark
+                    ? 'bg-emerald-950/40 border-emerald-600/50 text-emerald-100 shadow-emerald-950/20'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-emerald-100'
+                  : isDark
+                  ? 'bg-blue-950/40 border-blue-600/50 text-blue-100 shadow-blue-950/20'
+                  : 'bg-blue-50 border-blue-300 text-blue-900 shadow-blue-100'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex-shrink-0">
+                  {systemAlert.type === 'error' && <XCircle className="w-5 h-5 text-rose-400" />}
+                  {systemAlert.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400" />}
+                  {systemAlert.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+                  {systemAlert.type === 'info' && <Info className="w-5 h-5 text-blue-400" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-sm leading-tight">{systemAlert.title}</h4>
+                    <span className="text-[10px] font-mono opacity-60">[{systemAlert.timestamp}]</span>
+                  </div>
+                  <p className="text-xs mt-1 leading-relaxed opacity-90">{systemAlert.message}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                {systemAlert.actionLabel && systemAlert.onAction && (
+                  <button
+                    onClick={systemAlert.onAction}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      systemAlert.type === 'error'
+                        ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                        : 'bg-blue-600 hover:bg-blue-500 text-white'
+                    }`}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>{systemAlert.actionLabel}</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setSystemAlert(null)}
+                  className="p-1 rounded-lg hover:bg-black/20 text-current opacity-70 hover:opacity-100 transition"
+                  title="Cerrar notificación"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Main Dashboard View */}
           {activeView === 'dashboard' && (
             <div className="space-y-6">
@@ -161,7 +266,6 @@ export default function Home() {
                   <button
                     onClick={() => {
                       setActiveView('orchestration');
-                      showToast('Navegando a consola de ejecución ELT...');
                     }}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-xs font-semibold transition shadow-2xs ${
                       isDark
@@ -187,7 +291,7 @@ export default function Home() {
               {/* 1. Top 4 KPI Cards (Bronze Ingestion, Silver NLP, FinBERT Inference, Gold DuckDB) */}
               <ShopeersKpiCards metrics={metrics} isDark={isDark} />
 
-              {/* 2. Graphical ETL Pipeline Monitoring & Operator Actions */}
+              {/* 2. Graphical ETL Pipeline Monitoring & Real-time Topology */}
               <EtlPipelineMonitorWidget
                 metrics={metrics}
                 diagnostics={diagnostics}
@@ -195,7 +299,6 @@ export default function Home() {
                 onNavigate={(v) => setActiveView(v)}
                 onTriggerPipeline={() => {
                   setActiveView('orchestration');
-                  showToast('Iniciando consola de orquestación ELT...');
                 }}
               />
 
@@ -245,8 +348,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Subview: Medallion Explorer */}
-          {(activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
+          {/* Subview: Medallion Explorer / Data Warehouse */}
+          {(activeView === 'warehouse' || activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
                 <div>
@@ -330,7 +433,7 @@ export default function Home() {
           )}
 
           {/* Subview: Market Terminal */}
-          {(activeView === 'terminal' || activeView === 'signals') && (
+          {activeView === 'terminal' && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
                 <div>
@@ -338,7 +441,7 @@ export default function Home() {
                     Terminal Cuantitativo de Mercado
                   </h2>
                   <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Velas horarias OHLCV sincronizadas con la polaridad social y detección de divergencias.
+                    Velas horarias OHLCV sincronizadas con la polaridad social e insights del Data Lake Bronze.
                   </p>
                 </div>
                 <button
@@ -357,16 +460,16 @@ export default function Home() {
             </div>
           )}
 
-          {/* Subview: Warehouse Ops */}
-          {activeView === 'maintenance' && (
+          {/* Subview: Observability & DuckDB Maintenance */}
+          {(activeView === 'observability' || activeView === 'maintenance') && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
                 <div>
                   <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Mantenimiento y Diagnóstico DuckDB
+                    Observabilidad, Telemetría &amp; Mantenimiento DuckDB
                   </h2>
                   <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Operaciones VACUUM, CHECKPOINT y estado de salud de endpoints analíticos.
+                    Monitoreo de latencias de red, salud del almacenamiento columnar, DDL y optimización de base de datos.
                   </p>
                 </div>
                 <button
@@ -381,10 +484,11 @@ export default function Home() {
                   <span>Volver al Dashboard</span>
                 </button>
               </div>
-              <WarehouseOps
+              <ObservabilityView
                 diagnostics={diagnostics}
+                metrics={metrics}
                 onRefresh={loadAll}
-                onSuccessMessage={showToast}
+                onAlert={(msg, type) => handleSystemAlert(msg, type)}
                 isDark={isDark}
               />
             </div>
@@ -418,25 +522,6 @@ export default function Home() {
             </div>
           )}
         </main>
-
-        {/* Global Toast Notification */}
-        {toastMsg && (
-          <div
-            className={`fixed bottom-5 right-5 z-50 text-xs sm:text-sm font-mono px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-4 transition-all border ${
-              isDark
-                ? 'bg-[#162137] border-[#253758] text-white'
-                : 'bg-white border-slate-200 text-slate-800'
-            }`}
-          >
-            <span>{toastMsg}</span>
-            <button
-              onClick={() => setToastMsg(null)}
-              className="text-slate-400 hover:text-white font-bold text-sm ml-2"
-            >
-              ✕
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

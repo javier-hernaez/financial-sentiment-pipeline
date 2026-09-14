@@ -3,21 +3,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
-  Bell,
   Sun,
   Moon,
   Menu,
   BookOpen,
-  Settings,
   Zap,
   LayoutDashboard,
-  Shield,
-  Activity,
-  CheckCircle2,
-  X,
   ExternalLink,
   Database,
   Cpu,
+  Activity,
 } from 'lucide-react';
 
 interface TopNavProps {
@@ -118,7 +113,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         </div>
       </div>
 
-      {/* Right Actions: Theme Toggle, Notifications, User Avatar (OP) */}
+      {/* Right Actions: Theme Toggle, User Avatar (OP) */}
       <div className="flex items-center gap-3">
         {/* Theme Toggle Button (Sun/Moon) */}
         <button
@@ -132,76 +127,6 @@ export const TopNav: React.FC<TopNavProps> = ({
         >
           {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
-
-        {/* Notifications Popover */}
-        <div className="relative" ref={notifMenuRef}>
-          <button
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className={`relative p-2 rounded-full border transition ${
-              isDark
-                ? 'border-[#1e293b] text-slate-300 hover:text-white hover:bg-[#131b2e]'
-                : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-            title="Notificaciones del Sistema"
-            aria-expanded={isNotificationsOpen}
-          >
-            <Bell className="w-4 h-4" />
-            <span className="w-2 h-2 rounded-full bg-emerald-500 absolute top-1.5 right-1.5 ring-2 ring-[#0b0f19]" />
-          </button>
-
-          {isNotificationsOpen && (
-            <div
-              className={`absolute right-0 mt-3 w-80 rounded-2xl border shadow-2xl p-4 z-50 ${
-                isDark
-                  ? 'bg-[#101726] border-[#1e293b] text-slate-200'
-                  : 'bg-white border-slate-200 text-slate-800'
-              }`}
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-700/30">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-400" />
-                  <span className="text-xs font-bold">Estado del Sistema</span>
-                </div>
-                <button
-                  onClick={() => setIsNotificationsOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="py-3 space-y-2 text-xs">
-                <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-100'}`}>
-                  <div className="flex items-center justify-between text-emerald-400 font-bold text-[11px]">
-                    <span>DuckDB Feature Store</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Almacén columnar listo para consultas analíticas.</p>
-                </div>
-
-                <div className={`p-2.5 rounded-xl border ${isDark ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-100'}`}>
-                  <div className="flex items-center justify-between text-blue-400 font-bold text-[11px]">
-                    <span>FinBERT Transformers</span>
-                    <span className="w-2 h-2 rounded-full bg-blue-400" />
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Motor de inferencia y scoring financiero activo.</p>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-700/30 flex justify-between">
-                <button
-                  onClick={() => {
-                    setIsNotificationsOpen(false);
-                    onNavigate?.('documentation');
-                  }}
-                  className="text-[11px] font-bold text-blue-400 hover:text-blue-300"
-                >
-                  Ver Guía del Sistema →
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Operator Profile Button & Dropdown */}
         <div className="relative pl-1" ref={opMenuRef}>
@@ -240,7 +165,7 @@ export const TopNav: React.FC<TopNavProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  TFM · Ingeniero de Datos
+                  Ingeniero de Datos / Data Engineer
                 </p>
               </div>
 
@@ -273,13 +198,13 @@ export const TopNav: React.FC<TopNavProps> = ({
                 </button>
 
                 <button
-                  onClick={() => handleOpAction('maintenance')}
+                  onClick={() => handleOpAction('observability')}
                   className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition ${
                     isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
                   }`}
                 >
-                  <Settings className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Mantenimiento DuckDB</span>
+                  <Activity className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Observabilidad &amp; DuckDB</span>
                 </button>
               </div>
             </div>

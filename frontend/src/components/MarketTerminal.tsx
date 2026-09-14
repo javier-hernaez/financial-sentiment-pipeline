@@ -14,9 +14,9 @@ import {
   Cell,
   CartesianGrid,
 } from 'recharts';
-import { TrendingUp, TrendingDown, ShieldAlert, CheckCircle, Download } from 'lucide-react';
-import { GoldRecord } from '@/types';
-import { fetchGoldData } from '@/lib/api';
+import { TrendingUp, TrendingDown, Download, Database, Layers, HardDrive, RefreshCw } from 'lucide-react';
+import { GoldRecord, SystemMetrics, BronzeFile } from '@/types';
+import { fetchGoldData, fetchMetrics, fetchBronzeTree } from '@/lib/api';
 
 interface MarketTerminalProps {
   isDark?: boolean;
@@ -27,6 +27,8 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [hours, setHours] = useState(24);
   const [data, setData] = useState<GoldRecord[]>([]);
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+  const [bronzeFiles, setBronzeFiles] = useState<BronzeFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,9 +42,15 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const records = await fetchGoldData(symbol, hours);
+      const [records, m, bTree] = await Promise.all([
+        fetchGoldData(symbol, hours).catch(() => []),
+        fetchMetrics().catch(() => null),
+        fetchBronzeTree().catch(() => ({ total_files: 0, files: [] })),
+      ]);
       const sorted = [...records].reverse();
       setData(sorted);
+      setMetrics(m);
+      setBronzeFiles(bTree.files || []);
     } catch (err) {
       console.error('Error fetching market terminal data:', err);
     } finally {
@@ -205,7 +213,7 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
           </div>
         </div>
 
-        {/* Quantitative Alpha Signal Card */}
+        {/* Bronze Lake Ingestion Insights Card */}
         <div
           className={`p-5 rounded-lg border transition-all duration-200 space-y-1 ${
             isDark
@@ -214,27 +222,16 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
           }`}
         >
           <span className={`text-xs uppercase tracking-wider font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Señal Cuantitativa (Alpha)
+            Insights de Ingesta (Bronze)
           </span>
-          <div className="text-sm font-bold font-mono mt-1 tracking-tight flex items-center gap-1.5">
-            {latest?.alpha_divergence_flag ? (
-              <span className="text-rose-400 bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-md flex items-center gap-1 font-bold">
-                <ShieldAlert className="w-4 h-4" />
-                DIVERGENCIA DETECTADA
-              </span>
-            ) : (
-              <span className="text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1 font-bold">
-                <CheckCircle className="w-4 h-4" />
-                FLUJO ALINEADO
-              </span>
-            )}
+          <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-blue-400 font-tabular">
+            {metrics?.bronze.total_files ?? bronzeFiles.length} <span className="text-xs font-normal text-slate-400">particiones</span>
           </div>
           <div className={`flex items-center justify-between text-xs font-mono pt-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            <span>Volatilidad: <strong className={isDark ? 'text-slate-200' : 'text-slate-700'}>{(latest?.realized_volatility_6h || 2.4).toFixed(1)}%</strong></span>
-            <span>Momentum: <strong className={isDark ? 'text-slate-200' : 'text-slate-700'}>{(latest?.sentiment_momentum_3h || 0.82).toFixed(2)}</strong></span>
+            <span>Volumen: <strong className={isDark ? 'text-slate-200' : 'text-slate-700'}>{metrics?.bronze.total_size_kb ? Math.round(metrics.bronze.total_size_kb) : 0} KB</strong></span>
+            <span className="text-emerald-400 font-bold">Parquet inmutable</span>
           </div>
         </div>
-
       </div>
 
       {/* Main Charts Grid */}
@@ -352,6 +349,134 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
           </div>
         </div>
 
+      </div>
+
+      {/* Gold Analytics Insights Detail Section */}
+      <div
+        className={`p-5 sm:p-6 rounded-lg border transition-all duration-200 space-y-4 ${
+          isDark
+            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+            : 'bg-white border-slate-200 text-slate-800 shadow-sm'
+        }`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/40">
+          <div>
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-yellow-400" />
+              <h3 className={`text-sm sm:text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Insights del Data Lake Gold (Agregaciones Analíticas DuckDB)
+              </h3>
+            </div>
+            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Registros horarios consolidados con polaridad FinBERT, volumen negociado y Fear & Greed sincronizados
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">
+              <HardDrive className="w-3 h-3" />
+              {data.length} Registros Gold
+            </span>
+          </div>
+        </div>
+
+        {/* 3 Columns: Gold Analytics Metrics */}
+        {data.length === 0 ? (
+          <div className="py-10 text-center text-xs font-mono text-slate-500">
+            Sin datos Gold en DuckDB. Ejecuta el Pipeline ELT completo para generar agregaciones horarias.
+          </div>
+        ) : (() => {
+          const avgSentiment = data.length > 0
+            ? data.reduce((acc, r) => acc + Number(r.avg_hourly_sentiment), 0) / data.length
+            : 0;
+          const totalMentions = data.reduce((acc, r) => acc + (Number(r.social_volume_mentions) || 0), 0);
+          const avgFearGreed = data.filter(r => r.fear_and_greed_score !== null).length > 0
+            ? data.filter(r => r.fear_and_greed_score !== null).reduce((acc, r) => acc + Number(r.fear_and_greed_score), 0)
+              / data.filter(r => r.fear_and_greed_score !== null).length
+            : null;
+          const latestHour = data.length > 0 ? data[data.length - 1].timestamp_hour?.slice(0, 16).replace('T', ' ') : '—';
+          const latestFgLabel = data.length > 0 ? data[data.length - 1].fear_and_greed_classification : null;
+
+          return (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+                {/* Avg Sentiment Gold */}
+                <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-yellow-400">1. Polaridad FinBERT</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300">gold_hourly</span>
+                  </div>
+                  <p className={`text-[11px] font-sans ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Sentimiento medio horario calculado por FinBERT sobre {data.length} horas consolidadas en DuckDB.
+                  </p>
+                  <div className="pt-2 border-t border-slate-800/40 flex justify-between text-[11px] text-slate-400">
+                    <span>Score avg:</span>
+                    <strong className={avgSentiment >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      {avgSentiment > 0 ? `+${avgSentiment.toFixed(3)}` : avgSentiment.toFixed(3)}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Social Volume Gold */}
+                <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-400">2. Volumen Social NLP</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">social_volume</span>
+                  </div>
+                  <p className={`text-[11px] font-sans ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Menciones totales de noticias y posts analizados por FinBERT en la ventana seleccionada.
+                  </p>
+                  <div className="pt-2 border-t border-slate-800/40 flex justify-between text-[11px] text-slate-400">
+                    <span>Menciones:</span>
+                    <strong className={isDark ? 'text-slate-200' : 'text-slate-700'}>{totalMentions.toLocaleString()}</strong>
+                  </div>
+                </div>
+
+                {/* Fear & Greed Gold */}
+                <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-400">3. Fear & Greed Macro</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">gold_hourly</span>
+                  </div>
+                  <p className={`text-[11px] font-sans ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Índice macro de Alternative.me sincronizado en la capa Gold junto con los retornos horarios.
+                  </p>
+                  <div className="pt-2 border-t border-slate-800/40 flex justify-between text-[11px] text-slate-400">
+                    <span>Avg F&amp;G:</span>
+                    <strong className="text-emerald-400">
+                      {avgFearGreed !== null ? `${avgFearGreed.toFixed(0)} · ${latestFgLabel ?? ''}` : 'Sin datos'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Gold records list */}
+              <div className="pt-2 space-y-2">
+                <span className={`text-[11px] uppercase tracking-wider font-mono font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Últimas horas Gold consolidadas · Última actualización: {latestHour}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {data.slice(-6).reverse().map((rec, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2.5 rounded-md border text-[11px] font-mono flex items-center justify-between gap-2 ${
+                        isDark ? 'bg-[#0f1626] border-slate-800/80 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      <div className="truncate">
+                        <div className="font-bold truncate">{rec.timestamp_hour?.slice(0, 16).replace('T', ' ') ?? '—'}</div>
+                        <div className="text-[10px] text-slate-500">{rec.social_volume_mentions ?? 0} menciones · F&G: {rec.fear_and_greed_score ?? '—'}</div>
+                      </div>
+                      <span className={`text-[10px] font-bold flex-shrink-0 ${Number(rec.avg_hourly_sentiment) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {Number(rec.avg_hourly_sentiment) > 0 ? '+' : ''}{Number(rec.avg_hourly_sentiment).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
     </div>

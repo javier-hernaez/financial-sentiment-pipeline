@@ -1,22 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   LayoutDashboard,
-  Box,
-  Layers,
-  Users,
   FileText,
   Database,
-  ChevronDown,
   LineChart,
-  Settings,
   HelpCircle,
   X,
   PanelLeftClose,
-  Sparkles,
   Zap,
   Cpu,
+  Activity,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -40,8 +35,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isDark = true,
   onTriggerFullPipeline,
 }) => {
-  const [isFinancesOpen, setIsFinancesOpen] = useState(true);
-
   interface NavItem {
     id: string;
     label: string;
@@ -53,15 +46,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'orchestration', label: 'Orquestación ELT', icon: Zap, badge: 'Live' },
     { id: 'terminal', label: 'Terminal de Mercado', icon: LineChart },
-    { id: 'nlp', label: 'Laboratorio FinBERT NLP', icon: Cpu },
     { id: 'content', label: 'Feeds RSS & Titulares', icon: FileText },
-    { id: 'medallion', label: 'Data Lake Bronze', icon: Database },
-  ];
-
-  const financesNav = [
-    { id: 'silver', label: 'Tablas Silver' },
-    { id: 'gold', label: 'Gold Feature Store' },
-    { id: 'signals', label: 'Señales Alpha' },
+    { id: 'nlp', label: 'Laboratorio FinBERT', icon: Cpu },
+    { id: 'warehouse', label: 'Almacén DuckDB', icon: Database },
+    { id: 'observability', label: 'Observabilidad', icon: Activity },
   ];
 
   const handleSelect = (id: string) => {
@@ -172,65 +160,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
           </nav>
 
-          {/* Secondary Sub-Section: Finances / Lake Layers */}
-          {(!isCollapsed || isMobileOpen) && (
-            <div className="space-y-1 pt-2">
-              <button
-                onClick={() => setIsFinancesOpen(!isFinancesOpen)}
-                className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold uppercase tracking-wider ${
-                  isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Almacén DuckDB</span>
-                </div>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isFinancesOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {isFinancesOpen && (
-                <div className="pl-6 space-y-1 border-l ml-4 border-slate-700/40">
-                  {financesNav.map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => handleSelect(sub.id)}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        activeView === sub.id
-                          ? 'text-blue-500 font-bold'
-                          : isDark
-                          ? 'text-slate-400 hover:text-white'
-                          : 'text-slate-500 hover:text-slate-900'
-                      }`}
-                    >
-                      {sub.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Bottom Settings Section */}
           <div className="pt-2 border-t border-slate-700/30 space-y-1">
             <button
-              onClick={() => handleSelect('maintenance')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
-                activeView === 'maintenance'
-                  ? isDark
-                    ? 'bg-blue-600/15 text-blue-400 font-bold'
-                    : 'bg-blue-50 text-blue-600 font-bold'
-                  : isDark
-                  ? 'text-slate-400 hover:text-white hover:bg-[#131b2e]'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              } ${isCollapsed && !isMobileOpen ? 'justify-center px-0' : ''}`}
-            >
-              <Settings className={`w-4 h-4 flex-shrink-0 ${activeView === 'maintenance' ? 'text-blue-500' : ''}`} />
-              {(!isCollapsed || isMobileOpen) && <span>Configuración</span>}
-            </button>
-
-            <button
               onClick={() => handleSelect('documentation')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition ${
                 activeView === 'documentation'
                   ? isDark
                     ? 'bg-blue-600/15 text-blue-400 font-bold'
