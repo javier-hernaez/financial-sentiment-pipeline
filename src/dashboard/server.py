@@ -253,6 +253,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 elif table == "silver_fear_greed":
                     order_by_sql = " ORDER BY date DESC"
 
+                # Compute total row count for pagination (was missing — caused NameError → ECONNRESET)
+                count_sql = f"SELECT COUNT(*) FROM {table}{where_sql}"
+                total_count = conn.execute(count_sql, params).fetchone()[0]
+
                 query_sql = f"SELECT * FROM {table}{where_sql}{order_by_sql} LIMIT {limit} OFFSET {offset}"
                 result = conn.execute(query_sql, params)
                 columns = [desc[0] for desc in result.description]
