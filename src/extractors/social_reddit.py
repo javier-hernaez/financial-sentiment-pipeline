@@ -182,7 +182,6 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             ("blockworks", "https://blockworks.co/feed"),
             ("beincrypto", "https://beincrypto.com/feed/"),
             ("newsbtc", "https://www.newsbtc.com/feed/"),
-            ("bankless", "https://www.banklesshq.com/feed"),
             ("yahoofinance", "https://finance.yahoo.com/news/rssindex"),
             ("marketwatch", "https://feeds.content.dowjones.io/public/rss/mw_topstories"),
         ]
