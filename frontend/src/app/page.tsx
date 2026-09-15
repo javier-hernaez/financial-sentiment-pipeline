@@ -25,7 +25,6 @@ import { DocumentationGuide } from '@/components/DocumentationGuide';
 import { EtlPipelineMonitorWidget } from '@/components/EtlPipelineMonitorWidget';
 import {
   Calendar,
-  ChevronDown,
   Play,
   Download,
   ArrowLeft,
@@ -55,7 +54,6 @@ export default function Home() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
-  const [timeRange, setTimeRange] = useState('Últimas 24 horas');
 
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
@@ -250,18 +248,6 @@ export default function Home() {
                     <span>En Tiempo Real · Lote Activo</span>
                   </div>
 
-                  {/* Window Dropdown */}
-                  <div
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-xs font-medium cursor-pointer shadow-2xs ${
-                      isDark
-                        ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>{timeRange}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                  </div>
-
                   {/* Trigger Pipeline Button */}
                   <button
                     onClick={() => {
@@ -294,7 +280,6 @@ export default function Home() {
               {/* 2. Graphical ETL Pipeline Monitoring & Real-time Topology */}
               <EtlPipelineMonitorWidget
                 metrics={metrics}
-                diagnostics={diagnostics}
                 isDark={isDark}
                 onNavigate={(v) => setActiveView(v)}
                 onTriggerPipeline={() => {

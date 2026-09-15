@@ -7,11 +7,6 @@ import {
   Moon,
   Menu,
   BookOpen,
-  Zap,
-  LayoutDashboard,
-  ExternalLink,
-  Database,
-  Cpu,
   Activity,
 } from 'lucide-react';
 
@@ -33,19 +28,14 @@ export const TopNav: React.FC<TopNavProps> = ({
   activeView = 'dashboard',
 }) => {
   const [isOpMenuOpen, setIsOpMenuOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const opMenuRef = useRef<HTMLDivElement>(null);
-  const notifMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close menus on outside click
+  // Close operator menu on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (opMenuRef.current && !opMenuRef.current.contains(event.target as Node)) {
         setIsOpMenuOpen(false);
-      }
-      if (notifMenuRef.current && !notifMenuRef.current.contains(event.target as Node)) {
-        setIsNotificationsOpen(false);
       }
     };
 

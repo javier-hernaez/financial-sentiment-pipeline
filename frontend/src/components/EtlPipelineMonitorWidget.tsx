@@ -2,11 +2,10 @@
 
 import React from 'react';
 import { Database, Cpu, Layers, Play, CheckCircle2 } from 'lucide-react';
-import { SystemMetrics, Diagnostics } from '@/types';
+import { SystemMetrics } from '@/types';
 
 interface EtlPipelineMonitorWidgetProps {
   metrics: SystemMetrics | null;
-  diagnostics?: Diagnostics | null;
   isDark?: boolean;
   onNavigate: (view: string) => void;
   onTriggerPipeline: () => void;
@@ -14,7 +13,6 @@ interface EtlPipelineMonitorWidgetProps {
 
 export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> = ({
   metrics,
-  diagnostics,
   isDark = true,
   onNavigate,
   onTriggerPipeline,
