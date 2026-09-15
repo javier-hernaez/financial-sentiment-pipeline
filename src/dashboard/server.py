@@ -7,7 +7,7 @@ import json
 import os
 import sys
 import urllib.parse
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
 
@@ -49,6 +49,8 @@ def get_sandbox_nlp() -> FinBERTEngine:
 class AdvancedDashboardHandler(BaseHTTPRequestHandler):
     """Enhanced HTTP Handler for the Market Intelligence Dashboard."""
 
+    protocol_version = "HTTP/1.1"
+
     def log_message(self, format, *args):
         return
 
@@ -80,7 +82,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 social_files = len(list(bronze_dir.glob("social/**/*.parquet"))) if bronze_dir.exists() else 0
 
                 # DuckDB Silver and Gold metrics
-                conn = duckdb.connect(str(db_path), read_only=True)
+                conn = duckdb.connect(str(db_path))
                 silver_m = conn.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
                 silver_s = conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
                 silver_fg = conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
@@ -222,7 +224,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     self._send_json({"columns": [], "rows": [], "total_count": 0, "table": table}, 200)
                     return
 
-                conn = duckdb.connect(db_path, read_only=True)
+                conn = duckdb.connect(db_path)
 
                 # Base query
                 where_clauses = []
@@ -562,16 +564,23 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
     def _send_json(self, data: Any, status_code: int = 200):
         try:
+            payload = json.dumps(data, default=str).encode("utf-8")
             self.send_response(status_code)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
             self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Connection", "close")
             self.end_headers()
-            self.wfile.write(json.dumps(data, default=str).encode("utf-8"))
+            self.wfile.write(payload)
         except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
             pass
 
 
-class QuietHTTPServer(HTTPServer):
+class QuietHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+
     def handle_error(self, request, client_address):
         exc_type, _, _ = sys.exc_info()
         if exc_type in (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
