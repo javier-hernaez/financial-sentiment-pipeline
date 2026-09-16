@@ -24,21 +24,27 @@ class MarketIntelligencePipeline:
         symbol: Optional[str] = None,
         hours: int = 24,
         force_mock_nlp: bool = False,
+        nlp_engine: Optional[FinBERTEngine] = None,
     ):
         self.symbol = (symbol or settings.default_symbol).upper()
         self.hours = hours
         self.force_mock_nlp = force_mock_nlp
+        self._nlp_engine = nlp_engine
 
         # Core subsystems
         settings.setup_directories()
         self.lake = BronzeDataLake()
         self.warehouse = MarketWarehouse()
-        self.nlp_engine = FinBERTEngine(force_mock=self.force_mock_nlp)
 
         # Extractors
         self.binance_ext = BinanceKlinesExtractor(symbol=self.symbol)
-        self.fear_greed_ext = FearGreedExtractor()
         self.social_ext = SocialRedditExtractor()
+
+    @property
+    def nlp_engine(self) -> FinBERTEngine:
+        if self._nlp_engine is None:
+            self._nlp_engine = FinBERTEngine(force_mock=self.force_mock_nlp)
+        return self._nlp_engine
 
     def __enter__(self):
         return self
@@ -56,25 +62,23 @@ class MarketIntelligencePipeline:
 
     async def extract(self) -> Dict[str, Any]:
         """
-        Executes parallel extraction of Market, Fear & Greed, and Social feeds.
-        Must be called within an active async event loop.
+        Executes parallel extraction of Market and Social feeds.
+        Fear & Greed is derived endogenously from FinBERT sentiment in the Silver layer.
         """
         console.print("[bold blue]1. Extracting parallel data streams...[/bold blue]")
         market_task = self.binance_ext.extract(symbol=self.symbol, limit=self.hours)
-        macro_task = self.fear_greed_ext.extract(limit=10)
         social_task = self.social_ext.extract(limit_per_sub=15)
 
-        raw_market, raw_macro, raw_social = await asyncio.gather(
-            market_task, macro_task, social_task, return_exceptions=False
+        raw_market, raw_social = await asyncio.gather(
+            market_task, social_task, return_exceptions=False
         )
 
         console.print(f"   [green][OK][/green] Extracted {len(raw_market)} market candles for {self.symbol}")
-        console.print(f"   [green][OK][/green] Extracted {len(raw_macro)} macro Fear & Greed records")
         console.print(f"   [green][OK][/green] Extracted {len(raw_social)} social posts/comments")
 
         return {
             "market": raw_market,
-            "macro": raw_macro,
+            "macro": [],
             "social": raw_social,
         }
 
@@ -120,22 +124,13 @@ class MarketIntelligencePipeline:
             self.warehouse.upsert_market_prices(df_market) if df_market is not None and not df_market.is_empty() else 0
         )
 
-        # 3b. Fear & Greed
-        if raw_macro is not None:
-            df_macro = pl.DataFrame(raw_macro) if not isinstance(raw_macro, pl.DataFrame) else raw_macro
-        else:
-            df_macro = self.lake.read_latest_partition("fear_greed")
-
-        total_macro = (
-            self.warehouse.upsert_fear_greed(df_macro) if df_macro is not None and not df_macro.is_empty() else 0
-        )
-
-        # 3c. Social NLP Enrichment with Polars & FinBERT
+        # 3b. Social NLP Enrichment with Polars & FinBERT
         if raw_social is not None:
             df_social_raw = pl.DataFrame(raw_social) if not isinstance(raw_social, pl.DataFrame) else raw_social
         else:
             df_social_raw = self.lake.read_latest_partition("social")
 
+        df_social_scored = None
         if df_social_raw is not None and not df_social_raw.is_empty():
             df_social_cleaned = TextCleaner.clean_polars_column(df_social_raw, title_col="title", body_col="text_body")
             console.print("   -> Running batch sentiment inference (FinBERT)...")
@@ -146,8 +141,47 @@ class MarketIntelligencePipeline:
             total_social = 0
             posts_processed = 0
 
+        # 3c. Fear & Greed derived 100% endogenously from FinBERT sentiment
+        if df_social_scored is not None and not df_social_scored.is_empty():
+            now_dt = datetime.now(timezone.utc)
+            now_epoch = int(now_dt.timestamp())
+            now_date = now_dt.strftime("%Y-%m-%d")
+            avg_sent = float(df_social_scored["sentiment_score"].mean())
+            fng_val = int(min(100, max(0, round((avg_sent + 1.0) * 50.0))))
+
+            if fng_val <= 24:
+                fng_class = "Extreme Fear"
+            elif fng_val <= 44:
+                fng_class = "Fear"
+            elif fng_val <= 55:
+                fng_class = "Neutral"
+            elif fng_val <= 75:
+                fng_class = "Greed"
+            else:
+                fng_class = "Extreme Greed"
+
+            df_fng = pl.DataFrame(
+                [
+                    {
+                        "source": "finbert_nlp",
+                        "timestamp_epoch": now_epoch,
+                        "datetime_utc": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                        "date": now_date,
+                        "fear_and_greed_score": fng_val,
+                        "fear_and_greed_classification": fng_class,
+                    }
+                ]
+            )
+            total_macro = self.warehouse.upsert_fear_greed(df_fng)
+            macro_records = len(df_fng)
+            console.print(
+                f"   [green][OK][/green] Calculated FinBERT Fear & Greed: {fng_val} ({fng_class})"
+            )
+        else:
+            total_macro = 0
+            macro_records = 0
+
         candles_processed = len(df_market) if df_market is not None else 0
-        macro_records = len(df_macro) if df_macro is not None else 0
 
         return {
             "total_silver_market": total_market,

@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/Sidebar';
 import { TopNav } from '@/components/TopNav';
+import { MobileHeader } from '@/components/MobileHeader';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { ShopeersKpiCards } from '@/components/ShopeersKpiCards';
 import { IngestionBarAndGauge } from '@/components/IngestionBarAndGauge';
 import { AssetFeedTable } from '@/components/AssetFeedTable';
@@ -55,6 +57,7 @@ export default function Home() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
 
+  const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -146,17 +149,31 @@ export default function Home() {
           isCollapsed ? 'md:ml-20' : 'md:ml-64'
         }`}
       >
-        {/* Top Navbar */}
-        <TopNav
-          onToggleMobileMenu={() => setIsMobileOpen(!isMobileOpen)}
+        {/* Mobile Smartphone Header */}
+        <MobileHeader
+          currentSymbol={selectedSymbol}
+          onSelectSymbol={(sym) => setSelectedSymbol(sym)}
           isDark={isDark}
           onToggleTheme={toggleTheme}
-          onNavigate={(v) => setActiveView(v)}
+          onRefresh={loadAll}
+          isRefreshing={isRefreshing}
+          isOnline={diagnostics?.duckdb?.status === 'ok'}
           activeView={activeView}
         />
 
+        {/* Desktop Top Navbar */}
+        <div className="hidden md:block">
+          <TopNav
+            onToggleMobileMenu={() => setIsMobileOpen(!isMobileOpen)}
+            isDark={isDark}
+            onToggleTheme={toggleTheme}
+            onNavigate={(v) => setActiveView(v)}
+            activeView={activeView}
+          />
+        </div>
+
         {/* Dashboard Content Container */}
-        <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto pb-24 md:pb-8">
           
           {/* Centralized System Alert Banner (Single prominent error/status notification center) */}
           {systemAlert && (
@@ -306,7 +323,7 @@ export default function Home() {
           )}
 
           {/* Subview: Pipeline Orchestration */}
-          {activeView === 'orchestration' && (
+          {(activeView === 'orchestration' || activeView === 'pipeline') && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
                 <div>
@@ -362,7 +379,7 @@ export default function Home() {
           )}
 
           {/* Subview: FinBERT Lab */}
-          {activeView === 'nlp' && (
+          {(activeView === 'nlp' || activeView === 'finbert') && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
                 <div>
@@ -418,7 +435,7 @@ export default function Home() {
           )}
 
           {/* Subview: Market Terminal */}
-          {activeView === 'terminal' && (
+          {(activeView === 'terminal' || activeView === 'market' || activeView === 'alpha') && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
                 <div>
@@ -507,6 +524,13 @@ export default function Home() {
             </div>
           )}
         </main>
+
+        {/* Mobile Bottom Navigation Bar (Ergonomic Thumb Access) */}
+        <MobileBottomNav
+          activeView={activeView}
+          setActiveView={setActiveView}
+          isDark={isDark}
+        />
       </div>
     </div>
   );

@@ -46,36 +46,36 @@ export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isD
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
       {cards.map((c, i) => {
         const Icon = c.icon;
         return (
           <div
             key={i}
-            className={`p-5 rounded-lg border transition-all duration-200 ${
+            className={`p-3 sm:p-5 rounded-xl border transition-all duration-200 ${
               isDark
                 ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md hover:border-[#2a3c60]'
                 : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:shadow-md'
             }`}
           >
             {/* Header: Title and Icon */}
-            <div className="flex items-center justify-between">
-              <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            <div className="flex items-center justify-between gap-1">
+              <span className={`text-[11px] sm:text-sm font-medium line-clamp-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 {c.title}
               </span>
-              <div className={`w-8 h-8 rounded-md flex items-center justify-center ${c.iconBg}`}>
-                <Icon className="w-4 h-4" />
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-md flex-shrink-0 flex items-center justify-center ${c.iconBg}`}>
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
 
             {/* Metric Value & Tag Badge */}
-            <div className="mt-3 flex items-baseline gap-2.5 flex-wrap">
-              <span className="text-2xl sm:text-3xl font-bold tracking-tight font-mono font-tabular">
+            <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5 sm:gap-2.5 flex-wrap">
+              <span className="text-base sm:text-2xl xl:text-3xl font-bold tracking-tight font-mono font-tabular">
                 {c.value}
               </span>
 
               <span
-                className={`inline-flex items-center font-mono text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                className={`hidden sm:inline-flex items-center font-mono text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md ${
                   isDark
                     ? 'bg-slate-800 text-slate-300 border border-slate-700'
                     : 'bg-slate-100 text-slate-700 border border-slate-200'
@@ -86,7 +86,7 @@ export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isD
             </div>
 
             {/* Comparison Text */}
-            <p className={`text-xs mt-2 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-[10px] sm:text-xs mt-1.5 sm:mt-2 font-mono line-clamp-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               {c.lastPeriod}
             </p>
           </div>

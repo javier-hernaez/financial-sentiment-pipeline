@@ -27,18 +27,15 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
     try {
       const goldData = await fetchGoldData('BTCUSDT', 24);
       if (goldData && goldData.length > 0) {
-        // Compute composite consensus: Fear & Greed (0–100) combined with avg FinBERT score (-1 to +1)
+        // Compute composite consensus directly from FinBERT Fear & Greed index (0-100)
         const withFG = goldData.filter(r => r.fear_and_greed_score !== null);
         const avgFG = withFG.length > 0
           ? withFG.reduce((acc, r) => acc + Number(r.fear_and_greed_score), 0) / withFG.length
           : 50;
-        const avgSentiment = goldData.reduce((acc, r) => acc + Number(r.avg_hourly_sentiment), 0) / goldData.length;
-        // Normalize FinBERT [-1,1] → [0,100] and blend 70% F&G + 30% NLP
-        const nlpNorm = ((avgSentiment + 1) / 2) * 100;
-        const composite = Math.round(0.7 * avgFG + 0.3 * nlpNorm);
+        const composite = Math.round(avgFG);
         setConsensoScore(composite);
         if (composite >= 75) setConsensoLabel('Codicia Extrema');
-        else if (composite >= 55) setConsensoLabel('Confianza / Bullish');
+        else if (composite >= 55) setConsensoLabel('Codicia / Bullish');
         else if (composite >= 45) setConsensoLabel('Neutral');
         else if (composite >= 25) setConsensoLabel('Miedo / Bearish');
         else setConsensoLabel('Miedo Extremo');
@@ -72,7 +69,7 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
       color: 'bg-purple-500',
     },
     {
-      name: 'Macro F&G',
+      name: 'FinBERT F&G',
       count: macroRows,
       pct: totalRaw > 0 ? Math.round((macroRows / totalRaw) * 100) : 0,
       color: 'bg-emerald-500',
@@ -144,10 +141,10 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              Consenso de Mercado (Macro + NLP)
+              Índice Fear &amp; Greed (FinBERT NLP)
             </h3>
             <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              70% Fear & Greed + 30% FinBERT · DuckDB Gold (24h)
+              Derivado 100% de polaridad FinBERT · DuckDB Gold (0–100)
             </span>
           </div>
           <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />

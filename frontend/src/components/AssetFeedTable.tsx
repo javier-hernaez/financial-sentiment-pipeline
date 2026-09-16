@@ -14,6 +14,7 @@ import {
   BookOpen,
   User,
 } from 'lucide-react';
+import { fetchTableData } from '@/lib/api';
 
 export interface FeedItem {
   id: string;
@@ -47,12 +48,7 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
   const fetchRealHeadlines = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/table-data?table=silver_social_sentiment&limit=50');
-      if (!res.ok) {
-        setItems([]);
-        return;
-      }
-      const data = await res.json();
+      const data = await fetchTableData('silver_social_sentiment', 50);
       if (data && data.rows && Array.isArray(data.rows)) {
         const mapped: FeedItem[] = data.rows.map((r: any, idx: number) => {
           // Priority: ingested_at (time the pipeline ran) > created_utc (article pub date) > timestamp_hour
@@ -239,8 +235,70 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full text-left text-xs min-w-[750px]">
+        <>
+          {/* Mobile-Native Card Feed (< md) */}
+          <div className="md:hidden divide-y divide-[#1a253a]">
+            {filteredItems.map((row) => (
+              <div
+                key={row.id}
+                onClick={() => setSelectedItem(row)}
+                className={`py-3 px-1 space-y-2 transition active:scale-[0.99] cursor-pointer ${
+                  isDark ? 'hover:bg-[#1a253d]/40' : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${row.assetBg}`}>
+                      {row.asset}
+                    </span>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                      isDark ? 'bg-[#0f1626] text-slate-300 border border-slate-800' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {row.source}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+                    <Clock className="w-3 h-3 text-slate-500" />
+                    <span>{row.dateTime}</span>
+                  </div>
+                </div>
+
+                <p className={`font-semibold text-xs leading-snug ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                  {row.headline}
+                </p>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span
+                    className={`inline-flex items-center gap-1 font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
+                      row.label === 'BULLISH'
+                        ? isDark
+                          ? 'bg-emerald-950/70 text-[#10b981] border border-emerald-500/40'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                        : row.label === 'NEUTRAL'
+                        ? isDark
+                          ? 'bg-amber-950/60 text-[#f59e0b] border border-amber-500/40'
+                          : 'bg-amber-50 text-amber-700 border border-amber-300'
+                        : isDark
+                        ? 'bg-rose-950/70 text-[#ef4444] border border-rose-500/40'
+                        : 'bg-rose-50 text-rose-700 border border-rose-300'
+                    }`}
+                  >
+                    {row.label === 'BULLISH' ? <ArrowUpRight className="w-3 h-3" /> : row.label === 'NEUTRAL' ? <Minus className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {row.label} ({row.polarity})
+                  </span>
+
+                  <div className="flex items-center gap-1 text-amber-400 font-mono font-bold text-[11px]">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <span>{row.confidence}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View (>= md) */}
+          <div className="hidden md:block overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-left text-xs min-w-[750px]">
             <thead>
               <tr
                 className={`border-b font-mono font-bold uppercase tracking-wider text-[11px] ${
@@ -365,7 +423,8 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
             </tbody>
           </table>
         </div>
-      )}
+      </>
+    )}
 
       {/* Slide-over / Modal for Full News Content Inspection */}
       {selectedItem && (

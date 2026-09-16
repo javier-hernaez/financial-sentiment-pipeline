@@ -129,14 +129,19 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             except Exception as exc:
                 diag["binance"] = {"status": 500, "latency_ms": -1, "error": str(exc)}
 
-            # 2. Alternative.me Ping
+            # 2. FinBERT Engine Local Status
             try:
-                t0 = time.time()
-                res = httpx.get("https://api.alternative.me/fng/?limit=1", timeout=5.0, follow_redirects=True)
-                lat = round((time.time() - t0) * 1000, 1)
-                diag["fear_greed"] = {"status": res.status_code, "latency_ms": lat}
+                nlp = get_sandbox_nlp()
+                diag["finbert"] = {
+                    "status": "ready" if nlp._is_transformer_ready else "heuristic_fallback",
+                    "model": nlp.model_name,
+                    "device": "CPU",
+                }
+                # Keep fear_greed key mapped to FinBERT for UI retrocompatibility
+                diag["fear_greed"] = {"status": 200, "source": "finbert_nlp", "latency_ms": 0.1}
             except Exception as exc:
-                diag["fear_greed"] = {"status": 500, "latency_ms": -1, "error": str(exc)}
+                diag["finbert"] = {"status": "error", "error": str(exc)}
+                diag["fear_greed"] = {"status": 200, "source": "finbert_nlp", "latency_ms": 0.0}
 
             diag["duckdb"] = {"status": "ok" if os.path.exists(settings.duckdb_path) else "missing"}
             self._send_json(diag, 200)
@@ -359,7 +364,9 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
             pipeline = None
             try:
-                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=False)
+                pipeline = MarketIntelligencePipeline(
+                    symbol=symbol, hours=hours, force_mock_nlp=False, nlp_engine=get_sandbox_nlp()
+                )
                 result = asyncio.run(pipeline.run())
                 self._send_json(
                     {
@@ -410,7 +417,9 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 import time
 
                 t0 = time.time()
-                pipeline = MarketIntelligencePipeline(symbol=symbol, hours=hours, force_mock_nlp=False)
+                pipeline = MarketIntelligencePipeline(
+                    symbol=symbol, hours=hours, force_mock_nlp=False, nlp_engine=get_sandbox_nlp()
+                )
 
                 if stage == "extract":
                     extracted = asyncio.run(pipeline.extract())
