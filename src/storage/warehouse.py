@@ -91,24 +91,32 @@ class MarketWarehouse:
                 SUM(CASE WHEN s.sentiment_label = 'bullish' THEN 1 ELSE 0 END) AS bullish_mentions,
                 SUM(CASE WHEN s.sentiment_label = 'bearish' THEN 1 ELSE 0 END) AS bearish_mentions,
                 SUM(CASE WHEN s.sentiment_label = 'neutral' THEN 1 ELSE 0 END) AS neutral_mentions,
-                ROUND(
-                    CASE 
-                        WHEN COUNT(s.post_id) > 0 THEN 
-                            GREATEST(0.0, LEAST(100.0, (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0))
-                        ELSE 50.0
-                    END, 0
-                )::INTEGER AS fear_and_greed_score,
-                CASE
-                    WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 24.0) THEN 'Extreme Fear'
-                    WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 44.0) THEN 'Fear'
-                    WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 55.0) THEN 'Neutral'
-                    WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 75.0) THEN 'Greed'
-                    WHEN (COUNT(s.post_id) > 0) THEN 'Extreme Greed'
-                    ELSE 'Neutral'
-                END AS fear_and_greed_classification
+                COALESCE(
+                    MAX(fg.fear_and_greed_score),
+                    ROUND(
+                        CASE 
+                            WHEN COUNT(s.post_id) > 0 THEN 
+                                GREATEST(0.0, LEAST(100.0, (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0))
+                            ELSE 50.0
+                        END, 0
+                    )::INTEGER
+                ) AS fear_and_greed_score,
+                COALESCE(
+                    MAX(fg.fear_and_greed_classification),
+                    CASE
+                        WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 24.0) THEN 'Extreme Fear'
+                        WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 44.0) THEN 'Fear'
+                        WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 55.0) THEN 'Neutral'
+                        WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 75.0) THEN 'Greed'
+                        WHEN (COUNT(s.post_id) > 0) THEN 'Extreme Greed'
+                        ELSE 'Neutral'
+                    END
+                ) AS fear_and_greed_classification
             FROM silver_market_prices m
             LEFT JOIN silver_social_sentiment s
                 ON m.timestamp_hour = s.timestamp_hour
+            LEFT JOIN silver_fear_greed fg
+                ON SUBSTRING(m.timestamp_hour, 1, 10) = fg.date
             GROUP BY
                 m.timestamp_hour,
                 m.asset_ticker,

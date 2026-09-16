@@ -83,7 +83,7 @@ export default function Home() {
         id: 'telemetry_error',
         type: 'error',
         title: 'Error de Comunicación con el Servidor Analítico (DuckDB / FastAPI)',
-        message: 'No se pudo contactar con los endpoints de telemetría (http://localhost:8080/api). Verifica que el backend esté activo.',
+        message: 'No se pudo contactar con los endpoints de telemetría (/api). Verifica que el backend esté activo.',
         timestamp: new Date().toLocaleTimeString(),
         actionLabel: 'Reintentar Conexión',
         onAction: () => loadAll(),
@@ -117,7 +117,7 @@ export default function Home() {
       <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-slate-400 font-mono text-xs">
           <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-          <span>Iniciando Terminal Cuantitativo...</span>
+          <span>Iniciando Terminal de Mercado...</span>
         </div>
       </div>
     );
@@ -440,10 +440,10 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
                 <div>
                   <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Terminal Cuantitativo de Mercado
+                    Terminal de Precios y Sentimiento de Mercado
                   </h2>
                   <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Velas horarias OHLCV sincronizadas con la polaridad social e insights del Data Lake Bronze.
+                    Series de precios y volumen horarios sincronizados con la polaridad social e insights del Data Lake Bronze.
                   </p>
                 </div>
                 <button

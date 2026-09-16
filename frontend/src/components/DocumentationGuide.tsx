@@ -71,7 +71,7 @@ export const DocumentationGuide: React.FC<DocumentationGuideProps> = ({ isDark =
             </div>
             <div className="text-[11px] font-mono text-slate-500">data/bronze/year=.../ (*.parquet)</div>
             <p className={`text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Almacena el payload bruto e inmutable de Binance REST (velas OHLCV), feeds RSS (CoinTelegraph, CoinDesk, Decrypt) e índices macro. Particionado por fecha con compresión Snappy.
+              Almacena el payload bruto e inmutable de Binance REST (series de precios y volumen), feeds RSS (CoinTelegraph, CoinDesk, Decrypt) e índices macro. Particionado por fecha con compresión Snappy.
             </p>
           </div>
 

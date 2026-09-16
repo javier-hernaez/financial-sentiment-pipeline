@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import { RefreshCw, Sun, Moon, Zap } from 'lucide-react';
@@ -47,7 +47,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold font-mono tracking-wider">QUANT</span>
+              <span className="text-xs font-bold font-mono tracking-wider">MARKET INTEL</span>
               <span
                 className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-medium ${
                   isOnline

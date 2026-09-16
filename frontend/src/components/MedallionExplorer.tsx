@@ -64,14 +64,14 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
       
       {/* Table Selector & Search Bar */}
       <div
-        className={`p-5 rounded-2xl border transition-all duration-200 flex flex-wrap items-center justify-between gap-4 ${
+        className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
           isDark
             ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
             : 'bg-white border-slate-100 text-slate-800 shadow-sm'
         }`}
       >
-        <div className="flex items-center gap-3">
-          <label className={`text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
+          <label className={`text-xs font-bold uppercase tracking-wider font-mono shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Estructura:
           </label>
           <select
@@ -80,7 +80,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               setSelectedTable(e.target.value);
               setOffset(0);
             }}
-            className={`text-xs font-mono font-bold rounded-xl px-3.5 py-2 outline-none transition cursor-pointer border ${
+            className={`text-xs font-mono font-bold rounded-xl px-3.5 py-2 outline-none transition cursor-pointer border w-full sm:w-auto max-w-full truncate ${
               isDark
                 ? 'bg-[#0e1628] border-[#1f2d48] text-slate-200 focus:border-blue-500'
                 : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500'
@@ -90,7 +90,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               <option value="gold_hourly_market_sentiment">gold_hourly_market_sentiment (Consolidado)</option>
             </optgroup>
             <optgroup label="Capa Silver (Relacional DuckDB)">
-              <option value="silver_market_prices">silver_market_prices (Velas OHLCV)</option>
+              <option value="silver_market_prices">silver_market_prices (Precios y Volumen)</option>
               <option value="silver_social_sentiment">silver_social_sentiment (FinBERT Noticias)</option>
               <option value="silver_fear_greed">silver_fear_greed (Macro Diario)</option>
             </optgroup>
@@ -101,14 +101,14 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
         </div>
 
         {selectedTable !== '__bronze_lake__' && (
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-            <div className="relative">
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
               <input
                 type="text"
                 placeholder="Filtrar por texto o símbolo..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className={`text-xs rounded-xl pl-8 pr-3 py-2 outline-none w-56 sm:w-64 font-mono transition border ${
+                className={`text-xs rounded-xl pl-8 pr-3 py-2 outline-none w-full font-mono transition border ${
                   isDark
                     ? 'bg-[#0e1628] border-[#1f2d48] text-white focus:border-blue-500'
                     : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500'
@@ -118,7 +118,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-sm shadow-blue-500/25"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-sm shadow-blue-500/25 shrink-0"
             >
               Buscar
             </button>
@@ -135,12 +135,12 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               : 'bg-white border-slate-100 text-slate-800 shadow-sm'
           }`}
         >
-          <div className={`p-4 border-b flex justify-between items-center text-xs font-mono ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
+          <div className={`p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs font-mono ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
             <div className={isDark ? 'text-slate-400' : 'text-slate-500'}>
               Mostrando <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{tableData?.total_count === 0 ? 0 : offset + 1}-{Math.min(offset + limit, tableData?.total_count || 0)}</span> de{' '}
               <span className="text-emerald-500 font-bold">{tableData?.total_count || 0}</span> registros
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 onClick={() => setOffset((o) => Math.max(0, o - limit))}
                 disabled={offset === 0 || isLoading}

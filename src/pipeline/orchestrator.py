@@ -38,6 +38,7 @@ class MarketIntelligencePipeline:
 
         # Extractors
         self.binance_ext = BinanceKlinesExtractor(symbol=self.symbol)
+        self.fear_greed_ext = FearGreedExtractor()
         self.social_ext = SocialRedditExtractor()
 
     @property
@@ -62,23 +63,28 @@ class MarketIntelligencePipeline:
 
     async def extract(self) -> Dict[str, Any]:
         """
-        Executes parallel extraction of Market and Social feeds.
-        Fear & Greed is derived endogenously from FinBERT sentiment in the Silver layer.
+        Executes parallel extraction of Market, Macro, and Social feeds.
+        Must be called within an active async event loop.
         """
         console.print("[bold blue]1. Extracting parallel data streams...[/bold blue]")
         market_task = self.binance_ext.extract(symbol=self.symbol, limit=self.hours)
+        macro_task = self.fear_greed_ext.extract(limit=10)
         social_task = self.social_ext.extract(limit_per_sub=15)
 
-        raw_market, raw_social = await asyncio.gather(
-            market_task, social_task, return_exceptions=False
+        results = await asyncio.gather(
+            market_task, macro_task, social_task, return_exceptions=True
         )
+        raw_market = results[0] if not isinstance(results[0], Exception) else []
+        raw_macro = results[1] if not isinstance(results[1], Exception) else []
+        raw_social = results[2] if not isinstance(results[2], Exception) else []
 
         console.print(f"   [green][OK][/green] Extracted {len(raw_market)} market candles for {self.symbol}")
+        console.print(f"   [green][OK][/green] Extracted {len(raw_macro)} macro Fear & Greed records")
         console.print(f"   [green][OK][/green] Extracted {len(raw_social)} social posts/comments")
 
         return {
             "market": raw_market,
-            "macro": [],
+            "macro": raw_macro,
             "social": raw_social,
         }
 
@@ -141,8 +147,17 @@ class MarketIntelligencePipeline:
             total_social = 0
             posts_processed = 0
 
-        # 3c. Fear & Greed derived 100% endogenously from FinBERT sentiment
-        if df_social_scored is not None and not df_social_scored.is_empty():
+        # 3c. Fear & Greed (Macro data or endogenously derived from FinBERT sentiment)
+        if raw_macro is not None:
+            df_macro = pl.DataFrame(raw_macro) if not isinstance(raw_macro, pl.DataFrame) else raw_macro
+        else:
+            df_macro = self.lake.read_latest_partition("fear_greed")
+
+        if df_macro is not None and not df_macro.is_empty():
+            total_macro = self.warehouse.upsert_fear_greed(df_macro)
+            macro_records = len(df_macro)
+            console.print(f"   [green][OK][/green] Ingested {macro_records} macro Fear & Greed records")
+        elif df_social_scored is not None and not df_social_scored.is_empty():
             now_dt = datetime.now(timezone.utc)
             now_epoch = int(now_dt.timestamp())
             now_date = now_dt.strftime("%Y-%m-%d")
@@ -175,7 +190,7 @@ class MarketIntelligencePipeline:
             total_macro = self.warehouse.upsert_fear_greed(df_fng)
             macro_records = len(df_fng)
             console.print(
-                f"   [green][OK][/green] Calculated FinBERT Fear & Greed: {fng_val} ({fng_class})"
+                f"   [green][OK][/green] Calculated FinBERT Fear & Greed fallback: {fng_val} ({fng_class})"
             )
         else:
             total_macro = 0

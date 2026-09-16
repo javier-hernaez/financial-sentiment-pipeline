@@ -67,7 +67,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
       const res = await runStage(stage, symbol, hours);
       if (stage === 'extract') {
         addLog(
-          `[EXTRACT] Ingesta inmutable finalizada en ${res.elapsed_seconds}s. Se persistieron en disco (formato Parquet): ${res.candles} velas horarias OHLCV, ${res.macro_records} registros del índice macro Fear & Greed y ${res.social_records} artículos/titulares de feeds de noticias y comunidades.`,
+          `[EXTRACT] Ingesta inmutable finalizada en ${res.elapsed_seconds}s. Se persistieron en disco (formato Parquet): ${res.candles} registros de precios y volumen horarios, ${res.macro_records} registros del índice macro Fear & Greed y ${res.social_records} artículos/titulares de feeds de noticias y comunidades.`,
           'success',
           stage
         );
@@ -289,7 +289,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                   </div>
                   <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Feature Store</h4>
                   <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Alineación horaria de retornos OHLCV y agregaciones de polaridad FinBERT en DuckDB.
+                    Alineación horaria de retornos de precios y agregaciones de polaridad FinBERT en DuckDB.
                   </p>
                 </div>
                 <button
