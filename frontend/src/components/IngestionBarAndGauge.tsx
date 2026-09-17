@@ -52,27 +52,20 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   // Compute real source distributions
   const marketRows = metrics?.silver.market_rows ?? 0;
   const socialRows = metrics?.silver.social_rows ?? 0;
-  const macroRows = metrics?.silver.fear_greed_rows ?? 0;
-  const totalRaw = marketRows + socialRows + macroRows;
+  const totalRaw = marketRows + socialRows;
 
   const sources = [
     {
-      name: 'Velas Binance',
+      name: 'Velas de Mercado (Binance)',
       count: marketRows,
       pct: totalRaw > 0 ? Math.round((marketRows / totalRaw) * 100) : 0,
       color: 'bg-blue-500',
     },
     {
-      name: 'Feeds RSS & NLP',
+      name: 'Noticias & Titulares (NLP)',
       count: socialRows,
       pct: totalRaw > 0 ? Math.round((socialRows / totalRaw) * 100) : 0,
       color: 'bg-purple-500',
-    },
-    {
-      name: 'FinBERT F&G',
-      count: macroRows,
-      pct: totalRaw > 0 ? Math.round((macroRows / totalRaw) * 100) : 0,
-      color: 'bg-emerald-500',
     },
   ];
 
@@ -141,10 +134,10 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              Índice Fear &amp; Greed (FinBERT NLP)
+              Termómetro de Sentimiento (FinBERT)
             </h3>
             <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Derivado 100% de polaridad FinBERT · DuckDB Gold (0–100)
+              Consolidado en DuckDB Gold a partir de noticias en tiempo real (0–100)
             </span>
           </div>
           <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />

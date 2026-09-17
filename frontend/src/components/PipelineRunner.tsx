@@ -54,7 +54,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
     setActiveStage(stage);
     
     if (stage === 'extract') {
-      addLog(`[EXTRACT] Conectando con endpoints externos: Binance REST v3 (${symbol}, ${hours}h), Alternative.me (Fear & Greed) y 12 feeds RSS financieros...`, 'info', 'extract');
+      addLog(`[EXTRACT] Conectando con endpoints: Binance REST v3 (${symbol}, ${hours}h) y 12 feeds RSS de noticias financieras...`, 'info', 'extract');
     } else if (stage === 'transform') {
       addLog(`[TRANSFORM] Leyendo particiones crudas de Bronze Lake. Iniciando normalización de esquemas con Polars y vectorización FinBERT...`, 'info', 'transform');
     } else if (stage === 'gold') {
@@ -67,7 +67,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
       const res = await runStage(stage, symbol, hours);
       if (stage === 'extract') {
         addLog(
-          `[EXTRACT] Ingesta inmutable finalizada en ${res.elapsed_seconds}s. Se persistieron en disco (formato Parquet): ${res.candles} registros de precios y volumen horarios, ${res.macro_records} registros del índice macro Fear & Greed y ${res.social_records} artículos/titulares de feeds de noticias y comunidades.`,
+          `[EXTRACT] Ingesta inmutable finalizada en ${res.elapsed_seconds}s. Se persistieron en disco (formato Parquet): ${res.candles} velas de mercado y ${res.social_records} artículos/titulares de feeds de noticias y comunidades.`,
           'success',
           stage
         );
@@ -100,7 +100,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Pipeline Execution Parameters */}

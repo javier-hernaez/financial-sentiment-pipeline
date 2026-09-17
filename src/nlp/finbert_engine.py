@@ -79,14 +79,8 @@ class FinBERTEngine:
 
         import torch
 
-        # Preprocess multilingual texts (Spanish -> English) for FinBERT's financial vocabulary
-        prepared_texts: List[str] = []
-        for t in texts:
-            if not t or not t.strip():
-                prepared_texts.append("")
-                continue
-            translated = self._maybe_translate(t)
-            prepared_texts.append(translated)
+        # Preprocess texts locally without blocking network calls
+        prepared_texts: List[str] = [t.strip() if t else "" for t in texts]
 
         results: List[Dict[str, Any]] = []
         labels_map = {0: "positive", 1: "negative", 2: "neutral"}
@@ -127,7 +121,7 @@ class FinBERTEngine:
                 batch_texts,
                 padding=True,
                 truncation=True,
-                max_length=256,
+                max_length=96,
                 return_tensors="pt",
             )
 
@@ -203,33 +197,10 @@ class FinBERTEngine:
 
     @staticmethod
     def _maybe_translate(text: str) -> str:
-        """Translates non-English or Spanish financial text to English using deep_translator if needed, with offline fallback."""
-        import re
-
-        # Match any accents, inverted marks, or common Spanish vocabulary & verbs
-        spanish_markers = (
-            r"[áéíóúüñ¿¡]|"
-            r"(\b(el|la|los|las|un|una|unos|unas|de|del|en|para|por|con|se|su|sus|que|como|mercado|precio|"
-            r"cripto|criptomonedas|alza|baja|bajar|cae|caer|sube|subir|ventas|compras|va|van|ir|hunde|hundir|"
-            r"dispara|disparar|desploma|desplome|colapso)\b)"
-        )
-        is_likely_spanish = bool(re.search(spanish_markers, text, re.IGNORECASE))
-
-        if is_likely_spanish:
-            try:
-                from deep_translator import GoogleTranslator
-
-                translated = GoogleTranslator(source="auto", target="en").translate(text)
-                if (
-                    translated
-                    and len(translated.strip()) > 0
-                    and not translated.lower().startswith("error")
-                    and "that's an error" not in translated.lower()
-                ):
-                    return translated
-            except Exception:
-                pass
-        return text
+        """Fast in-memory normalization for financial text without blocking network calls."""
+        if not text:
+            return ""
+        return text.strip()
 
     def _predict_heuristic(self, texts: List[str]) -> List[Dict[str, Any]]:
         """

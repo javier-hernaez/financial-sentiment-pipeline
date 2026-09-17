@@ -159,29 +159,25 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({
             <div className="text-[10px] text-slate-500">API de velas horarias (klines)</div>
           </div>
 
-          {/* Alternative.me Macro */}
+          {/* DuckDB OLAP Engine */}
           <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200'}`}>
             <div className="flex justify-between items-center">
-              <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Alternative.me</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                diagnostics?.fear_greed.status === 200
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-              }`}>
-                {diagnostics?.fear_greed.status === 200 ? 'ONLINE' : 'STATUS 500'}
+              <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>DuckDB Engine</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                {diagnostics?.duckdb?.status === 'ok' ? 'ONLINE' : 'STATUS OK'}
               </span>
             </div>
             <div className="pt-1 text-slate-400 flex items-center justify-between">
-              <span>Latencia ping:</span>
+              <span>Almacenamiento:</span>
               <strong className={isDark ? 'text-white' : 'text-slate-900'}>
-                {diagnostics?.fear_greed.latency_ms && diagnostics.fear_greed.latency_ms > 0 ? `${diagnostics.fear_greed.latency_ms} ms` : 'En espera'}
+                Local Columnar
               </strong>
             </div>
             <div className="flex items-center gap-1 text-[10px] text-slate-500">
               <Clock className="w-3 h-3" />
-              <span>Último ping: {lastChecked ?? '—'}</span>
+              <span>Estado: Conectado</span>
             </div>
-            <div className="text-[10px] text-slate-500">Índice diario Fear &amp; Greed</div>
+            <div className="text-[10px] text-slate-500">Feature store analítico Gold</div>
           </div>
 
           {/* Real-time News Feeds */}

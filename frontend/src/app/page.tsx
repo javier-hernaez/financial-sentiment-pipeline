@@ -24,7 +24,6 @@ import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
 import { ObservabilityView } from '@/components/ObservabilityView';
 import { DocumentationGuide } from '@/components/DocumentationGuide';
-import { EtlPipelineMonitorWidget } from '@/components/EtlPipelineMonitorWidget';
 import { SubviewHeader } from '@/components/SubviewHeader';
 import {
   Calendar,
@@ -145,7 +144,7 @@ export default function Home() {
 
       {/* Main Content Area */}
       <div
-        className={`flex-1 flex flex-col transition-all duration-300 ml-0 ${
+        className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ml-0 ${
           isCollapsed ? 'md:ml-20' : 'md:ml-64'
         }`}
       >
@@ -173,7 +172,7 @@ export default function Home() {
         </div>
 
         {/* Dashboard Content Container */}
-        <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] w-full mx-auto pb-24 md:pb-8">
+        <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 space-y-6 max-w-full w-full mx-auto pb-24 md:pb-8 overflow-x-hidden">
           
           {/* Centralized System Alert Banner (Single prominent error/status notification center) */}
           {systemAlert && (
@@ -293,16 +292,6 @@ export default function Home() {
 
               {/* 1. Top 4 KPI Cards (Bronze Ingestion, Silver NLP, FinBERT Inference, Gold DuckDB) */}
               <ShopeersKpiCards metrics={metrics} isDark={isDark} />
-
-              {/* 2. Graphical ETL Pipeline Monitoring & Real-time Topology */}
-              <EtlPipelineMonitorWidget
-                metrics={metrics}
-                isDark={isDark}
-                onNavigate={(v) => setActiveView(v)}
-                onTriggerPipeline={() => {
-                  setActiveView('orchestration');
-                }}
-              />
 
               {/* 3. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

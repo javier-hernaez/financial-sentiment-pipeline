@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Sun, Moon, Zap } from 'lucide-react';
+import { RefreshCw, Sun, Moon } from 'lucide-react';
+import { IconBrand } from './CustomIcons';
 
 interface MobileHeaderProps {
   currentSymbol: string;
@@ -43,11 +44,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               isDark ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-blue-100 text-blue-700'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 fill-current" />
+            <IconBrand className="w-3.5 h-3.5" />
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold font-mono tracking-wider">MARKET INTEL</span>
+              <span className="text-xs font-bold font-mono tracking-wider">MARKET ELT</span>
               <span
                 className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-medium ${
                   isOnline

@@ -16,8 +16,8 @@ class TextCleaner:
     EXTRA_WHITESPACE = re.compile(r"\s+")
 
     @classmethod
-    def clean_string(cls, text: str) -> str:
-        """Cleans a single string."""
+    def clean_string(cls, text: str, max_chars: int = 280) -> str:
+        """Cleans a single string and limits length to relevant financial headline/summary context."""
         if not text or not isinstance(text, str):
             return ""
 
@@ -29,6 +29,8 @@ class TextCleaner:
         text = cls.SPECIAL_CHARS.sub(" ", text)
         # Normalize whitespace
         text = cls.EXTRA_WHITESPACE.sub(" ", text).strip()
+        if max_chars and len(text) > max_chars:
+            text = text[:max_chars].rsplit(" ", 1)[0]
         return text
 
     @classmethod

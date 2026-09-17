@@ -81,11 +81,13 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 market_files = len(list(bronze_dir.glob("market/**/*.parquet"))) if bronze_dir.exists() else 0
                 social_files = len(list(bronze_dir.glob("social/**/*.parquet"))) if bronze_dir.exists() else 0
 
-                # DuckDB Silver and Gold metrics (read_only to prevent lock contention)
                 conn = duckdb.connect(str(db_path), read_only=True)
                 silver_m = conn.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
                 silver_s = conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
-                silver_fg = conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
+                try:
+                    silver_fg = conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
+                except Exception:
+                    silver_fg = 0
                 gold_total = conn.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchone()[0]
                 symbols = [
                     r[0]
@@ -422,7 +424,6 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     extracted = asyncio.run(pipeline.extract())
                     bronze_res = pipeline.land_bronze(
                         raw_market=extracted["market"],
-                        raw_macro=extracted["macro"],
                         raw_social=extracted["social"],
                     )
                     elapsed = round(time.time() - t0, 2)
@@ -432,7 +433,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                             "stage": "extract",
                             "symbol": symbol,
                             "candles": len(extracted["market"]),
-                            "macro_records": len(extracted["macro"]),
+                            "macro_records": 0,
                             "social_records": len(extracted["social"]),
                             "bronze_files": bronze_res["files"],
                             "elapsed_seconds": elapsed,

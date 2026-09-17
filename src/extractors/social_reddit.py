@@ -86,7 +86,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                         "subreddit": subreddit,
                         "title": data.get("title", ""),
                         "text_body": data.get("selftext", ""),
-                        "author": data.get("author", "[anonymous]"),
+                        "author": data.get("author") if data.get("author") else None,
                         "upvotes": int(data.get("score", 0)),
                         "upvote_ratio": float(data.get("upvote_ratio", 1.0)),
                         "num_comments": int(data.get("num_comments", 0)),
@@ -144,6 +144,11 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                     except Exception:
                         pass
 
+                author_el = el.find("{http://purl.org/dc/elements/1.1/}creator")
+                if author_el is None:
+                    author_el = el.find("author")
+                author_val = (author_el.text or "").strip() if author_el is not None and author_el.text else None
+
                 guid_val = guid_el.text if guid_el is not None and guid_el.text else title
                 post_hash = hashlib.md5(guid_val.encode("utf-8")).hexdigest()[:12]
 
@@ -154,10 +159,10 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                         "subreddit": source_name,
                         "title": title,
                         "text_body": body_clean[:1500] if body_clean else "",
-                        "author": source_name.capitalize(),
-                        "upvotes": 120,
-                        "upvote_ratio": 0.95,
-                        "num_comments": 18,
+                        "author": author_val,
+                        "upvotes": 0,
+                        "upvote_ratio": 1.0,
+                        "num_comments": 0,
                         "created_utc": dt.isoformat(),
                         "ingested_at": datetime.now(timezone.utc).isoformat(),
                         "timestamp_hour": dt.strftime("%Y-%m-%d %H:00:00"),

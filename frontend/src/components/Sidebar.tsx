@@ -2,17 +2,19 @@
 
 import React from 'react';
 import {
-  LayoutDashboard,
-  FileText,
-  Database,
-  LineChart,
   HelpCircle,
   X,
   PanelLeftClose,
-  Zap,
-  Cpu,
-  Activity,
 } from 'lucide-react';
+import {
+  IconDashboard,
+  IconPipeline,
+  IconNews,
+  IconMarket,
+  IconFinbertLab,
+  IconDuckDB,
+  IconBrand,
+} from './CustomIcons';
 
 interface SidebarProps {
   activeView: string;
@@ -42,14 +44,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
     badge?: string;
   }
 
+  // Desired order:
+  // 1. Dashboard ELT
+  // 2. Pipeline de Datos (2nd)
+  // 3. Noticias & Sentimiento
+  // 4. Precios & Mercado
+  // 5. Laboratorio FinBERT
+  // 6. Almacén DuckDB (under Laboratorio FinBERT)
   const mainNav: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'orchestration', label: 'Orquestación ELT', icon: Zap, badge: 'Live' },
-    { id: 'terminal', label: 'Terminal de Mercado', icon: LineChart },
-    { id: 'content', label: 'Feeds RSS & Titulares', icon: FileText },
-    { id: 'nlp', label: 'Laboratorio FinBERT', icon: Cpu },
-    { id: 'warehouse', label: 'Almacén DuckDB', icon: Database },
-    { id: 'observability', label: 'Observabilidad', icon: Activity },
+    { id: 'dashboard', label: 'Dashboard ELT', icon: IconDashboard },
+    { id: 'orchestration', label: 'Pipeline de Datos', icon: IconPipeline, badge: 'Live' },
+    { id: 'content', label: 'Noticias & Sentimiento', icon: IconNews },
+    { id: 'terminal', label: 'Precios & Mercado', icon: IconMarket },
+    { id: 'nlp', label: 'Laboratorio FinBERT', icon: IconFinbertLab },
+    { id: 'warehouse', label: 'Almacén DuckDB', icon: IconDuckDB },
   ];
 
   const handleSelect = (id: string) => {
@@ -84,17 +92,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm">
-                  <Database className="w-4 h-4" />
+                  <IconBrand className="w-4 h-4" />
                 </div>
                 <span className={`font-extrabold text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Market Intel
+                  Market ELT
                 </span>
               </div>
             )}
 
             {isCollapsed && !isMobileOpen && (
               <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white mx-auto shadow-sm">
-                <Database className="w-4 h-4" />
+                <IconBrand className="w-4 h-4" />
               </div>
             )}
 
@@ -189,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }`}>
               <div className="flex items-center justify-between font-mono text-[11px] mb-1">
                 <span className="flex items-center gap-1.5 font-bold text-sky-400">
-                  <Database className="w-3.5 h-3.5" />
+                  <IconDuckDB className="w-3.5 h-3.5" />
                   DuckDB Lakehouse
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />

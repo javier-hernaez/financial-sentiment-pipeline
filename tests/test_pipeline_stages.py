@@ -8,7 +8,7 @@ import pytest
 
 from src.configs.settings import settings
 from src.extractors.binance import BinanceKlinesExtractor
-from src.extractors.fear_greed import FearGreedExtractor
+from src.extractors.social_reddit import SocialRedditExtractor
 from src.pipeline.orchestrator import MarketIntelligencePipeline
 
 
@@ -48,24 +48,25 @@ def mock_pipeline_network(monkeypatch):
             ],
         ]
 
-    async def mock_fear_greed_fetch(self, endpoint="", params=None, headers=None):
-        return {
-            "data": [
-                {
-                    "value": "72",
-                    "value_classification": "Greed",
-                    "timestamp": "1710000000",
-                },
-                {
-                    "value": "68",
-                    "value_classification": "Greed",
-                    "timestamp": "1709913600",
-                },
-            ]
-        }
+    async def mock_social_extract(self, limit_per_sub=15):
+        return [
+            {
+                "source": "reddit",
+                "post_id": "mock_post_1",
+                "subreddit": "Bitcoin",
+                "title": "Bitcoin surges past resistance with high volume",
+                "text_body": "Massive institutional buying detected",
+                "author": "crypto_trader",
+                "upvotes": 150,
+                "upvote_ratio": 0.98,
+                "num_comments": 42,
+                "created_utc": "2026-09-07T12:00:00+00:00",
+                "timestamp_hour": "2026-09-07 12:00:00",
+            }
+        ]
 
     monkeypatch.setattr(BinanceKlinesExtractor, "fetch_json", mock_binance_fetch)
-    monkeypatch.setattr(FearGreedExtractor, "fetch_json", mock_fear_greed_fetch)
+    monkeypatch.setattr(SocialRedditExtractor, "extract", mock_social_extract)
 
 
 @pytest.mark.asyncio
@@ -79,28 +80,23 @@ async def test_pipeline_stages_modular(mock_pipeline_network):
             # 1. Extract stage
             extracted = await pipeline.extract()
             assert "market" in extracted
-            assert "macro" in extracted
             assert "social" in extracted
             assert len(extracted["market"]) == 2
-            assert len(extracted["macro"]) > 0
             assert len(extracted["social"]) > 0
 
             # 2. Land Bronze stage
             bronze_res = pipeline.land_bronze(
                 raw_market=extracted["market"],
-                raw_macro=extracted["macro"],
                 raw_social=extracted["social"],
             )
-            assert len(bronze_res["files"]) == 3
+            assert len(bronze_res["files"]) == 2
 
             # 3. Transform Silver stage
             silver_res = pipeline.transform_silver(
                 raw_market=extracted["market"],
-                raw_macro=extracted["macro"],
                 raw_social=extracted["social"],
             )
             assert silver_res["total_silver_market"] == 2
-            assert silver_res["total_silver_macro"] > 0
             assert silver_res["total_silver_social"] > 0
 
             # 4. Gold Consolidation
@@ -124,6 +120,5 @@ async def test_pipeline_run_end_to_end(mock_pipeline_network):
         assert result["symbol"] == "ETHUSDT"
         assert result["candles_processed"] == 2
         assert result["posts_processed"] > 0
-        assert result["macro_records"] > 0
         assert isinstance(result["gold_preview"], pl.DataFrame)
         assert result["elapsed_seconds"] > 0

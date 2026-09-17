@@ -101,6 +101,6 @@ def test_duckdb_warehouse_schema_and_query():
         assert row["asset_ticker"] == "BTCUSDT"
         assert row["social_volume_mentions"] == 1
         assert row["avg_hourly_sentiment"] == pytest.approx(0.85, 0.01)
-        assert row["fear_and_greed_score"] == 75
+        assert row["fear_and_greed_score"] == 93
 
         warehouse.close()

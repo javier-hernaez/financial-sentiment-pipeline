@@ -60,7 +60,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
   const currentPage = Math.floor(offset / limit) + 1;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full overflow-hidden">
       
       {/* Table Selector & Search Bar */}
       <div
@@ -92,7 +92,6 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
             <optgroup label="Capa Silver (Relacional DuckDB)">
               <option value="silver_market_prices">silver_market_prices (Precios y Volumen)</option>
               <option value="silver_social_sentiment">silver_social_sentiment (FinBERT Noticias)</option>
-              <option value="silver_fear_greed">silver_fear_greed (Macro Diario)</option>
             </optgroup>
             <optgroup label="Capa Bronze (Data Lake)">
               <option value="__bronze_lake__">Bronze Lake (Particiones Parquet)</option>

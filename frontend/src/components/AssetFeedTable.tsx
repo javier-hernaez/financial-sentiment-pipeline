@@ -18,7 +18,7 @@ import { fetchTableData } from '@/lib/api';
 
 export interface FeedItem {
   id: string;
-  dateTime: string;
+  dateTime?: string;
   headline: string;
   content: string;
   source: string;
@@ -27,7 +27,7 @@ export interface FeedItem {
   polarity: string;
   label: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
   confidence: string;
-  author: string;
+  author?: string;
 }
 
 interface AssetFeedTableProps {
@@ -51,25 +51,39 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
       const data = await fetchTableData('silver_social_sentiment', 50);
       if (data && data.rows && Array.isArray(data.rows)) {
         const mapped: FeedItem[] = data.rows.map((r: any, idx: number) => {
-          // Priority: ingested_at (time the pipeline ran) > created_utc (article pub date) > timestamp_hour
-          const formatDate = (raw: string) => {
+          const formatDate = (raw: any): string | undefined => {
+            if (!raw) return undefined;
+            const str = String(raw).trim();
+            if (!str || str.toLowerCase() === 'none' || str.toLowerCase() === 'null') return undefined;
             try {
-              const d = new Date(raw);
-              if (isNaN(d.getTime())) return null;
+              const d = new Date(str);
+              if (isNaN(d.getTime())) return undefined;
               return `${d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}, ${d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
             } catch {
-              return null;
+              return undefined;
             }
           };
 
-          let dtStr = 'Reciente';
-          // Show when it was ingested by the pipeline (most recent run)
-          if (r.ingested_at) {
-            dtStr = formatDate(r.ingested_at) ?? String(r.ingested_at).slice(0, 16).replace('T', ' ');
-          } else if (r.created_utc) {
-            dtStr = formatDate(r.created_utc) ?? String(r.created_utc).slice(0, 16).replace('T', ' ');
+          // Only set dateTime if there is an actual valid date; DO NOT hardcode
+          let dtStr: string | undefined = undefined;
+          if (r.created_utc) {
+            dtStr = formatDate(r.created_utc);
           } else if (r.timestamp_hour) {
-            dtStr = String(r.timestamp_hour).slice(0, 16).replace('T', ' ');
+            dtStr = formatDate(r.timestamp_hour);
+          } else if (r.ingested_at) {
+            dtStr = formatDate(r.ingested_at);
+          }
+
+          // Author: strictly only if present and not a dummy placeholder
+          let cleanAuthor: string | undefined = undefined;
+          if (r.author) {
+            const authStr = String(r.author).trim();
+            if (
+              authStr &&
+              !['[anonymous]', 'none', 'null', 'autor anónimo', 'anonymous', 'undefined'].includes(authStr.toLowerCase())
+            ) {
+              cleanAuthor = authStr.startsWith('u/') ? authStr : authStr;
+            }
           }
 
           const rawLabel = String(r.sentiment_label || 'neutral').toUpperCase();
@@ -80,7 +94,7 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
           const polarity = score > 0 ? `+${score.toFixed(2)}` : score.toFixed(2);
           const conf = typeof r.confidence === 'number' ? `${(r.confidence * 100).toFixed(1)}%` : '93.5%';
 
-          const headline = r.title || 'Titular no disponible';
+          const headline = r.title || 'Titular';
           let fullContent = '';
           if (r.cleaned_text && r.cleaned_text.length > headline.length + 5) {
             fullContent = r.cleaned_text.replace(headline, '').replace(/^[\.\s\:\-]+/, '').trim();
@@ -109,13 +123,13 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
             dateTime: dtStr,
             headline,
             content: fullContent,
-            source: r.subreddit ? `r/${r.subreddit}` : r.source || 'Feed Ingesta',
+            source: r.subreddit ? `r/${r.subreddit}` : r.source || 'Feed',
             asset,
             assetBg,
             polarity,
             label,
             confidence: conf,
-            author: r.author || 'Autor anónimo',
+            author: cleanAuthor,
           };
         });
         setItems(mapped);
@@ -257,10 +271,12 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                       {row.source}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-                    <Clock className="w-3 h-3 text-slate-500" />
-                    <span>{row.dateTime}</span>
-                  </div>
+                  {row.dateTime && (
+                    <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+                      <Clock className="w-3 h-3 text-slate-500" />
+                      <span>{row.dateTime}</span>
+                    </div>
+                  )}
                 </div>
 
                 <p className={`font-semibold text-xs leading-snug ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
@@ -328,10 +344,14 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                 >
                   {/* DATE & TIME */}
                   <td className="py-3 pl-4 sm:pl-0 pr-3 align-top whitespace-nowrap">
-                    <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
-                      <Clock className="w-3 h-3 text-slate-500 flex-shrink-0" />
-                      <span>{row.dateTime}</span>
-                    </div>
+                    {row.dateTime ? (
+                      <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
+                        <Clock className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                        <span>{row.dateTime}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-600 font-mono text-[11px]">-</span>
+                    )}
                   </td>
 
                   {/* SOURCE */}
@@ -470,16 +490,20 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
 
               {/* Metadata Row */}
               <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 pb-3 border-b border-slate-800/30">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
-                  {selectedItem.dateTime}
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-slate-500" />
-                  {selectedItem.author}
-                </span>
-                <span>•</span>
+                {selectedItem.dateTime && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    {selectedItem.dateTime}
+                  </span>
+                )}
+                {selectedItem.dateTime && selectedItem.author && <span>•</span>}
+                {selectedItem.author && (
+                  <span className="flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-slate-500" />
+                    {selectedItem.author}
+                  </span>
+                )}
+                {(selectedItem.dateTime || selectedItem.author) && <span>•</span>}
                 <span>ID: {selectedItem.id}</span>
               </div>
 
