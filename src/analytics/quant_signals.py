@@ -1,7 +1,5 @@
 """Quantitative Alpha Signals and Sentiment Divergence Engine."""
 
-from typing import List
-
 import polars as pl
 
 
@@ -48,41 +46,38 @@ class QuantSignalsEngine:
             ]
         )
 
-        # 4. Divergence & Alpha Signals
-        signals: List[str] = []
-        confidences: List[float] = []
+        # 4. Vectorized Divergence & Alpha Signals
+        ret = pl.col("price_return_pct").fill_null(0.0)
+        sent = pl.col("avg_hourly_sentiment").fill_null(0.0)
+        fg = pl.col("fear_and_greed_score").fill_null(50)
 
-        for row in df.iter_rows(named=True):
-            ret = row.get("price_return_pct") or 0.0
-            sent = row.get("avg_hourly_sentiment") or 0.0
-            fg = row.get("fear_and_greed_score") or 50
-
-            # Divergence logic:
-            # Bullish divergence: price down (< -0.3%), but sentiment strongly positive (> 0.4)
-            if ret < -0.2 and sent > 0.3:
-                signals.append("BULLISH DIVERGENCE (ACCUMULATE)")
-                confidences.append(0.85)
-            # Bearish divergence: price up (> 0.5%), but sentiment strongly negative (< -0.3)
-            elif ret > 0.2 and sent < -0.3:
-                signals.append("BEARISH DIVERGENCE (DISTRIBUTE)")
-                confidences.append(0.82)
-            # Strong confluence
-            elif ret > 0.0 and sent > 0.5 and fg > 60:
-                signals.append("MOMENTUM BUY")
-                confidences.append(0.78)
-            elif ret < 0.0 and sent < -0.5:
-                signals.append("MOMENTUM SHORT")
-                confidences.append(0.75)
-            else:
-                signals.append("MARKET CONSOLIDATION (NEUTRAL)")
-                confidences.append(0.60)
-
-        df = df.with_columns(
-            [
-                pl.Series("alpha_signal", signals, dtype=pl.String),
-                pl.Series("signal_confidence", confidences, dtype=pl.Float64),
-            ]
+        alpha_signal_expr = (
+            pl.when((ret < -0.2) & (sent > 0.3))
+            .then(pl.lit("BULLISH DIVERGENCE (ACCUMULATE)"))
+            .when((ret > 0.2) & (sent < -0.3))
+            .then(pl.lit("BEARISH DIVERGENCE (DISTRIBUTE)"))
+            .when((ret > 0.0) & (sent > 0.5) & (fg > 60))
+            .then(pl.lit("MOMENTUM BUY"))
+            .when((ret < 0.0) & (sent < -0.5))
+            .then(pl.lit("MOMENTUM SHORT"))
+            .otherwise(pl.lit("MARKET CONSOLIDATION (NEUTRAL)"))
+            .alias("alpha_signal")
         )
+
+        signal_conf_expr = (
+            pl.when((ret < -0.2) & (sent > 0.3))
+            .then(pl.lit(0.85))
+            .when((ret > 0.2) & (sent < -0.3))
+            .then(pl.lit(0.82))
+            .when((ret > 0.0) & (sent > 0.5) & (fg > 60))
+            .then(pl.lit(0.78))
+            .when((ret < 0.0) & (sent < -0.5))
+            .then(pl.lit(0.75))
+            .otherwise(pl.lit(0.60))
+            .alias("signal_confidence")
+        )
+
+        df = df.with_columns([alpha_signal_expr, signal_conf_expr])
 
         # Return latest first
         return df.sort("timestamp_hour", descending=True)

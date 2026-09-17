@@ -15,11 +15,19 @@ console = Console()
 class MarketWarehouse:
     """Manages DuckDB tables, data ingestion into Silver, and Gold transformations."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Optional[Path] = None, read_only: bool = False):
         self.db_path = Path(db_path or settings.duckdb_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = duckdb.connect(str(self.db_path))
-        self._init_schema()
+        self.read_only = read_only
+        self.conn = duckdb.connect(str(self.db_path), read_only=read_only)
+        if not self.read_only:
+            self._init_schema()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def _init_schema(self) -> None:
         """Initializes Silver tables and Gold view definitions."""
@@ -211,17 +219,17 @@ class MarketWarehouse:
 
     def query_gold(self, symbol: Optional[str] = None, limit: int = 24) -> pl.DataFrame:
         """Queries the consolidated gold layer dataset, optionally filtered by asset_ticker."""
-        query = "SELECT * FROM gold_hourly_market_sentiment"
         if symbol:
-            query += f" WHERE asset_ticker = '{symbol.upper()}'"
-        query += f" ORDER BY timestamp_hour DESC LIMIT {limit}"
-
-        res = self.conn.execute(query).arrow()
+            query = "SELECT * FROM gold_hourly_market_sentiment WHERE asset_ticker = ? ORDER BY timestamp_hour DESC LIMIT ?"
+            res = self.conn.execute(query, [symbol.upper(), limit]).arrow()
+        else:
+            query = "SELECT * FROM gold_hourly_market_sentiment ORDER BY timestamp_hour DESC LIMIT ?"
+            res = self.conn.execute(query, [limit]).arrow()
         return pl.from_arrow(res)
 
     def query_social_posts(self, limit: int = 20) -> pl.DataFrame:
         """Queries the latest enriched social sentiment posts from silver layer."""
-        res = self.conn.execute(f"""
+        query = """
             SELECT
                 post_id,
                 subreddit,
@@ -236,8 +244,9 @@ class MarketWarehouse:
                 confidence
             FROM silver_social_sentiment
             ORDER BY created_utc DESC
-            LIMIT {limit}
-        """).arrow()
+            LIMIT ?
+        """
+        res = self.conn.execute(query, [limit]).arrow()
         return pl.from_arrow(res)
 
     def close(self) -> None:

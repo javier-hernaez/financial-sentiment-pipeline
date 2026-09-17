@@ -81,8 +81,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 market_files = len(list(bronze_dir.glob("market/**/*.parquet"))) if bronze_dir.exists() else 0
                 social_files = len(list(bronze_dir.glob("social/**/*.parquet"))) if bronze_dir.exists() else 0
 
-                # DuckDB Silver and Gold metrics
-                conn = duckdb.connect(str(db_path))
+                # DuckDB Silver and Gold metrics (read_only to prevent lock contention)
+                conn = duckdb.connect(str(db_path), read_only=True)
                 silver_m = conn.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
                 silver_s = conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
                 silver_fg = conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
@@ -156,9 +156,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     self._send_json([], 200)
                     return
 
-                warehouse = MarketWarehouse(db_path=Path(db_path))
-                raw_gold = warehouse.query_gold(symbol=symbol, limit=limit)
-                warehouse.close()
+                with MarketWarehouse(db_path=Path(db_path), read_only=True) as warehouse:
+                    raw_gold = warehouse.query_gold(symbol=symbol, limit=limit)
 
                 # Calculate live alpha signals
                 enriched = QuantSignalsEngine.calculate_signals(raw_gold)
@@ -175,9 +174,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     self._send_json([], 200)
                     return
 
-                warehouse = MarketWarehouse(db_path=Path(db_path))
-                posts = warehouse.query_social_posts(limit=limit)
-                warehouse.close()
+                with MarketWarehouse(db_path=Path(db_path), read_only=True) as warehouse:
+                    posts = warehouse.query_social_posts(limit=limit)
                 self._send_json(posts.to_dicts(), 200)
             except Exception as exc:
                 self._send_json({"error": str(exc)}, 500)
@@ -186,9 +184,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
         elif path == "/api/export-csv":
             symbol = query_params.get("symbol", ["BTCUSDT"])[0]
             try:
-                warehouse = MarketWarehouse()
-                raw_gold = warehouse.query_gold(symbol=symbol, limit=500)
-                warehouse.close()
+                with MarketWarehouse(read_only=True) as warehouse:
+                    raw_gold = warehouse.query_gold(symbol=symbol, limit=500)
 
                 enriched = QuantSignalsEngine.calculate_signals(raw_gold)
                 csv_buffer = io.BytesIO()
@@ -229,7 +226,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     self._send_json({"columns": [], "rows": [], "total_count": 0, "table": table}, 200)
                     return
 
-                conn = duckdb.connect(db_path)
+                conn = duckdb.connect(db_path, read_only=True)
 
                 # Base query
                 where_clauses = []
