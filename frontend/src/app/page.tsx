@@ -73,16 +73,16 @@ export default function Home() {
       const [m, d] = await Promise.all([fetchMetrics(), fetchDiagnostics()]);
       setMetrics(m);
       setDiagnostics(d);
-      if (systemAlert?.id === 'telemetry_error') {
-        setSystemAlert(null);
-      }
-    } catch (err) {
+      // Always dismiss any previous telemetry connection alert upon successful response
+      setSystemAlert((prev) => (prev?.id === 'telemetry_error' ? null : prev));
+    } catch (err: any) {
       console.error('Error fetching global telemetry:', err);
+      const errMsg = err?.message || String(err);
       setSystemAlert({
         id: 'telemetry_error',
         type: 'error',
-        title: 'Error de Comunicación con el Servidor Analítico (DuckDB / FastAPI)',
-        message: 'No se pudo contactar con los endpoints de telemetría (/api). Verifica que el backend esté activo.',
+        title: 'Error de Comunicación con el Servidor Analítico (DuckDB / Python)',
+        message: `No se pudo conectar con el backend local en http://127.0.0.1:8080 (${errMsg}). Asegúrate de que el servidor esté activo.`,
         timestamp: new Date().toLocaleTimeString(),
         actionLabel: 'Reintentar Conexión',
         onAction: () => loadAll(),

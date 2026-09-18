@@ -52,7 +52,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def log_message(self, format, *args):
-        return
+        # Format HTTP requests clearly in the terminal
+        sys.stderr.write(f"[{self.log_date_time_string()}] {args[0]} - {args[1]} - {args[2]}\n")
 
     def handle(self):
         try:
@@ -133,13 +134,19 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
             # 2. FinBERT Engine Local Status
             try:
-                nlp = get_sandbox_nlp()
+                global _sandbox_nlp
+                if _sandbox_nlp is not None:
+                    status_str = "ready" if _sandbox_nlp._is_transformer_ready else "heuristic_fallback"
+                    model_str = _sandbox_nlp.model_name
+                else:
+                    status_str = "initializing"
+                    model_str = settings.finbert_model_name
+
                 diag["finbert"] = {
-                    "status": "ready" if nlp._is_transformer_ready else "heuristic_fallback",
-                    "model": nlp.model_name,
+                    "status": status_str,
+                    "model": model_str,
                     "device": "CPU",
                 }
-                # Keep fear_greed key mapped to FinBERT for UI retrocompatibility
                 diag["fear_greed"] = {"status": 200, "source": "finbert_nlp", "latency_ms": 0.1}
             except Exception as exc:
                 diag["finbert"] = {"status": "error", "error": str(exc)}
@@ -597,6 +604,17 @@ class QuietHTTPServer(ThreadingHTTPServer):
 
 def run_server(host: str = "127.0.0.1", port: int = 8080):
     """Starts the advanced dashboard HTTP server."""
+    import threading
+
+    # Pre-warm NLP model asynchronously in background so first request never times out
+    def _prewarm_nlp():
+        try:
+            get_sandbox_nlp()
+        except Exception:
+            pass
+
+    threading.Thread(target=_prewarm_nlp, daemon=True, name="nlp_prewarm").start()
+
     server_address = (host, port)
     httpd = QuietHTTPServer(server_address, AdvancedDashboardHandler)
     console.print(
