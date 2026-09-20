@@ -92,3 +92,69 @@ def test_duckdb_warehouse_schema_and_query():
         assert row["finbert_sentiment_index"] == 93
 
         warehouse.close()
+
+
+def test_bronze_path_traversal_protection():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        lake = BronzeDataLake(base_dir=Path(tmpdir))
+        sample_records = [{"id": 1, "ticker": "BTCUSDT"}]
+
+        with pytest.raises(ValueError, match="Invalid symbol identifier"):
+            lake.write_raw_records("market", sample_records, symbol="../../evil")
+
+        with pytest.raises(ValueError, match="Invalid source identifier"):
+            lake.write_raw_records("market/../evil", sample_records)
+
+
+def test_quant_signals_multi_asset_isolation():
+    from src.analytics.quant_signals import QuantSignalsEngine
+
+    # Create alternating records for two assets across two hours
+    multi_asset_df = pl.DataFrame(
+        [
+            {
+                "timestamp_hour": "2026-09-07 12:00:00",
+                "asset_ticker": "BTCUSDT",
+                "open_price": 60000.0,
+                "close_price": 61000.0,
+                "avg_hourly_sentiment": 0.80,
+            },
+            {
+                "timestamp_hour": "2026-09-07 12:00:00",
+                "asset_ticker": "ETHUSDT",
+                "open_price": 3000.0,
+                "close_price": 3050.0,
+                "avg_hourly_sentiment": -0.20,
+            },
+            {
+                "timestamp_hour": "2026-09-07 13:00:00",
+                "asset_ticker": "BTCUSDT",
+                "open_price": 61000.0,
+                "close_price": 62000.0,
+                "avg_hourly_sentiment": 0.90,
+            },
+            {
+                "timestamp_hour": "2026-09-07 13:00:00",
+                "asset_ticker": "ETHUSDT",
+                "open_price": 3050.0,
+                "close_price": 3000.0,
+                "avg_hourly_sentiment": -0.40,
+            },
+        ]
+    )
+
+    signals_df = QuantSignalsEngine.calculate_signals(multi_asset_df)
+
+    btc_h13 = signals_df.filter(
+        (pl.col("asset_ticker") == "BTCUSDT") & (pl.col("timestamp_hour") == "2026-09-07 13:00:00")
+    ).to_dicts()[0]
+    eth_h13 = signals_df.filter(
+        (pl.col("asset_ticker") == "ETHUSDT") & (pl.col("timestamp_hour") == "2026-09-07 13:00:00")
+    ).to_dicts()[0]
+
+    # BTC momentum at 13:00 should be 0.90 - 0.80 = 0.10 (isolated from ETH)
+    assert btc_h13["sentiment_momentum"] == pytest.approx(0.10, 0.01)
+
+    # ETH momentum at 13:00 should be -0.40 - (-0.20) = -0.20 (isolated from BTC)
+    assert eth_h13["sentiment_momentum"] == pytest.approx(-0.20, 0.01)
+

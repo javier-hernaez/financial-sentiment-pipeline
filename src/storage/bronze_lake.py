@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -8,6 +9,8 @@ from rich.console import Console
 from ..configs.settings import settings
 
 console = Console()
+
+SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_-]{2,20}$")
 
 
 class BronzeDataLake:
@@ -26,7 +29,13 @@ class BronzeDataLake:
         """
         Writes extracted records into partitioned date directories.
         Partition layout: data/bronze/{source}/[symbol]/year=YYYY/month=MM/day=DD/{source}_{timestamp}.parquet
+        Uses atomic file replacement to prevent corrupt zero-byte Parquet files on interrupted writes.
         """
+        if not SAFE_NAME_RE.match(source):
+            raise ValueError(f"Invalid source identifier: {source}")
+        if symbol and not SAFE_NAME_RE.match(symbol):
+            raise ValueError(f"Invalid symbol identifier: {symbol}")
+
         if not records:
             console.print(
                 f"[yellow][BronzeLake] Advertencia: No se recibieron registros para el origen: {source}[/yellow]"
@@ -48,15 +57,23 @@ class BronzeDataLake:
         target_dir.mkdir(parents=True, exist_ok=True)
         timestamp_str = now.strftime("%Y%m%d_%H%M%S_%f")
         file_path = target_dir / f"{file_prefix}_{timestamp_str}.parquet"
+        temp_file = target_dir / f".{file_prefix}_{timestamp_str}.parquet.tmp"
 
         df = pl.DataFrame(records)
-        df.write_parquet(file_path)
+        # Write to temporary file first then atomically replace
+        df.write_parquet(temp_file)
+        temp_file.replace(file_path)
 
         console.print(f"[cyan][BronzeLake] Stored {len(records)} records in {file_path}[/cyan]")
         return file_path
 
     def read_latest_partition(self, source: str, symbol: Optional[str] = None) -> Optional[pl.DataFrame]:
         """Scans the latest partition for a given data source, optionally filtered by symbol."""
+        if not SAFE_NAME_RE.match(source):
+            raise ValueError(f"Invalid source identifier: {source}")
+        if symbol and not SAFE_NAME_RE.match(symbol):
+            raise ValueError(f"Invalid symbol identifier: {symbol}")
+
         if symbol:
             source_dir = self.base_dir / source / symbol.upper()
             if not source_dir.exists():
@@ -67,7 +84,10 @@ class BronzeDataLake:
         if not source_dir.exists():
             return None
 
-        parquet_files = sorted(source_dir.glob("**/*.parquet"))
+        parquet_files = sorted(
+            [f for f in source_dir.glob("**/*.parquet") if not f.name.startswith(".") and f.stat().st_size > 0],
+            key=lambda p: (p.stat().st_mtime, str(p)),
+        )
         if not parquet_files:
             return None
 

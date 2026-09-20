@@ -20,27 +20,32 @@ class QuantSignalsEngine:
             return gold_df
 
         # Sort chronologically for time-series computations
-        df = gold_df.sort("timestamp_hour")
+        sort_cols = ["asset_ticker", "timestamp_hour"] if "asset_ticker" in gold_df.columns else ["timestamp_hour"]
+        df = gold_df.sort(sort_cols)
 
-        # 1. Hourly Returns
-        df = df.with_columns(
-            [((pl.col("close_price") - pl.col("open_price")) / pl.col("open_price") * 100.0).alias("price_return_pct")]
-        )
-
-        # 2. Rolling Realized Volatility (annualized proxy or 12h std dev)
+        # 1. Hourly Returns (safe against zero/null open price)
         df = df.with_columns(
             [
-                pl.col("price_return_pct")
-                .rolling_std(window_size=min(5, len(df)))
-                .fill_null(0.5)
-                .alias("realized_volatility")
+                pl.when(pl.col("open_price") > 0)
+                .then((pl.col("close_price") - pl.col("open_price")) / pl.col("open_price") * 100.0)
+                .otherwise(0.0)
+                .alias("price_return_pct")
             ]
         )
 
-        # 3. Sentiment Momentum (Difference with prior hour)
+        # 2. Rolling Realized Volatility (partitioned by asset_ticker)
+        vol_expr = pl.col("price_return_pct").rolling_std(window_size=min(5, len(df))).fill_null(0.5)
+        if "asset_ticker" in df.columns:
+            vol_expr = vol_expr.over("asset_ticker")
+        df = df.with_columns([vol_expr.alias("realized_volatility")])
+
+        # 3. Sentiment Momentum (Difference with prior hour, partitioned by asset_ticker)
+        shift_expr = pl.col("avg_hourly_sentiment").shift(1)
+        if "asset_ticker" in df.columns:
+            shift_expr = shift_expr.over("asset_ticker")
         df = df.with_columns(
             [
-                (pl.col("avg_hourly_sentiment") - pl.col("avg_hourly_sentiment").shift(1))
+                (pl.col("avg_hourly_sentiment") - shift_expr)
                 .fill_null(0.0)
                 .alias("sentiment_momentum")
             ]

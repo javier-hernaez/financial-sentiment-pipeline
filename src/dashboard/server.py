@@ -6,9 +6,12 @@ import hmac
 import io
 import json
 import os
+import re
 import sys
 import threading
+import time
 import urllib.parse
+from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
@@ -23,7 +26,6 @@ if sys.platform == "win32":
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
-import duckdb
 import httpx
 from rich.console import Console
 
@@ -38,6 +40,37 @@ console = Console()
 
 MAX_BODY_BYTES = 2 * 1024 * 1024  # 2MB max payload limit against DoS
 pipeline_execution_lock = threading.Lock()
+
+SYMBOL_RE = re.compile(r"^[A-Za-z0-9_-]{2,20}$")
+
+
+def sanitize_symbol(raw: Optional[str], default: str = "BTCUSDT") -> str:
+    if not raw or not isinstance(raw, str):
+        return default
+    cleaned = raw.strip().upper()
+    if SYMBOL_RE.match(cleaned):
+        return cleaned
+    return default
+
+
+_rate_limits: dict[str, list[float]] = defaultdict(list)
+_rate_limit_lock = threading.Lock()
+
+
+def check_rate_limit(client_ip: str, max_requests: int = 120, window_seconds: float = 60.0) -> bool:
+    """Returns True if client_ip exceeds max_requests within window_seconds."""
+    now = time.time()
+    with _rate_limit_lock:
+        timestamps = _rate_limits[client_ip]
+        cutoff = now - window_seconds
+        valid_ts = [t for t in timestamps if t > cutoff]
+        if len(valid_ts) >= max_requests:
+            _rate_limits[client_ip] = valid_ts
+            return True
+        valid_ts.append(now)
+        _rate_limits[client_ip] = valid_ts
+        return False
+
 
 # Initialize NLP engine lazily on first request to speed up startup and avoid double-loading
 _sandbox_nlp: Optional[FinBERTEngine] = None
@@ -103,6 +136,11 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             pass
 
     def do_GET(self):
+        client_ip = self.client_address[0] if self.client_address else "127.0.0.1"
+        if check_rate_limit(client_ip, max_requests=240, window_seconds=60.0):
+            self._send_json({"error": "Too Many Requests. Rate limit exceeded."}, 429)
+            return
+
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query_params = urllib.parse.parse_qs(parsed.query)
@@ -114,7 +152,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Market Intelligence Platform - API Backend</title>
-    <meta http-equiv="refresh" content="2; url=http://localhost:3000">
+    <meta http-equiv="refresh" content="2; url=http://127.0.0.1:3000">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0f19; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
         .card { background: #131b2e; border: 1px solid #1e293b; border-radius: 16px; padding: 32px; max-width: 580px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
@@ -138,7 +176,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
         <div class="badge"><span class="badge-dot"></span> Backend Cuantitativo &amp; FinBERT Activo (:8080)</div>
         <h1>Market Intelligence Engine</h1>
         <p>El backend analítico en Python (FinBERT + DuckDB + Pipeline Medallion) está operativo. La interfaz visual e interactiva del terminal se ejecuta en el frontend en el puerto 3000. Redirigiendo automáticamente en 2 segundos...</p>
-        <a href="http://localhost:3000" class="btn-primary">Abrir Terminal en http://localhost:3000 &rarr;</a>
+        <a href="http://127.0.0.1:3000" class="btn-primary">Abrir Terminal en http://127.0.0.1:3000 &rarr;</a>
         <div class="endpoints">
             <h3>Endpoints API Disponibles</h3>
             <ul>
@@ -180,15 +218,14 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 market_files = len(list(bronze_dir.glob("market/**/*.parquet"))) if bronze_dir.exists() else 0
                 social_files = len(list(bronze_dir.glob("social/**/*.parquet"))) if bronze_dir.exists() else 0
 
-                conn = duckdb.connect(str(db_path), read_only=True)
-                silver_m = conn.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
-                silver_s = conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
-                gold_total = conn.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchone()[0]
+                cursor = MarketWarehouse.get_shared_cursor()
+                silver_m = cursor.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
+                silver_s = cursor.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
+                gold_total = cursor.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchone()[0]
                 symbols = [
                     r[0]
-                    for r in conn.execute("SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment").fetchall()
+                    for r in cursor.execute("SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment").fetchall()
                 ]
-                conn.close()
 
                 metrics = {
                     "duckdb_size_kb": db_size_kb,
@@ -216,8 +253,6 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             diag = {}
             # 1. Binance Ping
             try:
-                import time
-
                 t0 = time.time()
                 res = httpx.get("https://api.binance.com/api/v3/ping", timeout=5.0)
                 lat = round((time.time() - t0) * 1000, 1)
@@ -231,13 +266,16 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 if _sandbox_nlp is not None:
                     status_str = "ready" if _sandbox_nlp._is_transformer_ready else "heuristic_fallback"
                     model_str = _sandbox_nlp.model_name
+                    engine_mode = "transformer" if _sandbox_nlp._is_transformer_ready else "heuristic"
                 else:
                     status_str = "initializing"
                     model_str = settings.finbert_model_name
+                    engine_mode = "transformer"
 
                 diag["finbert"] = {
                     "status": status_str,
                     "model": model_str,
+                    "engine_mode": engine_mode,
                     "device": "CPU",
                 }
                 diag["fear_greed"] = {"status": 200, "source": "finbert_nlp", "latency_ms": 0.1}
@@ -250,7 +288,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             return
 
         elif path == "/api/gold":
-            symbol = query_params.get("symbol", [None])[0]
+            raw_sym = query_params.get("symbol", [None])[0]
+            symbol = sanitize_symbol(raw_sym) if raw_sym else None
             try:
                 limit = min(max(int(query_params.get("limit", ["24"])[0]), 1), 500)
             except ValueError:
@@ -290,7 +329,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             return
 
         elif path == "/api/export-csv":
-            symbol = query_params.get("symbol", ["BTCUSDT"])[0]
+            raw_sym = query_params.get("symbol", ["BTCUSDT"])[0]
+            symbol = sanitize_symbol(raw_sym, default="BTCUSDT")
             try:
                 with MarketWarehouse(read_only=True) as warehouse:
                     raw_gold = warehouse.query_gold(symbol=symbol, limit=500)
@@ -316,7 +356,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             limit = min(int(query_params.get("limit", [25])[0]), 100)
             offset = max(int(query_params.get("offset", [0])[0]), 0)
             search = query_params.get("search", [""])[0].strip()
-            symbol = query_params.get("symbol", [""])[0].strip().upper()
+            raw_sym = query_params.get("symbol", [""])[0].strip()
+            symbol = sanitize_symbol(raw_sym) if raw_sym else ""
 
             allowed_tables = {
                 "gold_hourly_market_sentiment",
@@ -333,7 +374,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     self._send_json({"columns": [], "rows": [], "total_count": 0, "table": table}, 200)
                     return
 
-                conn = duckdb.connect(db_path, read_only=True)
+                cursor = MarketWarehouse.get_shared_cursor()
 
                 # Base query
                 where_clauses = []
@@ -364,13 +405,13 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
                 # Compute total row count for pagination
                 count_sql = f"SELECT COUNT(*) FROM {table}{where_sql}"
-                total_count = conn.execute(count_sql, params).fetchone()[0]
+                total_count = cursor.execute(count_sql, params).fetchone()[0]
 
                 query_sql = f"SELECT * FROM {table}{where_sql}{order_by_sql} LIMIT ? OFFSET ?"
-                result = conn.execute(query_sql, params + [limit, offset])
+                result = cursor.execute(query_sql, params + [limit, offset])
                 columns = [desc[0] for desc in result.description]
                 raw_rows = result.fetchall()
-                conn.close()
+                cursor.close()
 
                 # Format rows
                 rows = []
@@ -453,8 +494,18 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(payload)
 
     def do_POST(self):
+        client_ip = self.client_address[0] if self.client_address else "127.0.0.1"
+        if check_rate_limit(client_ip, max_requests=180, window_seconds=60.0):
+            self._send_json({"error": "Too Many Requests. Rate limit exceeded."}, 429)
+            return
+
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+
+        if path in ("/api/analyze-text", "/api/run-pipeline", "/api/admin/run-stage"):
+            if check_rate_limit(f"{client_ip}:{path}", max_requests=45, window_seconds=60.0):
+                self._send_json({"error": f"Rate limit exceeded for {path}. Max 45 req/min."}, 429)
+                return
 
         content_length = int(self.headers.get("Content-Length", 0))
         if content_length > MAX_BODY_BYTES:
@@ -477,7 +528,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": "Pipeline already running in background. Please wait."}, 409)
                 return
 
-            symbol = payload.get("symbol", "BTCUSDT")
+            symbol = sanitize_symbol(payload.get("symbol", "BTCUSDT"))
             hours = int(payload.get("hours", 24))
 
             pipeline = None
@@ -518,6 +569,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                         "prob_positive": 0.15,
                         "prob_negative": 0.15,
                         "prob_neutral": 0.70,
+                        "engine_mode": "neutral_default",
                     }
                 )
                 self._send_json(res, 200)
@@ -535,7 +587,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 return
 
             stage = payload.get("stage", "full")
-            symbol = payload.get("symbol", "BTCUSDT").upper()
+            symbol = sanitize_symbol(payload.get("symbol", "BTCUSDT"))
             hours = int(payload.get("hours", 24))
 
             pipeline = None
@@ -639,18 +691,16 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     return
 
                 if action == "vacuum":
-                    conn = duckdb.connect(db_path)
-                    conn.execute("VACUUM;")
-                    conn.close()
+                    cursor = MarketWarehouse.get_shared_cursor()
+                    cursor.execute("VACUUM;")
                     self._send_json(
                         {"status": "success", "message": "DuckDB VACUUM ejecutado con éxito. Espacio compactado."}, 200
                     )
                     return
 
                 elif action == "checkpoint":
-                    conn = duckdb.connect(db_path)
-                    conn.execute("CHECKPOINT;")
-                    conn.close()
+                    cursor = MarketWarehouse.get_shared_cursor()
+                    cursor.execute("CHECKPOINT;")
                     self._send_json(
                         {"status": "success", "message": "DuckDB CHECKPOINT ejecutado. WAL sincronizado al disco."}, 200
                     )
@@ -669,9 +719,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     table = payload.get("table", "")
                     allowed = {"silver_social_sentiment", "silver_market_prices"}
                     if table in allowed:
-                        conn = duckdb.connect(db_path)
-                        conn.execute(f"DELETE FROM {table};")
-                        conn.close()
+                        cursor = MarketWarehouse.get_shared_cursor()
+                        cursor.execute(f"DELETE FROM {table};")
                         self._send_json({"status": "success", "message": f"Registros de {table} purgados."}, 200)
                         return
                     else:
@@ -696,6 +745,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
         self.send_header("Vary", "Origin")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
         self.end_headers()
 
     def _send_json(self, data: Any, status_code: int = 200):
@@ -709,6 +760,13 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
             self.send_header("Vary", "Origin")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Frame-Options", "DENY")
+            self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+            self.send_header(
+                "Content-Security-Policy",
+                "default-src 'self' 'unsafe-inline'; frame-ancestors 'none';",
+            )
             self.send_header("Connection", "close")
             self.end_headers()
             self.wfile.write(payload)

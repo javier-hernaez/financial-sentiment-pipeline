@@ -71,6 +71,11 @@ class FinBERTEngine:
         if self._is_transformer_ready and not self.force_mock:
             return self._predict_transformers(texts)
         else:
+            if not self.force_mock:
+                console.print(
+                    "[yellow][FinBERTEngine] Advertencia: Modelo transformer no disponible. "
+                    "Usando motor heurístico de respaldo.[/yellow]"
+                )
             return self._predict_heuristic(texts)
 
     def _predict_transformers(self, texts: List[str]) -> List[Dict[str, Any]]:
@@ -98,6 +103,7 @@ class FinBERTEngine:
                             "prob_positive": 0.15,
                             "prob_negative": 0.15,
                             "prob_neutral": 0.70,
+                            "engine_mode": "transformer",
                         }
                     )
                 continue
@@ -143,6 +149,7 @@ class FinBERTEngine:
                         "prob_positive": round(pos, 4),
                         "prob_negative": round(neg, 4),
                         "prob_neutral": round(neu, 4),
+                        "engine_mode": "transformer",
                     }
                 )
 
@@ -516,6 +523,7 @@ class FinBERTEngine:
                         "prob_positive": 0.15,
                         "prob_negative": 0.15,
                         "prob_neutral": 0.70,
+                        "engine_mode": "heuristic",
                     }
                 )
                 continue
@@ -567,6 +575,7 @@ class FinBERTEngine:
                     "prob_positive": round(pos, 4),
                     "prob_negative": round(neg, 4),
                     "prob_neutral": round(neu, 4),
+                    "engine_mode": "heuristic",
                 }
             )
 

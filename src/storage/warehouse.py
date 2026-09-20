@@ -1,7 +1,6 @@
-"""DuckDB Columnar Warehouse for Silver and Gold analytical layers."""
-
+import threading
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 import duckdb
 import polars as pl
@@ -15,13 +14,52 @@ console = Console()
 class MarketWarehouse:
     """Manages DuckDB tables, data ingestion into Silver, and Gold transformations."""
 
-    def __init__(self, db_path: Optional[Path] = None, read_only: bool = False):
+    _shared_connections: Dict[str, duckdb.DuckDBPyConnection] = {}
+    _conn_lock = threading.Lock()
+
+    def __init__(self, db_path: Optional[Path] = None, read_only: bool = False, isolated: Optional[bool] = None):
         self.db_path = Path(db_path or settings.duckdb_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.read_only = read_only
-        self.conn = duckdb.connect(str(self.db_path), read_only=read_only)
+
+        path_resolved = str(self.db_path.resolve())
+        is_default = (self.db_path.resolve() == Path(settings.duckdb_path).resolve())
+        self.isolated = isolated if isolated is not None else (not is_default)
+
+        with self._conn_lock:
+            if self.isolated:
+                self.conn = duckdb.connect(path_resolved, read_only=read_only)
+                self._is_cursor = False
+            else:
+                if path_resolved not in self._shared_connections:
+                    self._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=False)
+                self.conn = self._shared_connections[path_resolved].cursor()
+                self._is_cursor = True
+
         if not self.read_only:
             self._init_schema()
+
+    @classmethod
+    def get_shared_cursor(cls, db_path: Optional[Path] = None) -> duckdb.DuckDBPyConnection:
+        """Returns a thread-safe cursor from the shared DuckDB connection."""
+        target_path = Path(db_path or settings.duckdb_path)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        path_resolved = str(target_path.resolve())
+        with cls._conn_lock:
+            if path_resolved not in cls._shared_connections:
+                cls._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=False)
+            return cls._shared_connections[path_resolved].cursor()
+
+    @classmethod
+    def close_all_shared(cls) -> None:
+        """Closes all shared master connections."""
+        with cls._conn_lock:
+            for p, conn in list(cls._shared_connections.items()):
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            cls._shared_connections.clear()
 
     def __enter__(self):
         return self

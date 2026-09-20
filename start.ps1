@@ -132,13 +132,13 @@ if ($frontendReady) {
 # 7. Abrir en el navegador
 Write-Host "`n==========================================================" -ForegroundColor Green
 Write-Host "   SISTEMA ACTIVO Y OPERATIVO                             " -ForegroundColor Green
-Write-Host "   - Terminal / Dashboard: http://localhost:3000         " -ForegroundColor White
-Write-Host "   - API Cuantitativa:     http://localhost:8080         " -ForegroundColor White
+Write-Host "   - Terminal / Dashboard: http://127.0.0.1:3000 (o http://localhost:3000)" -ForegroundColor White
+Write-Host "   - API Cuantitativa:     http://127.0.0.1:8080         " -ForegroundColor White
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host "`nPresiona [Ctrl+C] en esta ventana para cerrar ambos servicios.`n" -ForegroundColor DarkGray
 
 try {
-    Start-Process "http://localhost:3000"
+    Start-Process "http://127.0.0.1:3000"
 } catch {}
 
 # Manejo de cierre al pulsar Ctrl+C
