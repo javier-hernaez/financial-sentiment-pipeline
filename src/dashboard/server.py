@@ -66,7 +66,60 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
         path = parsed.path
         query_params = urllib.parse.parse_qs(parsed.query)
 
-        if path == "/api/health":
+        if path in ("/", "/index.html"):
+            html = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Market Intelligence Platform - API Backend</title>
+    <meta http-equiv="refresh" content="2; url=http://localhost:3000">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0f19; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { background: #131b2e; border: 1px solid #1e293b; border-radius: 16px; padding: 32px; max-width: 580px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.15); color: #34d399; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        h1 { font-size: 22px; margin: 16px 0 8px 0; font-weight: 700; color: #ffffff; }
+        p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0; }
+        .btn-primary { display: block; text-align: center; background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 15px; transition: all 0.2s; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4); margin-bottom: 24px; }
+        .btn-primary:hover { background: linear-gradient(135deg, #0369a1, #075985); }
+        .endpoints { border-top: 1px solid #1e293b; padding-top: 18px; }
+        .endpoints h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin: 0 0 12px 0; }
+        .endpoints ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+        .endpoints li a { display: flex; justify-content: space-between; align-items: center; color: #38bdf8; text-decoration: none; font-size: 13px; font-family: monospace; padding: 6px 10px; background: #0b0f19; border-radius: 6px; border: 1px solid #1e293b; transition: all 0.2s; }
+        .endpoints li a:hover { border-color: #38bdf8; background: #0f172a; }
+        .tag { font-size: 11px; background: #1e293b; color: #94a3b8; padding: 2px 6px; border-radius: 4px; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge"><span class="badge-dot"></span> Backend Cuantitativo &amp; FinBERT Activo (:8080)</div>
+        <h1>Market Intelligence Engine</h1>
+        <p>El backend analítico en Python (FinBERT + DuckDB + Pipeline Medallion) está operativo. La interfaz visual e interactiva del terminal se ejecuta en el frontend en el puerto 3000. Redirigiendo automáticamente en 2 segundos...</p>
+        <a href="http://localhost:3000" class="btn-primary">Abrir Terminal en http://localhost:3000 &rarr;</a>
+        <div class="endpoints">
+            <h3>Endpoints API Disponibles</h3>
+            <ul>
+                <li><a href="/api/health"><span>/api/health</span><span class="tag">Salud API</span></a></li>
+                <li><a href="/api/admin/metrics"><span>/api/admin/metrics</span><span class="tag">Métricas Medallion</span></a></li>
+                <li><a href="/api/admin/diagnostics"><span>/api/admin/diagnostics</span><span class="tag">FinBERT &amp; Binance</span></a></li>
+                <li><a href="/api/gold?symbol=BTCUSDT"><span>/api/gold?symbol=BTCUSDT</span><span class="tag">Capa Gold</span></a></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>"""
+            payload = html.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(payload)
+            return
+
+        elif path == "/api/health":
             self._send_json({"status": "healthy", "service": "market-intelligence-api"}, 200)
             return
 
@@ -348,9 +401,13 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             return
 
         else:
+            payload = b"Not Found"
             self.send_response(404)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Connection", "close")
             self.end_headers()
-            self.wfile.write(b"Not Found")
+            self.wfile.write(payload)
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -618,7 +675,10 @@ def run_server(host: str = "127.0.0.1", port: int = 8080):
     server_address = (host, port)
     httpd = QuietHTTPServer(server_address, AdvancedDashboardHandler)
     console.print(
-        f"[bold green][OK] Advanced Market Intelligence Terminal running on http://{host}:{port}[/bold green]"
+        f"[bold green][OK] Market Intelligence API Server running on http://{host}:{port}[/bold green]"
+    )
+    console.print(
+        f"[bold cyan]→ Terminal Web Interactivo (Frontend): [underline]http://localhost:3000[/underline][/bold cyan]\n"
     )
     try:
         httpd.serve_forever()

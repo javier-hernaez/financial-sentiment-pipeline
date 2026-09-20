@@ -82,16 +82,51 @@ if ($backendReady) {
 
 # 5. Iniciar el Frontend (Next.js 3000)
 Write-Host "`n[3/3] Iniciando Frontend Next.js (Dashboard en puerto 3000)..." -ForegroundColor Green
-$startCmd = if (Test-Path (Join-Path $FRONTEND_DIR ".next")) { "npm run start" } else { "npm run dev" }
+$hasBuild = Test-Path (Join-Path $FRONTEND_DIR ".next\BUILD_ID")
+if (-not $hasBuild) {
+    Write-Host "[INFO] Generando build de produccion de Next.js..." -ForegroundColor Cyan
+    Push-Location $FRONTEND_DIR
+    cmd.exe /c "npm run build"
+    Pop-Location
+    $hasBuild = Test-Path (Join-Path $FRONTEND_DIR ".next\BUILD_ID")
+}
+
+$startCmd = if ($hasBuild) { "npm run start" } else { "npm run dev" }
 
 $frontendProcess = Start-Process -FilePath "cmd.exe" `
     -ArgumentList "/c", $startCmd `
     -WorkingDirectory $FRONTEND_DIR `
     -PassThru
 
-Start-Sleep -Seconds 2
+# 6. Esperar a que el Frontend responda
+Write-Host "Verificando conexion con el Frontend en puerto 3000..." -NoNewline -ForegroundColor Cyan
+$retriesFront = 35
+$frontendReady = $false
 
-# 6. Abrir en el navegador
+while ($retriesFront -gt 0) {
+    if ($frontendProcess.HasExited) {
+        Write-Host " [ERROR: El proceso frontend finalizo inesperadamente]" -ForegroundColor Red
+        break
+    }
+    try {
+        $resp = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+        if ($resp.StatusCode -eq 200) {
+            $frontendReady = $true
+            break
+        }
+    } catch {}
+    Write-Host "." -NoNewline -ForegroundColor Cyan
+    Start-Sleep -Seconds 1
+    $retriesFront--
+}
+
+if ($frontendReady) {
+    Write-Host " [LISTO]" -ForegroundColor Green
+} else {
+    Write-Host " [AVISO: El frontend esta iniciando]" -ForegroundColor Yellow
+}
+
+# 7. Abrir en el navegador
 Write-Host "`n==========================================================" -ForegroundColor Green
 Write-Host "   SISTEMA ACTIVO Y OPERATIVO                             " -ForegroundColor Green
 Write-Host "   - Terminal / Dashboard: http://localhost:3000         " -ForegroundColor White
@@ -107,7 +142,11 @@ try {
 try {
     while ($true) {
         if ($backendProcess.HasExited) {
-            Write-Host "[ALERTA] El proceso Backend ha finalizado." -ForegroundColor Red
+            Write-Host "`n[ALERTA] El proceso Backend (Python) ha finalizado." -ForegroundColor Red
+            break
+        }
+        if ($frontendProcess.HasExited) {
+            Write-Host "`n[ALERTA] El proceso Frontend (Next.js) ha finalizado." -ForegroundColor Red
             break
         }
         Start-Sleep -Seconds 1
