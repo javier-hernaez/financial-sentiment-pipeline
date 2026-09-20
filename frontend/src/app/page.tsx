@@ -89,6 +89,15 @@ export default function Home() {
     loadAll();
   }, []);
 
+  useEffect(() => {
+    if (systemAlert && (systemAlert.type === 'success' || systemAlert.type === 'info')) {
+      const timer = setTimeout(() => {
+        setSystemAlert(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [systemAlert]);
+
   const loadAll = async () => {
     setIsRefreshing(true);
     try {
@@ -195,68 +204,6 @@ export default function Home() {
         {/* Dashboard Content Container */}
         <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 space-y-6 max-w-full w-full mx-auto pb-24 md:pb-8 overflow-x-hidden">
           
-          {/* Centralized System Alert Banner (Single prominent error/status notification center) */}
-          {systemAlert && (
-            <div
-              role="alert"
-              className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg transition-all ${
-                systemAlert.type === 'error'
-                  ? isDark
-                    ? 'bg-rose-950/40 border-rose-600/50 text-rose-100 shadow-rose-950/20'
-                    : 'bg-rose-50 border-rose-300 text-rose-900 shadow-rose-100'
-                  : systemAlert.type === 'warning'
-                  ? isDark
-                    ? 'bg-amber-950/40 border-amber-600/50 text-amber-100 shadow-amber-950/20'
-                    : 'bg-amber-50 border-amber-300 text-amber-900 shadow-amber-100'
-                  : systemAlert.type === 'success'
-                  ? isDark
-                    ? 'bg-emerald-950/40 border-emerald-600/50 text-emerald-100 shadow-emerald-950/20'
-                    : 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-emerald-100'
-                  : isDark
-                  ? 'bg-blue-950/40 border-blue-600/50 text-blue-100 shadow-blue-950/20'
-                  : 'bg-blue-50 border-blue-300 text-blue-900 shadow-blue-100'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0">
-                  {systemAlert.type === 'error' && <XCircle className="w-5 h-5 text-rose-400" />}
-                  {systemAlert.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400" />}
-                  {systemAlert.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                  {systemAlert.type === 'info' && <Info className="w-5 h-5 text-blue-400" />}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-sm leading-tight">{systemAlert.title}</h4>
-                    <span className="text-[10px] font-mono opacity-60">[{systemAlert.timestamp}]</span>
-                  </div>
-                  <p className="text-xs mt-1 leading-relaxed opacity-90">{systemAlert.message}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
-                {systemAlert.actionLabel && systemAlert.onAction && (
-                  <button
-                    onClick={systemAlert.onAction}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                      systemAlert.type === 'error'
-                        ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                        : 'bg-blue-600 hover:bg-blue-500 text-white'
-                    }`}
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>{systemAlert.actionLabel}</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => setSystemAlert(null)}
-                  className="p-1 rounded-lg hover:bg-black/20 text-current opacity-70 hover:opacity-100 transition"
-                  title="Cerrar notificación"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Main Dashboard View */}
           {activeView === 'dashboard' && (
             <div className="space-y-6">

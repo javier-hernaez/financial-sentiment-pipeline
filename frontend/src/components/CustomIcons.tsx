@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 interface IconProps {
   className?: string;
@@ -61,11 +61,11 @@ export const IconDuckDB: React.FC<IconProps> = ({ className = 'w-4 h-4' }) => (
   </svg>
 );
 
-// Brand Logo: Structured Lakehouse Stack
+// Brand Logo: Quant Terminal & Data Pulse Glyph
 export const IconBrand: React.FC<IconProps> = ({ className = 'w-4 h-4' }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12 2 2 7l10 5 10-5-10-5Z" />
-    <path d="m2 17 10 5 10-5" />
-    <path d="m2 12 10 5 10-5" />
+    <polygon points="12 2 21 7 21 17 12 22 3 17 3 7 12 2" strokeWidth="1.8" />
+    <path d="M7 13.5l3-3.5 3.5 3.5 4-5" strokeWidth="2" />
+    <circle cx="17.5" cy="8.5" r="1.2" fill="currentColor" />
   </svg>
 );
