@@ -88,7 +88,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
 
   return (
     <div
-      className={`p-5 rounded-lg border transition-all duration-200 ${
+      className={`p-5 rounded-lg border transition-all duration-200 h-full flex flex-col justify-between ${
         isDark
           ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
           : 'bg-white border-slate-200 text-slate-800 shadow-sm'
@@ -143,7 +143,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
       </div>
 
       {/* Main Dual-Line Area Chart: Sentiment Curve + Ingestion Volume */}
-      <div className="h-64 w-full mt-6">
+      <div className="flex-1 min-h-[220px] w-full mt-4">
         {!isMounted || isLoading ? (
           <div className="h-full w-full flex items-center justify-center text-xs font-mono text-slate-500">
             <RefreshCw className="w-4 h-4 animate-spin text-blue-400 mr-2" />
@@ -232,7 +232,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
       </div>
 
       {/* Bottom Segment: Sentiment Distribution from Real DuckDB records */}
-      <div className={`mt-6 pt-5 border-t ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
+      <div className={`mt-auto pt-5 border-t ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
         <div className="flex items-center justify-between mb-4">
           <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Distribución Real de Polaridad FinBERT

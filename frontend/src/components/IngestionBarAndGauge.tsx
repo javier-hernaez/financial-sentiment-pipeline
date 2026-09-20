@@ -80,11 +80,11 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   const gaugeColor = score >= 55 ? '#10b981' : score >= 35 ? '#f59e0b' : '#f43f5e';
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="h-full flex flex-col gap-6">
       
       {/* 1. Real Pipeline Ingestion Breakdown */}
       <div
-        className={`p-5 rounded-lg border transition-all duration-200 ${
+        className={`p-5 rounded-lg border transition-all duration-200 flex-1 flex flex-col justify-between ${
           isDark
             ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
             : 'bg-white border-slate-200 text-slate-800 shadow-sm'
@@ -125,7 +125,7 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
 
       {/* 2. Sentiment Consensus Speedometer */}
       <div
-        className={`p-5 rounded-lg border transition-all duration-200 ${
+        className={`p-5 rounded-lg border transition-all duration-200 flex-1 flex flex-col justify-between ${
           isDark
             ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
             : 'bg-white border-slate-200 text-slate-800 shadow-sm'
@@ -144,7 +144,7 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         </div>
 
         {/* Semi-circular Speedometer SVG Gauge */}
-        <div className="mt-4 flex flex-col items-center">
+        <div className="mt-2 flex-1 flex flex-col items-center justify-center">
           {consensoScore === null ? (
             <div className="py-6 text-xs font-mono text-slate-500 text-center">
               Sin datos Gold. Ejecuta el pipeline ELT para calcular el consenso.

@@ -5,6 +5,7 @@ import {
   HelpCircle,
   X,
   PanelLeftClose,
+  RefreshCw,
 } from 'lucide-react';
 import {
   IconDashboard,
@@ -25,6 +26,7 @@ interface SidebarProps {
   setIsMobileOpen?: (open: boolean) => void;
   isDark?: boolean;
   onTriggerFullPipeline?: () => void;
+  isPipelineRunning?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setIsMobileOpen,
   isDark = true,
   onTriggerFullPipeline,
+  isPipelineRunning = false,
 }) => {
   interface NavItem {
     id: string;
@@ -207,9 +210,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </p>
               <button
                 onClick={onTriggerFullPipeline}
-                className="mt-2.5 w-full py-1.5 px-2 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-[11px] font-bold transition text-center"
+                disabled={isPipelineRunning}
+                className={`mt-2.5 w-full py-1.5 px-2 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-[11px] font-bold transition text-center flex items-center justify-center gap-1.5 ${
+                  isPipelineRunning ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
               >
-                Ejecutar Pipeline ELT
+                {isPipelineRunning && <RefreshCw className="w-3 h-3 animate-spin" />}
+                <span>{isPipelineRunning ? 'Ejecutando...' : 'Ejecutar Pipeline ELT'}</span>
               </button>
             </div>
           </div>

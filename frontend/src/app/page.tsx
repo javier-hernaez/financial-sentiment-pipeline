@@ -37,7 +37,7 @@ import {
   Info,
 } from 'lucide-react';
 import { SystemMetrics, Diagnostics } from '@/types';
-import { fetchMetrics, fetchDiagnostics } from '@/lib/api';
+import { fetchMetrics, fetchDiagnostics, runStage } from '@/lib/api';
 
 export interface CentralAlert {
   id: string;
@@ -60,7 +60,29 @@ export default function Home() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isPipelineRunning, setIsPipelineRunning] = useState(false);
   const [systemAlert, setSystemAlert] = useState<CentralAlert | null>(null);
+
+  const handleDirectRunPipeline = async () => {
+    if (isPipelineRunning) return;
+    setIsPipelineRunning(true);
+    handleSystemAlert('Iniciando ejecución del pipeline ELT (Extracción -> FinBERT -> DuckDB)...', 'info');
+    try {
+      const result = await runStage('full', selectedSymbol, 24);
+      await loadAll();
+      const totalProcessed = (result?.candles_processed || 0) + (result?.posts_processed || 0) + (result?.macro_records || 0);
+      handleSystemAlert(
+        `Pipeline completado exitosamente en ${(result?.elapsed_seconds || 0).toFixed(1)}s (${totalProcessed} registros procesados).`,
+        'success'
+      );
+    } catch (err: any) {
+      console.error('Error running pipeline directly:', err);
+      const errMsg = err?.message || String(err);
+      handleSystemAlert(`Fallo al ejecutar el pipeline: ${errMsg}`, 'error');
+    } finally {
+      setIsPipelineRunning(false);
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -137,9 +159,8 @@ export default function Home() {
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
         isDark={isDark}
-        onTriggerFullPipeline={() => {
-          setActiveView('orchestration');
-        }}
+        onTriggerFullPipeline={handleDirectRunPipeline}
+        isPipelineRunning={isPipelineRunning}
       />
 
       {/* Main Content Area */}
@@ -264,19 +285,21 @@ export default function Home() {
                     <span>En Tiempo Real · Lote Activo</span>
                   </div>
 
-                  {/* Trigger Pipeline Button */}
+                  {/* Trigger Pipeline Button (Runs in-place without switching views) */}
                   <button
-                    onClick={() => {
-                      setActiveView('orchestration');
-                    }}
+                    onClick={handleDirectRunPipeline}
+                    disabled={isPipelineRunning}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-xs font-semibold transition shadow-2xs ${
+                      isPipelineRunning ? 'opacity-70 cursor-not-allowed' : ''
+                    } ${
                       isDark
                         ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
                         : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
                     }`}
+                    title="Ejecuta la extracción, inferencia FinBERT y actualización en DuckDB sin salir de esta vista"
                   >
-                    <Play className="w-3.5 h-3.5" />
-                    <span>Ejecutar Pipeline</span>
+                    <RefreshCw className={`w-3.5 h-3.5 ${isPipelineRunning ? 'animate-spin text-blue-400' : ''}`} />
+                    <span>{isPipelineRunning ? 'Ejecutando Pipeline...' : 'Ejecutar Pipeline'}</span>
                   </button>
 
                   {/* Primary Blue Export Button */}
@@ -293,12 +316,12 @@ export default function Home() {
               {/* 1. Top 4 KPI Cards (Bronze Ingestion, Silver NLP, FinBERT Inference, Gold DuckDB) */}
               <ShopeersKpiCards metrics={metrics} isDark={isDark} />
 
-              {/* 3. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+              {/* 3. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) - Perfectly Height-Aligned */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+                <div className="lg:col-span-2 flex flex-col">
                   <ProfitAndSourcesChart metrics={metrics} isDark={isDark} />
                 </div>
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 flex flex-col">
                   <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} />
                 </div>
               </div>
