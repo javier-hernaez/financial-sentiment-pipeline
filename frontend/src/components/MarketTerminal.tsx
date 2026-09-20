@@ -432,17 +432,17 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
                   </div>
                 </div>
 
-                {/* Fear & Greed Gold */}
+                {/* FinBERT Sentiment Consensus Gold */}
                 <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200'}`}>
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-emerald-400">3. Fear & Greed Macro</span>
+                    <span className="font-bold text-emerald-400">3. Consenso Sentimiento FinBERT</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">gold_hourly</span>
                   </div>
                   <p className={`text-[11px] font-sans ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Índice macro de Alternative.me sincronizado en la capa Gold junto con los retornos horarios.
+                    Índice de sentimiento FinBERT (0-100) consolidado en la capa Gold junto con los retornos horarios.
                   </p>
                   <div className="pt-2 border-t border-slate-800/40 flex justify-between text-[11px] text-slate-400">
-                    <span>Avg F&amp;G:</span>
+                    <span>Índice FinBERT:</span>
                     <strong className="text-emerald-400">
                       {avgFearGreed !== null ? `${avgFearGreed.toFixed(0)} · ${latestFgLabel ?? ''}` : 'Sin datos'}
                     </strong>

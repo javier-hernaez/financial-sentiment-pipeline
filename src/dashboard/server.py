@@ -2,10 +2,12 @@
 
 import argparse
 import asyncio
+import hmac
 import io
 import json
 import os
 import sys
+import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,8 +34,10 @@ from ..nlp.finbert_engine import FinBERTEngine
 from ..pipeline.orchestrator import MarketIntelligencePipeline
 from ..storage import MarketWarehouse
 
-
 console = Console()
+
+MAX_BODY_BYTES = 2 * 1024 * 1024  # 2MB max payload limit against DoS
+pipeline_execution_lock = threading.Lock()
 
 # Initialize NLP engine lazily on first request to speed up startup and avoid double-loading
 _sandbox_nlp: Optional[FinBERTEngine] = None
@@ -50,6 +54,43 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
     """Enhanced HTTP Handler for the Market Intelligence Dashboard."""
 
     protocol_version = "HTTP/1.1"
+
+    def _get_allowed_origin(self) -> str:
+        origin = self.headers.get("Origin")
+        if not origin:
+            return "http://localhost:3000"
+        if origin in settings.allowed_origins:
+            return origin
+        parsed = urllib.parse.urlparse(origin)
+        if parsed.hostname in ("localhost", "127.0.0.1"):
+            return origin
+        return "http://localhost:3000"
+
+    def _is_authorized(self) -> bool:
+        """Verifies Bearer token or X-API-Key header against settings.api_secret_key."""
+        expected = settings.api_secret_key
+        if not expected:
+            return True
+
+        auth_header = self.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+            if hmac.compare_digest(token, expected):
+                return True
+
+        api_key_header = self.headers.get("X-API-Key", "").strip()
+        if api_key_header and hmac.compare_digest(api_key_header, expected):
+            return True
+
+        # In local dev environment, allow if origin is strictly localhost/127.0.0.1 or direct backend call
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        parsed = urllib.parse.urlparse(origin)
+        if parsed.hostname in ("localhost", "127.0.0.1"):
+            return True
+
+        return False
 
     def log_message(self, format, *args):
         # Format HTTP requests clearly in the terminal
@@ -119,6 +160,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(payload)
             return
 
+        if path.startswith("/api/admin/") and not self._is_authorized():
+            self._send_json({"error": "Unauthorized"}, 401)
+            return
+
         elif path == "/api/health":
             self._send_json({"status": "healthy", "service": "market-intelligence-api"}, 200)
             return
@@ -138,10 +183,6 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 conn = duckdb.connect(str(db_path), read_only=True)
                 silver_m = conn.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
                 silver_s = conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
-                try:
-                    silver_fg = conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
-                except Exception:
-                    silver_fg = 0
                 gold_total = conn.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchone()[0]
                 symbols = [
                     r[0]
@@ -160,7 +201,6 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     "silver": {
                         "market_rows": silver_m,
                         "social_rows": silver_s,
-                        "fear_greed_rows": silver_fg,
                     },
                     "gold": {
                         "total_rows": gold_total,
@@ -211,7 +251,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/gold":
             symbol = query_params.get("symbol", [None])[0]
-            limit = int(query_params.get("limit", [24])[0])
+            try:
+                limit = min(max(int(query_params.get("limit", ["24"])[0]), 1), 500)
+            except ValueError:
+                limit = 24
             try:
                 db_path = str(settings.duckdb_path)
                 if not os.path.exists(db_path):
@@ -229,7 +272,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             return
 
         elif path == "/api/social-posts":
-            limit = int(query_params.get("limit", [15])[0])
+            try:
+                limit = min(max(int(query_params.get("limit", ["15"])[0]), 1), 200)
+            except ValueError:
+                limit = 15
             try:
                 db_path = str(settings.duckdb_path)
                 if not os.path.exists(db_path):
@@ -276,7 +322,6 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                 "gold_hourly_market_sentiment",
                 "silver_market_prices",
                 "silver_social_sentiment",
-                "silver_fear_greed",
             }
             if table not in allowed_tables:
                 self._send_json({"error": f"Tabla no permitida: {table}"}, 400)
@@ -316,15 +361,13 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                     order_by_sql = " ORDER BY created_utc DESC"
                 elif table in ("gold_hourly_market_sentiment", "silver_market_prices"):
                     order_by_sql = " ORDER BY timestamp_hour DESC"
-                elif table == "silver_fear_greed":
-                    order_by_sql = " ORDER BY date DESC"
 
-                # Compute total row count for pagination (was missing — caused NameError → ECONNRESET)
+                # Compute total row count for pagination
                 count_sql = f"SELECT COUNT(*) FROM {table}{where_sql}"
                 total_count = conn.execute(count_sql, params).fetchone()[0]
 
-                query_sql = f"SELECT * FROM {table}{where_sql}{order_by_sql} LIMIT {limit} OFFSET {offset}"
-                result = conn.execute(query_sql, params)
+                query_sql = f"SELECT * FROM {table}{where_sql}{order_by_sql} LIMIT ? OFFSET ?"
+                result = conn.execute(query_sql, params + [limit, offset])
                 columns = [desc[0] for desc in result.description]
                 raw_rows = result.fetchall()
                 conn.close()
@@ -414,6 +457,10 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
         path = parsed.path
 
         content_length = int(self.headers.get("Content-Length", 0))
+        if content_length > MAX_BODY_BYTES:
+            self._send_json({"error": f"Payload too large. Max allowed is {MAX_BODY_BYTES} bytes"}, 413)
+            return
+
         body = self.rfile.read(content_length) if content_length > 0 else b"{}"
 
         try:
@@ -422,6 +469,14 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             payload = {}
 
         if path == "/api/run-pipeline":
+            if not self._is_authorized():
+                self._send_json({"error": "Unauthorized"}, 401)
+                return
+
+            if not pipeline_execution_lock.acquire(blocking=False):
+                self._send_json({"error": "Pipeline already running in background. Please wait."}, 409)
+                return
+
             symbol = payload.get("symbol", "BTCUSDT")
             hours = int(payload.get("hours", 24))
 
@@ -436,7 +491,6 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                         "symbol": result["symbol"],
                         "candles_processed": result["candles_processed"],
                         "posts_processed": result["posts_processed"],
-                        "macro_records": result["macro_records"],
                         "elapsed_seconds": result["elapsed_seconds"],
                     },
                     200,
@@ -446,11 +500,12 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             finally:
                 if pipeline:
                     pipeline.close()
+                pipeline_execution_lock.release()
             return
 
         elif path == "/api/analyze-text":
             try:
-                text = payload.get("text", "")
+                text = str(payload.get("text", ""))[:5000]
                 cleaned = TextCleaner.clean_string(text)
                 preds = get_sandbox_nlp().predict_batch([cleaned]) if cleaned else []
                 res = (
@@ -471,6 +526,14 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             return
 
         elif path == "/api/admin/run-stage":
+            if not self._is_authorized():
+                self._send_json({"error": "Unauthorized"}, 401)
+                return
+
+            if not pipeline_execution_lock.acquire(blocking=False):
+                self._send_json({"error": "Pipeline already running in background. Please wait."}, 409)
+                return
+
             stage = payload.get("stage", "full")
             symbol = payload.get("symbol", "BTCUSDT").upper()
             hours = int(payload.get("hours", 24))
@@ -497,7 +560,6 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                             "stage": "extract",
                             "symbol": symbol,
                             "candles": len(extracted["market"]),
-                            "macro_records": 0,
                             "social_records": len(extracted["social"]),
                             "bronze_files": bronze_res["files"],
                             "elapsed_seconds": elapsed,
@@ -516,10 +578,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                             "symbol": symbol,
                             "candles_processed": silver_res["candles_processed"],
                             "posts_processed": silver_res["posts_processed"],
-                            "macro_records": silver_res["macro_records"],
                             "total_silver_market": silver_res["total_silver_market"],
                             "total_silver_social": silver_res["total_silver_social"],
-                            "total_silver_macro": silver_res["total_silver_macro"],
                             "elapsed_seconds": elapsed,
                         },
                         200,
@@ -551,10 +611,8 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
                             "symbol": result["symbol"],
                             "candles_processed": result["candles_processed"],
                             "posts_processed": result["posts_processed"],
-                            "macro_records": result["macro_records"],
                             "total_silver_market": result.get("total_silver_market", 0),
                             "total_silver_social": result.get("total_silver_social", 0),
-                            "total_silver_macro": result.get("total_silver_macro", 0),
                             "elapsed_seconds": round(result["elapsed_seconds"], 2),
                         },
                         200,
@@ -565,9 +623,14 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             finally:
                 if pipeline:
                     pipeline.close()
+                pipeline_execution_lock.release()
             return
 
         elif path == "/api/admin/warehouse-ops":
+            if not self._is_authorized():
+                self._send_json({"error": "Unauthorized"}, 401)
+                return
+
             action = payload.get("action", "").lower()
             try:
                 db_path = str(settings.duckdb_path)
@@ -604,7 +667,7 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
 
                 elif action == "clear_table":
                     table = payload.get("table", "")
-                    allowed = {"silver_social_sentiment", "silver_market_prices", "silver_fear_greed"}
+                    allowed = {"silver_social_sentiment", "silver_market_prices"}
                     if table in allowed:
                         conn = duckdb.connect(db_path)
                         conn.execute(f"DELETE FROM {table};")
@@ -627,21 +690,25 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_OPTIONS(self):
+        allowed_origin = self._get_allowed_origin()
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", allowed_origin)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+        self.send_header("Vary", "Origin")
         self.end_headers()
 
     def _send_json(self, data: Any, status_code: int = 200):
         try:
             payload = json.dumps(data, default=str).encode("utf-8")
+            allowed_origin = self._get_allowed_origin()
             self.send_response(status_code)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(payload)))
-            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Origin", allowed_origin)
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+            self.send_header("Vary", "Origin")
             self.send_header("Connection", "close")
             self.end_headers()
             self.wfile.write(payload)
@@ -678,7 +745,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8080):
         f"[bold green][OK] Market Intelligence API Server running on http://{host}:{port}[/bold green]"
     )
     console.print(
-        f"[bold cyan]→ Terminal Web Interactivo (Frontend): [underline]http://localhost:3000[/underline][/bold cyan]\n"
+        "[bold cyan]→ Terminal Web Interactivo (Frontend): [underline]http://localhost:3000[/underline][/bold cyan]\n"
     )
     try:
         httpd.serve_forever()

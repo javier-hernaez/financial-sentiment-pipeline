@@ -115,7 +115,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
               2. Scoring FinBERT (Silver)
             </span>
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-400 bg-purple-500/15 px-2 py-0.5 rounded-md border border-purple-500/30">
-              <CheckCircle2 className="w-2.5 h-2.5" /> 94.2% Confianza
+              <CheckCircle2 className="w-2.5 h-2.5" /> Inferencia Activa
             </span>
           </div>
 

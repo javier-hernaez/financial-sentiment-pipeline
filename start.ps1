@@ -38,9 +38,12 @@ function Liberar-Puerto([int]$port) {
         if ($conn) {
             $pidToKill = $conn.OwningProcess
             if ($pidToKill -gt 0) {
-                Write-Host "[INFO] Liberando puerto $port (PID: $pidToKill)..." -ForegroundColor Yellow
-                Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
-                Start-Sleep -Milliseconds 500
+                $proc = Get-Process -Id $pidToKill -ErrorAction SilentlyContinue
+                if ($proc -and ($proc.ProcessName -match "python|node")) {
+                    Write-Host "[INFO] Liberando puerto $port ocupado por $($proc.ProcessName) (PID: $pidToKill)..." -ForegroundColor Yellow
+                    Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
+                    Start-Sleep -Milliseconds 500
+                }
             }
         }
     } catch {}
@@ -63,7 +66,7 @@ $backendReady = $false
 
 while ($retries -gt 0) {
     try {
-        $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/admin/diagnostics" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+        $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($resp.StatusCode -eq 200) {
             $backendReady = $true
             break

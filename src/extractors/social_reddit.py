@@ -3,14 +3,18 @@ import email.utils
 import hashlib
 import re
 import time
-import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+from xml.etree.ElementTree import Element
+
+try:
+    import defusedxml.ElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
 
 import httpx
 from rich.console import Console
 
-from ..configs.settings import settings
 from .base import BaseAsyncExtractor
 
 console = Console()
@@ -20,8 +24,22 @@ ENTITY_RE = re.compile(r"&[a-z]+;")
 WHITESPACE_RE = re.compile(r"\s+")
 
 
+def detect_asset_ticker(title: str, text: str = "") -> str:
+    """Classifies which crypto asset the post/headline pertains to, or 'ALL' for macro/general market news."""
+    combined = f"{title} {text}".lower()
+    if re.search(r"\b(btc|bitcoin)\b", combined):
+        return "BTCUSDT"
+    elif re.search(r"\b(eth|ethereum|ether)\b", combined):
+        return "ETHUSDT"
+    elif re.search(r"\b(sol|solana)\b", combined):
+        return "SOLUSDT"
+    return "ALL"
+
+
 class SocialRedditExtractor(BaseAsyncExtractor):
     """Extractor for social sentiment discussions (Reddit subreddits and RSS feeds)."""
+
+    detect_asset_ticker = staticmethod(detect_asset_ticker)
 
     RSS_FEEDS: List[Tuple[str, str]] = [
         ("cointelegraph", "https://cointelegraph.com/rss"),
@@ -45,7 +63,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         super().__init__(
             name="RedditSocial",
             base_url=base_url,
-            headers={"User-Agent": settings.reddit_user_agent},
+            headers={"User-Agent": "MarketIntelligenceEngine/1.0"},
         )
         self.subreddits = subreddits or [
             "CryptoCurrency",
@@ -79,13 +97,18 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                 dt = datetime.fromtimestamp(created_utc, tz=timezone.utc)
                 hour_str = dt.strftime("%Y-%m-%d %H:00:00")
 
+                title_text = data.get("title", "")
+                self_text = data.get("selftext", "")
+                asset_tag = detect_asset_ticker(f"{title_text} {subreddit}", self_text)
+
                 extracted.append(
                     {
                         "source": "reddit",
                         "post_id": data.get("id", ""),
                         "subreddit": subreddit,
-                        "title": data.get("title", ""),
-                        "text_body": data.get("selftext", ""),
+                        "asset_ticker": asset_tag,
+                        "title": title_text,
+                        "text_body": self_text,
                         "author": data.get("author") if data.get("author") else None,
                         "upvotes": int(data.get("score", 0)),
                         "upvote_ratio": float(data.get("upvote_ratio", 1.0)),
@@ -102,7 +125,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             return []
 
     @staticmethod
-    def _parse_feed_datetime(el: ET.Element) -> datetime:
+    def _parse_feed_datetime(el: Element) -> datetime:
         """
         Extracts and parses the real publication date/time from standard RSS and Atom feeds.
         Supports RFC 2822, ISO 8601, and Dublin Core date formats.
@@ -203,12 +226,14 @@ class SocialRedditExtractor(BaseAsyncExtractor):
 
                 guid_val = guid_el.text if guid_el is not None and guid_el.text else title
                 post_hash = hashlib.md5(guid_val.encode("utf-8")).hexdigest()[:12]
+                asset_tag = detect_asset_ticker(title, body_clean)
 
                 items.append(
                     {
                         "source": source_name,
                         "post_id": f"{source_name}_{post_hash}",
                         "subreddit": source_name,
+                        "asset_ticker": asset_tag,
                         "title": title,
                         "text_body": body_clean[:1500] if body_clean else "",
                         "author": author_val,

@@ -1,5 +1,6 @@
 # Core Async & HTTP
 httpx>=0.27.0
+defusedxml>=0.7.1
 
 # High Performance Data Processing & Storage
 polars>=0.20.0

@@ -1,6 +1,3 @@
-"""Data Lake Bronze layer implementation for partitioned raw storage."""
-
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -24,11 +21,11 @@ class BronzeDataLake:
         self,
         source: str,
         records: List[Dict[str, Any]],
-        as_parquet: bool = True,
-    ) -> Path:
+        symbol: Optional[str] = None,
+    ) -> Optional[Path]:
         """
         Writes extracted records into partitioned date directories.
-        Partition layout: data/bronze/{source}/year=YYYY/month=MM/day=DD/{source}_{timestamp}.parquet
+        Partition layout: data/bronze/{source}/[symbol]/year=YYYY/month=MM/day=DD/{source}_{timestamp}.parquet
         """
         if not records:
             console.print(
@@ -41,27 +38,32 @@ class BronzeDataLake:
         month_part = f"month={now.month:02d}"
         day_part = f"day={now.day:02d}"
 
-        target_dir = self.base_dir / source / year_part / month_part / day_part
-        target_dir.mkdir(parents=True, exist_ok=True)
-
-        timestamp_str = now.strftime("%Y%m%d_%H%M%S_%f")
-
-        if as_parquet:
-            file_path = target_dir / f"{source}_{timestamp_str}.parquet"
-            # Use Polars to serialize as parquet
-            df = pl.DataFrame(records)
-            df.write_parquet(file_path)
+        if symbol:
+            target_dir = self.base_dir / source / symbol.upper() / year_part / month_part / day_part
+            file_prefix = f"{source}_{symbol.upper()}"
         else:
-            file_path = target_dir / f"{source}_{timestamp_str}.json"
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(records, f, indent=2, default=str)
+            target_dir = self.base_dir / source / year_part / month_part / day_part
+            file_prefix = source
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+        timestamp_str = now.strftime("%Y%m%d_%H%M%S_%f")
+        file_path = target_dir / f"{file_prefix}_{timestamp_str}.parquet"
+
+        df = pl.DataFrame(records)
+        df.write_parquet(file_path)
 
         console.print(f"[cyan][BronzeLake] Stored {len(records)} records in {file_path}[/cyan]")
         return file_path
 
-    def read_latest_partition(self, source: str) -> Optional[pl.DataFrame]:
-        """Scans the latest partition for a given data source."""
-        source_dir = self.base_dir / source
+    def read_latest_partition(self, source: str, symbol: Optional[str] = None) -> Optional[pl.DataFrame]:
+        """Scans the latest partition for a given data source, optionally filtered by symbol."""
+        if symbol:
+            source_dir = self.base_dir / source / symbol.upper()
+            if not source_dir.exists():
+                source_dir = self.base_dir / source
+        else:
+            source_dir = self.base_dir / source
+
         if not source_dir.exists():
             return None
 

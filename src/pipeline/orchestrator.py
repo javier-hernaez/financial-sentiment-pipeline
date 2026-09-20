@@ -9,7 +9,7 @@ from rich.console import Console
 
 from ..analytics.quant_signals import QuantSignalsEngine
 from ..configs.settings import settings
-from ..extractors import BinanceKlinesExtractor, FearGreedExtractor, SocialRedditExtractor
+from ..extractors import BinanceKlinesExtractor, SocialRedditExtractor
 from ..nlp import FinBERTEngine, TextCleaner
 from ..storage import BronzeDataLake, MarketWarehouse
 
@@ -62,7 +62,7 @@ class MarketIntelligencePipeline:
 
     async def extract(self) -> Dict[str, Any]:
         """
-        Executes parallel extraction of Market and Social feeds.
+        Executes parallel extraction of Market and Social/News feeds.
         Must be called within an active async event loop.
         """
         console.print("[bold blue]1. Extracting parallel data streams...[/bold blue]")
@@ -76,29 +76,26 @@ class MarketIntelligencePipeline:
         raw_social = results[1] if not isinstance(results[1], Exception) else []
 
         console.print(f"   [green][OK][/green] Extracted {len(raw_market)} market candles for {self.symbol}")
-        console.print(f"   [green][OK][/green] Extracted {len(raw_social)} social posts/comments")
+        console.print(f"   [green][OK][/green] Extracted {len(raw_social)} social posts/news headlines")
 
         return {
             "market": raw_market,
-            "macro": [],
             "social": raw_social,
         }
 
     def land_bronze(
         self,
         raw_market: Any,
-        raw_macro: Any = None,
         raw_social: Any = None,
     ) -> Dict[str, Any]:
         """Lands extracted records into the Bronze Data Lake (immutable Parquet)."""
         console.print("[bold blue]2. Storing raw data in Bronze Lake...[/bold blue]")
-        p_market = self.lake.write_raw_records("market", raw_market) if raw_market else None
+        p_market = self.lake.write_raw_records("market", raw_market, symbol=self.symbol) if raw_market else None
         p_social = self.lake.write_raw_records("social", raw_social) if raw_social else None
 
         files = [p.name for p in [p_market, p_social] if p is not None]
         return {
             "market_path": p_market,
-            "macro_path": None,
             "social_path": p_social,
             "files": files,
         }
@@ -106,7 +103,6 @@ class MarketIntelligencePipeline:
     def transform_silver(
         self,
         raw_market: Optional[Any] = None,
-        raw_macro: Optional[Any] = None,
         raw_social: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
@@ -119,7 +115,7 @@ class MarketIntelligencePipeline:
         if raw_market is not None:
             df_market = pl.DataFrame(raw_market) if not isinstance(raw_market, pl.DataFrame) else raw_market
         else:
-            df_market = self.lake.read_latest_partition("market")
+            df_market = self.lake.read_latest_partition("market", symbol=self.symbol)
 
         total_market = (
             self.warehouse.upsert_market_prices(df_market) if df_market is not None and not df_market.is_empty() else 0
@@ -141,17 +137,13 @@ class MarketIntelligencePipeline:
             total_social = 0
             posts_processed = 0
 
-        total_macro = 0
-        macro_records = 0
         candles_processed = len(df_market) if df_market is not None else 0
 
         return {
             "total_silver_market": total_market,
             "total_silver_social": total_social,
-            "total_silver_macro": total_macro,
             "candles_processed": candles_processed,
             "posts_processed": posts_processed,
-            "macro_records": macro_records,
         }
 
     def aggregate_gold(self) -> pl.DataFrame:
@@ -163,11 +155,11 @@ class MarketIntelligencePipeline:
     async def run(self) -> Dict[str, Any]:
         """
         Executes the full ELT cycle asynchronously.
-        1. Async Extraction of Market, Social & Macro data in parallel.
+        1. Async Extraction of Market and Social/News data in parallel.
         2. Ingestion into Bronze Data Lake (Parquet).
         3. Text cleaning (Polars) and NLP Sentiment Scoring (FinBERT).
         4. Upsert into DuckDB Silver Layer.
-        5. Consolidation into Gold Layer.
+        5. Consolidation into Gold Layer with FinBERT consensus.
         """
         start_time = datetime.now(timezone.utc)
         console.rule(f"[bold green]Starting Market Intelligence Pipeline ({self.symbol})[/bold green]")
@@ -179,14 +171,12 @@ class MarketIntelligencePipeline:
             # 2. Bronze Data Lake Landing
             self.land_bronze(
                 raw_market=extracted["market"],
-                raw_macro=extracted["macro"],
                 raw_social=extracted["social"],
             )
 
             # 3. Silver Layer Transformations & NLP Enrichment
             silver_res = self.transform_silver(
                 raw_market=extracted["market"],
-                raw_macro=extracted["macro"],
                 raw_social=extracted["social"],
             )
 
@@ -200,10 +190,8 @@ class MarketIntelligencePipeline:
                 "symbol": self.symbol,
                 "candles_processed": silver_res["candles_processed"],
                 "posts_processed": silver_res["posts_processed"],
-                "macro_records": silver_res["macro_records"],
                 "total_silver_market": silver_res["total_silver_market"],
                 "total_silver_social": silver_res["total_silver_social"],
-                "total_silver_macro": silver_res["total_silver_macro"],
                 "gold_preview": gold_df,
                 "elapsed_seconds": elapsed_seconds,
             }

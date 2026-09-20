@@ -28,9 +28,9 @@ export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isD
       iconBg: isDark ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-50 text-purple-600',
     },
     {
-      title: 'Precisión FinBERT',
-      value: '94.2%',
-      tag: 'Alta Confianza',
+      title: 'Modelo FinBERT',
+      value: 'Consenso NLP',
+      tag: 'Softmax 3-Way',
       lastPeriod: 'ProsusAI/finbert (IA Financiera)',
       icon: Cpu,
       iconBg: isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600',

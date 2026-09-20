@@ -75,7 +75,6 @@ class FinBERTEngine:
 
     def _predict_transformers(self, texts: List[str]) -> List[Dict[str, Any]]:
         """Batch inference using PyTorch and HuggingFace FinBERT with multilingual translation and prior calibration."""
-        import re
 
         import torch
 
@@ -85,22 +84,8 @@ class FinBERTEngine:
         results: List[Dict[str, Any]] = []
         labels_map = {0: "positive", 1: "negative", 2: "neutral"}
 
-        # Pattern anchors to calibrate short colloquial phrases and explicit neutral anchors
-        neutral_patterns = [
-            r"\b(unchanged|steady|in line with|consensus|maintained|flat at|rango estrecho|sin cambios|rango lateral|planos|estables|lateral|invariables|en calma|standstill|reiterated|balanced)\b"
-        ]
-        bullish_patterns = [
-            r"\b(sub[eaio]|subid[as]|subiendo|subir[áa]?|alza[s]?|alcista[s]?|dispar[aoe]|disparar[áa]?|disparando|dispar[aó]ndose|crec[eió]|crecer[áa]?|crecimiento|creciendo|rebot[ae]|repunta|repunte[s]?|recupera|recuperaci[oó]n|ganancia[s]?|compr[aoe]|comprando|comprar[áa]?|comprar|máximo[s]?|maximo[s]?|record|récord|ath|explota|explotando|supera|superando|boom|verde[s]?|fuerte|fortaleza|positivo[s]?|optimis[mt][ao]s?|arriba|aument[aoe]|aumentar[áa]?|aumentando|buyback|dividendo|dividend|upgraded|turnaround)\b",
-            r"\b(surge|surges|surging|surged|rally|rallies|rallying|bullish|bull|inflow|inflows|highs?|profits?|gains?|longs?|optimis[mt]|growth|growing|breakout|breakouts|accumulat(e|ing|ion)|buyers?|buying|bought|pump|pumping|soar|soaring|skyrocket|outperform|boost|rebound|green|strong|rise|rising)\b",
-        ]
-        bearish_patterns = [
-            r"\b(baj[aeio]|bajar[áa]?|bajad[as]|bajando|bajar|ca[eió]|caer[áa]?|ca[ií]d[as]|cayendo|caer|bajista[s]?|desplom[aoe]|desplomar[áa]?|desplom[aó]ndose|desplome[s]?|hund[eió]|hundir[áa]?|hundimiento|hundiendo|hundir|colaps[aoe]|colapsar[áa]?|colapso[s]?|p[eé]rdida[s]?|quiebr[aoe]|quiebra[s]?|p[aá]nico|miedo|vent[as]|vend[eió]|vender[áa]?|vendiendo|vender|liquidaci[oó]n|liquidaciones|pesimis[mt][ao]s?|negativo[s]?|correcci[oó]n|correcciones|sanci[oó]n|sanciones|demand[as]|fraude|estafa|hackeo|hackeado|riesgo|sangr[ií]a|rojo[s]?|peligro|crash|dump|fud|abajo)\b",
-            r"\b(drops?|dropping|dropped|plung(e|es|ing|ed)|bearish|bear|crash(es|ing|ed)?|falls?|falling|down|correction|dip|dips|liquidat(e|ed|ion|ions)|panic|fear|loss(es)?|short(s|ing)?|pullback|slump|tumble|bleed(ing)?|fud|scam|hack(ed)?|lawsuit|sued|fraud|insolven(t|cy)|bankrupt(cy)?|red|selloff|selling|sell|collaps(e|ing)|decline|declining)\b",
-        ]
-
         for i in range(0, len(prepared_texts), self.batch_size):
             batch_texts = prepared_texts[i : i + self.batch_size]
-            batch_orig = texts[i : i + self.batch_size]
 
             # Handle empty texts gracefully
             if all(not txt.strip() for txt in batch_texts):
@@ -134,38 +119,6 @@ class FinBERTEngine:
                 neg = float(probs[1].item())
                 neu = float(probs[2].item())
 
-                # Directional & neutral context alignment
-                orig_t = batch_orig[idx].lower() if idx < len(batch_orig) else ""
-                prep_t = batch_texts[idx].lower()
-                combined = f"{orig_t} {prep_t}"
-                word_count = len(orig_t.split())
-
-                neu_cues = sum(len(re.findall(p, combined, re.IGNORECASE)) for p in neutral_patterns)
-                bull_cues = sum(len(re.findall(p, combined, re.IGNORECASE)) for p in bullish_patterns)
-                bear_cues = sum(len(re.findall(p, combined, re.IGNORECASE)) for p in bearish_patterns)
-
-                # Prior calibration
-                if neu_cues > 0 and neu_cues >= (bull_cues + bear_cues):
-                    shift = (pos + neg) * 0.70
-                    neu = min(0.95, neu + shift)
-                    pos = pos * 0.30
-                    neg = neg * 0.30
-                elif word_count <= 8:
-                    # Colloquial short sentences
-                    if bear_cues > 0 and bull_cues == 0:
-                        shift = neu * 0.85
-                        neg = min(0.97, neg + shift)
-                        pos = pos * 0.15
-                        neu = max(0.02, 1.0 - neg - pos)
-                    elif bull_cues > 0 and bear_cues == 0:
-                        shift = neu * 0.85
-                        pos = min(0.97, pos + shift)
-                        neg = neg * 0.15
-                        neu = max(0.02, 1.0 - pos - neg)
-
-                total = pos + neg + neu
-                pos, neg, neu = pos / total, neg / total, neu / total
-
                 # Composite score from -1.0 (bearish) to +1.0 (bullish)
                 score = round(pos - neg, 4)
 
@@ -194,13 +147,6 @@ class FinBERTEngine:
                 )
 
         return results
-
-    @staticmethod
-    def _maybe_translate(text: str) -> str:
-        """Fast in-memory normalization for financial text without blocking network calls."""
-        if not text:
-            return ""
-        return text.strip()
 
     def _predict_heuristic(self, texts: List[str]) -> List[Dict[str, Any]]:
         """

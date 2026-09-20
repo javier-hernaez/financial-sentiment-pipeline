@@ -57,6 +57,7 @@ class MarketWarehouse:
                 source VARCHAR,
                 post_id VARCHAR PRIMARY KEY,
                 subreddit VARCHAR,
+                asset_ticker VARCHAR DEFAULT 'ALL',
                 title VARCHAR,
                 cleaned_text VARCHAR,
                 author VARCHAR,
@@ -73,19 +74,9 @@ class MarketWarehouse:
         """)
         # Migration for existing databases
         self.conn.execute("ALTER TABLE silver_social_sentiment ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMP;")
+        self.conn.execute("ALTER TABLE silver_social_sentiment ADD COLUMN IF NOT EXISTS asset_ticker VARCHAR DEFAULT 'ALL';")
 
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS silver_fear_greed (
-                source VARCHAR,
-                timestamp_epoch BIGINT,
-                datetime_utc TIMESTAMP,
-                date VARCHAR PRIMARY KEY,
-                fear_and_greed_score INTEGER,
-                fear_and_greed_classification VARCHAR
-            );
-        """)
-
-        # Gold analytical view: merges hourly candles with social sentiment and macro fear/greed
+        # Gold analytical view: merges hourly candles with asset-specific social sentiment and FinBERT index
         self.conn.execute("""
             CREATE OR REPLACE VIEW gold_hourly_market_sentiment AS
             SELECT
@@ -103,12 +94,19 @@ class MarketWarehouse:
                 SUM(CASE WHEN s.sentiment_label = 'bearish' THEN 1 ELSE 0 END) AS bearish_mentions,
                 SUM(CASE WHEN s.sentiment_label = 'neutral' THEN 1 ELSE 0 END) AS neutral_mentions,
                 ROUND(
-                    CASE 
-                        WHEN COUNT(s.post_id) > 0 THEN 
+                    CASE
+                        WHEN COUNT(s.post_id) > 0 THEN
                             GREATEST(0.0, LEAST(100.0, (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0))
                         ELSE 50.0
                     END, 0
                 )::INTEGER AS fear_and_greed_score,
+                ROUND(
+                    CASE
+                        WHEN COUNT(s.post_id) > 0 THEN
+                            GREATEST(0.0, LEAST(100.0, (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0))
+                        ELSE 50.0
+                    END, 0
+                )::INTEGER AS finbert_sentiment_index,
                 CASE
                     WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 24.0) THEN 'Extreme Fear'
                     WHEN (COUNT(s.post_id) > 0 AND (COALESCE(AVG(s.sentiment_score), 0.0) + 1.0) * 50.0 <= 44.0) THEN 'Fear'
@@ -120,6 +118,7 @@ class MarketWarehouse:
             FROM silver_market_prices m
             LEFT JOIN silver_social_sentiment s
                 ON m.timestamp_hour = s.timestamp_hour
+                AND (s.asset_ticker = m.asset_ticker OR s.asset_ticker = 'ALL' OR s.asset_ticker IS NULL)
             GROUP BY
                 m.timestamp_hour,
                 m.asset_ticker,
@@ -168,6 +167,8 @@ class MarketWarehouse:
             return 0
         if "ingested_at" not in df.columns:
             df = df.with_columns(pl.lit(None).cast(pl.Utf8).alias("ingested_at"))
+        if "asset_ticker" not in df.columns:
+            df = df.with_columns(pl.lit("ALL").alias("asset_ticker"))
         arrow_table = df.to_arrow()
         self.conn.register("tmp_social_arrow", arrow_table)
         self.conn.execute("""
@@ -175,6 +176,7 @@ class MarketWarehouse:
                 source,
                 post_id,
                 subreddit,
+                asset_ticker,
                 title,
                 cleaned_text,
                 author,
@@ -192,6 +194,7 @@ class MarketWarehouse:
                 source,
                 post_id,
                 subreddit,
+                asset_ticker,
                 title,
                 cleaned_text,
                 author,
@@ -210,27 +213,6 @@ class MarketWarehouse:
         count = self.conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
         return count
 
-    def upsert_fear_greed(self, df: pl.DataFrame) -> int:
-        """Upserts Fear & Greed index into silver_fear_greed."""
-        if df.is_empty():
-            return 0
-        arrow_table = df.to_arrow()
-        self.conn.register("tmp_fg_arrow", arrow_table)
-        self.conn.execute("""
-            INSERT OR REPLACE INTO silver_fear_greed
-            SELECT
-                source,
-                timestamp_epoch,
-                TRY_CAST(datetime_utc AS TIMESTAMPTZ),
-                date,
-                fear_and_greed_score,
-                fear_and_greed_classification
-            FROM tmp_fg_arrow;
-        """)
-        self.conn.unregister("tmp_fg_arrow")
-        count = self.conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
-        return count
-
     def query_gold(self, symbol: Optional[str] = None, limit: int = 24) -> pl.DataFrame:
         """Queries the consolidated gold layer dataset, optionally filtered by asset_ticker."""
         if symbol:
@@ -247,6 +229,7 @@ class MarketWarehouse:
             SELECT
                 post_id,
                 subreddit,
+                asset_ticker,
                 title,
                 cleaned_text,
                 author,
