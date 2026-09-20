@@ -385,6 +385,62 @@ export default function Home() {
           setActiveView={setActiveView}
           isDark={isDark}
         />
+
+        {/* Floating Non-Intrusive Notification Toast (Only visible on Dashboard, never displaces layout) */}
+        {activeView === 'dashboard' && systemAlert && (
+          <div
+            role="status"
+            className={`fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md p-3.5 rounded-xl border shadow-2xl backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-3 ${
+              systemAlert.type === 'error'
+                ? isDark
+                  ? 'bg-[#180f14]/95 border-rose-600/40 text-rose-100 shadow-rose-950/40'
+                  : 'bg-white border-rose-300 text-rose-950 shadow-rose-100'
+                : systemAlert.type === 'warning'
+                ? isDark
+                  ? 'bg-[#1a1408]/95 border-amber-600/40 text-amber-100 shadow-amber-950/40'
+                  : 'bg-white border-amber-300 text-amber-950 shadow-amber-100'
+                : systemAlert.type === 'success'
+                ? isDark
+                  ? 'bg-[#0a1b14]/95 border-emerald-600/40 text-emerald-100 shadow-emerald-950/40'
+                  : 'bg-white border-emerald-300 text-emerald-950 shadow-emerald-100'
+                : isDark
+                ? 'bg-[#0f172a]/95 border-blue-600/40 text-blue-100 shadow-blue-950/40'
+                : 'bg-white border-blue-300 text-blue-950 shadow-blue-100'
+            }`}
+          >
+            <div className="flex items-start gap-2.5">
+              <div className="mt-0.5 flex-shrink-0">
+                {systemAlert.type === 'error' && <XCircle className="w-4 h-4 text-rose-400" />}
+                {systemAlert.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400" />}
+                {systemAlert.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                {systemAlert.type === 'info' && <Info className="w-4 h-4 text-blue-400" />}
+              </div>
+              <div className="flex-1 min-w-0 pr-1">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-bold text-xs leading-tight tracking-tight">{systemAlert.title}</h4>
+                  <span className="text-[9px] font-mono opacity-50 flex-shrink-0">[{systemAlert.timestamp}]</span>
+                </div>
+                <p className="text-[11px] mt-1 leading-relaxed opacity-85 break-words">{systemAlert.message}</p>
+                {systemAlert.actionLabel && systemAlert.onAction && (
+                  <button
+                    onClick={systemAlert.onAction}
+                    className="mt-2 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-600 hover:bg-blue-500 text-white transition flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>{systemAlert.actionLabel}</span>
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setSystemAlert(null)}
+                className="p-1 -mr-1 -mt-1 rounded-lg opacity-60 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition text-current flex-shrink-0"
+                title="Cerrar notificación"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
