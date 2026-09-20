@@ -91,6 +91,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                         "upvote_ratio": float(data.get("upvote_ratio", 1.0)),
                         "num_comments": int(data.get("num_comments", 0)),
                         "created_utc": dt.isoformat(),
+                        "ingested_at": datetime.now(timezone.utc).isoformat(),
                         "timestamp_hour": hour_str,
                     }
                 )
@@ -99,6 +100,62 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         except (httpx.HTTPStatusError, httpx.RequestError):
             # Reddit frequently returns 403; return empty so live news can take precedence
             return []
+
+    @staticmethod
+    def _parse_feed_datetime(el: ET.Element) -> datetime:
+        """
+        Extracts and parses the real publication date/time from standard RSS and Atom feeds.
+        Supports RFC 2822, ISO 8601, and Dublin Core date formats.
+        """
+        candidate_tags = [
+            "pubDate",
+            "{http://purl.org/dc/elements/1.1/}date",
+            "published",
+            "updated",
+            "{http://www.w3.org/2005/Atom}published",
+            "{http://www.w3.org/2005/Atom}updated",
+            "date",
+        ]
+        raw_val = None
+        for tag in candidate_tags:
+            node = el.find(tag)
+            if node is not None and node.text and node.text.strip():
+                raw_val = node.text.strip()
+                break
+
+        if not raw_val:
+            return datetime.now(timezone.utc)
+
+        # 1. RFC 2822 standard (e.g. 'Sun, 20 Sep 2026 09:14:27 +0000')
+        try:
+            parsed = email.utils.parsedate_to_datetime(raw_val)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+        except Exception:
+            pass
+
+        # 2. ISO 8601 standard (e.g. '2026-09-19T02:59:56Z' or '2026-09-19T02:59:56+00:00')
+        try:
+            clean_iso = raw_val.replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(clean_iso)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+        except Exception:
+            pass
+
+        # 3. Fallback dateutil parser if installed
+        try:
+            from dateutil import parser as date_parser
+            parsed = date_parser.parse(raw_val)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+        except Exception:
+            pass
+
+        return datetime.now(timezone.utc)
 
     async def _extract_live_news_rss(
         self, client: httpx.AsyncClient, url: str, source_name: str, limit: int = 35
@@ -114,7 +171,6 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             for el in root.findall("./channel/item")[:limit]:
                 title_el = el.find("title")
                 desc_el = el.find("description")
-                pub_el = el.find("pubDate")
                 guid_el = el.find("guid")
 
                 content_encoded = el.find("{http://purl.org/rss/1.0/modules/content/}encoded")
@@ -137,12 +193,8 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                 body_clean = ENTITY_RE.sub(" ", body_clean)
                 body_clean = WHITESPACE_RE.sub(" ", body_clean).strip()
 
-                dt = datetime.now(timezone.utc)
-                if pub_el is not None and pub_el.text:
-                    try:
-                        dt = email.utils.parsedate_to_datetime(pub_el.text)
-                    except Exception:
-                        pass
+                # Parse genuine publication date from feed tags
+                dt = self._parse_feed_datetime(el)
 
                 author_el = el.find("{http://purl.org/dc/elements/1.1/}creator")
                 if author_el is None:

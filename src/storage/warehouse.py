@@ -67,9 +67,12 @@ class MarketWarehouse:
                 timestamp_hour VARCHAR,
                 sentiment_score DOUBLE,
                 sentiment_label VARCHAR,
-                confidence DOUBLE
+                confidence DOUBLE,
+                ingested_at TIMESTAMP
             );
         """)
+        # Migration for existing databases
+        self.conn.execute("ALTER TABLE silver_social_sentiment ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMP;")
 
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS silver_fear_greed (
@@ -163,10 +166,28 @@ class MarketWarehouse:
         """Upserts processed social sentiment into silver_social_sentiment."""
         if df.is_empty():
             return 0
+        if "ingested_at" not in df.columns:
+            df = df.with_columns(pl.lit(None).cast(pl.Utf8).alias("ingested_at"))
         arrow_table = df.to_arrow()
         self.conn.register("tmp_social_arrow", arrow_table)
         self.conn.execute("""
-            INSERT OR REPLACE INTO silver_social_sentiment
+            INSERT OR REPLACE INTO silver_social_sentiment (
+                source,
+                post_id,
+                subreddit,
+                title,
+                cleaned_text,
+                author,
+                upvotes,
+                upvote_ratio,
+                num_comments,
+                created_utc,
+                timestamp_hour,
+                sentiment_score,
+                sentiment_label,
+                confidence,
+                ingested_at
+            )
             SELECT
                 source,
                 post_id,
@@ -181,7 +202,8 @@ class MarketWarehouse:
                 timestamp_hour,
                 sentiment_score,
                 sentiment_label,
-                confidence
+                confidence,
+                TRY_CAST(ingested_at AS TIMESTAMPTZ)
             FROM tmp_social_arrow;
         """)
         self.conn.unregister("tmp_social_arrow")

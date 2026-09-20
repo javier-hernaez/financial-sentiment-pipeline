@@ -64,14 +64,12 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
             }
           };
 
-          // Only set dateTime if there is an actual valid date; DO NOT hardcode
+          // Use real publication date from created_utc
           let dtStr: string | undefined = undefined;
           if (r.created_utc) {
             dtStr = formatDate(r.created_utc);
           } else if (r.timestamp_hour) {
             dtStr = formatDate(r.timestamp_hour);
-          } else if (r.ingested_at) {
-            dtStr = formatDate(r.ingested_at);
           }
 
           // Author: strictly only if present and not a dummy placeholder
