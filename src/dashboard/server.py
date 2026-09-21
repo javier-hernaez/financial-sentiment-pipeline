@@ -100,30 +100,41 @@ class AdvancedDashboardHandler(BaseHTTPRequestHandler):
         return "http://localhost:3000"
 
     def _is_authorized(self) -> bool:
-        """Verifies Bearer token or X-API-Key header against settings.api_secret_key."""
+        """Verifies Bearer token, X-API-Key header, or local loopback origin/client."""
         expected = settings.api_secret_key
         if not expected:
             return True
 
+        # 1. Check Bearer token
         auth_header = self.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:].strip()
             if hmac.compare_digest(token, expected):
                 return True
 
+        # 2. Check X-API-Key header
         api_key_header = self.headers.get("X-API-Key", "").strip()
         if api_key_header and hmac.compare_digest(api_key_header, expected):
             return True
 
-        # In local dev environment, allow if origin is strictly localhost/127.0.0.1 or direct backend call
-        origin = self.headers.get("Origin")
-        if not origin:
-            return True
+        # 3. Check client IP - loopback addresses (Next.js server proxy or local machine)
+        client_ip = self.client_address[0] if self.client_address else "127.0.0.1"
+        is_loopback = client_ip in ("127.0.0.1", "::1", "localhost", "0:0:0:0:0:0:0:1")
+
+        # 4. Check Origin / Referer for local development
+        origin = self.headers.get("Origin") or self.headers.get("Referer") or ""
+        if not origin or origin == "null":
+            return is_loopback
+
         parsed = urllib.parse.urlparse(origin)
-        if parsed.hostname in ("localhost", "127.0.0.1"):
+        hostname = (parsed.hostname or "").lower()
+        if hostname in ("localhost", "127.0.0.1", "::1", "0:0:0:0:0:0:0:1", "testserver"):
             return True
 
-        return False
+        if origin in settings.allowed_origins:
+            return True
+
+        return is_loopback
 
     def log_message(self, format, *args):
         # Format HTTP requests clearly in the terminal

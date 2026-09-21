@@ -14,8 +14,13 @@ const API_BASE =
     ? '/api'
     : 'http://127.0.0.1:8080/api');
 
+const API_SECRET_KEY =
+  process.env.NEXT_PUBLIC_API_SECRET_KEY || 'dev-insecure-secret-key';
+
 function getHeaders(customHeaders: Record<string, string> = {}): Record<string, string> {
   return {
+    Authorization: `Bearer ${API_SECRET_KEY}`,
+    'X-API-Key': API_SECRET_KEY,
     ...customHeaders,
   };
 }
