@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Cpu, Zap, Activity } from 'lucide-react';
+import { IconCpu, IconZap, IconActivity } from './CustomIcons';
 import { NlpPrediction } from '@/types';
 import { analyzeText } from '@/lib/api';
 
@@ -61,7 +61,7 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
         >
           <div>
             <h3 className={`text-base font-bold tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <Cpu className="w-4 h-4 text-blue-500" />
+              <IconCpu className="w-4 h-4 text-blue-500" />
               Evaluador de Sentimiento FinBERT
             </h3>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -122,7 +122,7 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
             disabled={isAnalyzing || !text.trim()}
             className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2"
           >
-            <Zap className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            <IconZap className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
             <span>{isAnalyzing ? 'Procesando con FinBERT...' : 'Ejecutar Inferencia FinBERT'}</span>
           </button>
         </div>
@@ -137,7 +137,7 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
         >
           <div className={`flex justify-between items-center pb-3 border-b ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
             <h3 className={`text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              <Activity className="w-4 h-4 text-blue-500" />
+              <IconActivity className="w-4 h-4 text-blue-500" />
               Métricas de Inferencia
             </h3>
             <span className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>

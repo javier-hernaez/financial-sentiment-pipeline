@@ -56,7 +56,6 @@ export default function Home() {
   const [isDark, setIsDark] = useState(true);
 
   const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
-  const [mobileDashboardTab, setMobileDashboardTab] = useState<'all' | 'charts' | 'feed'>('all');
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -308,90 +307,62 @@ export default function Home() {
               {/* Header Bar: Title + Date Range + Run Pipeline + Export CSV */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                  <h1 className={`text-xl sm:text-2xl font-black tracking-tight font-sans ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
-                    Dashboard de Sentimiento & Pipeline ELT
+                  <h1 className={`text-2xl sm:text-3xl font-black tracking-tight font-sans ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+                    Dashboard de Sentimiento &amp; Pipeline ELT
                   </h1>
-                  <p className={`text-[10px] mt-1 font-mono tracking-wide ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+                  <p className={`text-xs sm:text-sm mt-1.5 font-mono tracking-wide ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
                     Medallion Lakehouse · FinBERT NLP · DuckDB OLAP
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
                   {/* Date Range Pill */}
                   <div
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-sm border text-[11px] font-mono cursor-pointer transition ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono cursor-pointer transition ${
                       isDark
                         ? 'bg-[#111622] border-[#232d44] text-[#8b95b0] hover:border-[#2e3d5c]'
                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <IconCalendar className="w-3.5 h-3.5 text-[#4e5d7a]" />
-                    <span>En Tiempo Real · Lote Activo</span>
+                    <IconCalendar className="w-4 h-4 text-[#818cf8]" />
+                    <span>Lote Activo · Tiempo Real</span>
                   </div>
 
                   {/* Trigger Pipeline Button */}
                   <button
                     onClick={handleDirectRunPipeline}
                     disabled={isPipelineRunning}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm border text-[11px] font-mono font-semibold transition ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono font-bold transition active:scale-95 ${
                       isPipelineRunning ? 'opacity-60 cursor-not-allowed' : ''
                     } ${
                       isDark
-                        ? 'bg-[#111622] border-[#232d44] text-[#818cf8] hover:text-[#eef0f6] hover:border-[#6366f1]/40'
+                        ? 'bg-[#111622] border-[#232d44] text-[#818cf8] hover:text-[#eef0f6] hover:border-[#6366f1]/50'
                         : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50'
                     }`}
                     title="Ejecuta extracción, FinBERT y actualización DuckDB sin salir de esta vista"
                   >
-                    <IconRefresh className={`w-3.5 h-3.5 ${isPipelineRunning ? 'animate-spin' : ''}`} />
+                    <IconRefresh className={`w-4 h-4 ${isPipelineRunning ? 'animate-spin' : ''}`} />
                     <span>{isPipelineRunning ? 'Ejecutando...' : 'Ejecutar Pipeline'}</span>
                   </button>
 
                   {/* Export Button — indigo */}
                   <a
                     href={`/api/export-csv?symbol=${selectedSymbol}`}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#6366f1] hover:bg-[#818cf8] active:bg-[#4f46e5] text-white text-[11px] font-mono font-bold transition"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-sm bg-[#6366f1] hover:bg-[#818cf8] active:bg-[#4f46e5] text-white text-xs sm:text-sm font-mono font-bold transition active:scale-95"
                   >
-                    <IconDownload className="w-3.5 h-3.5" />
+                    <IconDownload className="w-4 h-4" />
                     <span>Exportar Gold CSV</span>
                   </a>
                 </div>
               </div>
 
-
-              {/* Mobile Segmented Filter */}
-              <div
-                className={`sm:hidden flex items-center p-0.5 rounded-md border text-[10px] font-mono font-bold ${
-                  isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-100 border-slate-200'
-                }`}
-              >
-                {[
-                  { tab: 'all', label: 'Todo' },
-                  { tab: 'charts', label: 'Gráficos' },
-                  { tab: 'feed', label: 'Titulares' },
-                ].map(({ tab, label }) => (
-                  <button
-                    key={tab}
-                    onClick={() => setMobileDashboardTab(tab as any)}
-                    className={`flex-1 py-1.5 rounded-sm text-center transition ${
-                      mobileDashboardTab === tab
-                        ? 'bg-[#6366f1] text-white'
-                        : isDark
-                        ? 'text-[#4e5d7a] hover:text-[#8b95b0]'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
               {/* 1. Medallion Telemetry HUD: 4-Stage Continuous Architecture Pipeline */}
-              <div className={mobileDashboardTab === 'feed' ? 'hidden sm:block' : 'block'}>
+              <div className="w-full">
                 <MedallionTelemetryHUD metrics={metrics} isDark={isDark} />
               </div>
 
               {/* 2. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
-              <div className={`${mobileDashboardTab === 'feed' ? 'hidden sm:grid' : 'grid'} grid-cols-1 lg:grid-cols-3 gap-6 items-stretch`}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                 <div className="lg:col-span-2 flex flex-col">
                   <ProfitAndSourcesChart metrics={metrics} isDark={isDark} symbol={selectedSymbol} />
                 </div>
@@ -401,7 +372,7 @@ export default function Home() {
               </div>
 
               {/* 3. Bottom Row: Real-time FinBERT Headlines & RSS Feeds */}
-              <div className={`${mobileDashboardTab === 'charts' ? 'hidden sm:block' : 'block'} w-full`}>
+              <div className="w-full">
                 <AssetFeedTable isDark={isDark} />
               </div>
 
@@ -578,22 +549,22 @@ export default function Home() {
 
               <div className="flex-1 min-w-0 pr-1">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className={`text-xs font-bold tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
+                  <h4 className={`text-sm font-bold tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
                     {systemAlert.title}
                   </h4>
-                  <span className={`text-[9px] font-mono shrink-0 ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+                  <span className={`text-xs font-mono shrink-0 ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
                     {systemAlert.timestamp}
                   </span>
                 </div>
-                <p className={`text-[11px] mt-1 leading-relaxed break-words ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+                <p className={`text-xs sm:text-sm mt-1.5 leading-relaxed break-words ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
                   {systemAlert.message}
                 </p>
                 {systemAlert.actionLabel && systemAlert.onAction && (
                   <button
                     onClick={systemAlert.onAction}
-                    className="mt-2 px-2.5 py-1 rounded-xs text-[10px] font-mono font-bold bg-[#6366f1] hover:bg-[#818cf8] text-white transition flex items-center gap-1.5 active:scale-95"
+                    className="mt-2.5 px-3 py-1.5 rounded-sm text-xs font-mono font-bold bg-[#6366f1] hover:bg-[#818cf8] text-white transition flex items-center gap-1.5 active:scale-95"
                   >
-                    <IconRefresh className="w-3 h-3" />
+                    <IconRefresh className="w-3.5 h-3.5" />
                     <span>{systemAlert.actionLabel}</span>
                   </button>
                 )}

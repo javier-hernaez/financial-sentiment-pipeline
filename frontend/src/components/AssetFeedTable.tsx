@@ -2,18 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Star,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  RefreshCw,
-  Clock,
-  Eye,
-  X,
-  Search,
-  BookOpen,
-  User,
-} from 'lucide-react';
+  IconStar,
+  IconArrowUpRight,
+  IconArrowDownRight,
+  IconMinus,
+  IconRefresh,
+  IconClock,
+  IconEye,
+  IconClose,
+  IconSearch,
+  IconDocumentation,
+  IconUser,
+} from './CustomIcons';
 import { fetchTableData } from '@/lib/api';
 
 export interface FeedItem {
@@ -154,29 +154,29 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
     );
   });
 
+  const cardBase = isDark
+    ? 'bg-[#0c101a] border-[#1a2035] text-white shadow-md'
+    : 'bg-white border-slate-200 text-slate-800 shadow-sm';
+
   return (
     <div
-      className={`p-4 sm:p-6 rounded-lg border transition-all duration-200 overflow-hidden ${
-        isDark
-          ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
-          : 'bg-white border-slate-200 text-slate-800 shadow-sm'
-      }`}
+      className={`p-4 sm:p-6 rounded-lg border transition-all duration-200 overflow-hidden ${cardBase}`}
     >
       {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
         <div>
           <div className="flex items-center gap-2">
             <h3 className={`text-base sm:text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Feeds RSS &amp; Titulares Ingeridos (FinBERT en Tiempo Real)
             </h3>
-            {isLoading && <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />}
+            {isLoading && <IconRefresh className="w-4 h-4 animate-spin text-[#818cf8]" />}
           </div>
-          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <p className={`text-xs sm:text-sm mt-0.5 ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
             Noticias reales extraídas de feeds financieros y clasificados por el modelo NLP ({items.length} artículos en DuckDB)
           </p>
           {lastFetched && (
-            <p className={`text-[10px] mt-0.5 font-mono flex items-center gap-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              <Clock className="w-3 h-3" />
+            <p className={`text-xs mt-1 font-mono flex items-center gap-1.5 ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+              <IconClock className="w-3.5 h-3.5" />
               Última actualización: {lastFetched}
             </p>
           )}
@@ -185,25 +185,25 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Real-time search filter */}
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs w-full sm:w-64 ${
-              isDark ? 'bg-[#0f1626] border-[#1f2d48] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+            className={`flex items-center gap-2 px-3 py-2 rounded-sm border text-xs sm:text-sm w-full sm:w-64 ${
+              isDark ? 'bg-[#111622] border-[#232d44] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
             }`}
           >
-            <Search className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+            <IconSearch className="w-4 h-4 text-[#8b95b0] shrink-0" />
             <input
               type="text"
               placeholder="Filtrar por titular o contenido..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent outline-none w-full text-xs placeholder:text-slate-500"
+              className="bg-transparent outline-none w-full text-xs sm:text-sm placeholder:text-slate-500"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
                 aria-label="Limpiar búsqueda"
-                className="w-8 h-8 -mr-1 flex items-center justify-center text-slate-400 hover:text-white active:scale-95 text-xs rounded-md transition"
+                className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-white active:scale-95 transition"
               >
-                ✕
+                <IconClose className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -211,14 +211,14 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
           <button
             onClick={fetchRealHeadlines}
             disabled={isLoading}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-semibold transition ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono font-bold transition active:scale-95 ${
               isDark
-                ? 'border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
-                : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                ? 'border-[#232d44] bg-[#111622] text-[#818cf8] hover:text-white hover:border-[#6366f1]/50'
+                : 'border-slate-200 bg-white text-indigo-600 hover:bg-slate-50'
             }`}
             title="Actualizar titulares desde DuckDB"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <IconRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Actualizar</span>
           </button>
         </div>
@@ -227,22 +227,22 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
       {/* Main Content Area: Responsive Table or Honest Empty State */}
       {filteredItems.length === 0 ? (
         <div
-          className={`py-12 px-4 text-center rounded-lg border border-dashed font-mono text-xs ${
-            isDark ? 'border-slate-800 bg-[#0e1628]/40 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500'
+          className={`py-12 px-4 text-center rounded-lg border border-dashed font-mono text-sm ${
+            isDark ? 'border-[#1a2035] bg-[#111622]/40 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500'
           }`}
         >
           {isLoading ? (
-            <div className="flex flex-col items-center gap-2">
-              <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
-              <span>Cargando noticias reales desde DuckDB...</span>
+            <div className="flex flex-col items-center gap-2.5">
+              <IconRefresh className="w-5 h-5 animate-spin text-[#818cf8]" />
+              <span className="text-sm">Cargando noticias reales desde DuckDB...</span>
             </div>
           ) : (
-            <div className="space-y-2 max-w-md mx-auto">
-              <BookOpen className="w-8 h-8 text-slate-500 mx-auto" />
-              <p className="font-bold text-sm text-slate-300">
+            <div className="space-y-2.5 max-w-md mx-auto">
+              <IconDocumentation className="w-8 h-8 text-[#818cf8] mx-auto opacity-70" />
+              <p className="font-bold text-sm sm:text-base text-slate-200">
                 {searchQuery ? 'Sin coincidencias para la búsqueda' : 'No hay titulares registrados en DuckDB'}
               </p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
                 {searchQuery
                   ? 'Prueba con otro término de búsqueda o limpia el filtro.'
                   : 'Ejecuta el Pipeline ELT desde la consola para ingestar noticias reales de CoinTelegraph, CoinDesk y Decrypt.'}
@@ -253,41 +253,41 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
       ) : (
         <>
           {/* Mobile-Native Card Feed (< md) */}
-          <div className="md:hidden divide-y divide-[#1a253a]">
+          <div className="md:hidden divide-y divide-[#1a2035]">
             {filteredItems.map((row) => (
               <div
                 key={row.id}
                 onClick={() => setSelectedItem(row)}
-                className={`py-3 px-1 space-y-2 transition active:scale-[0.99] cursor-pointer ${
-                  isDark ? 'hover:bg-[#1a253d]/40' : 'hover:bg-slate-50'
+                className={`py-3.5 px-1 space-y-2.5 transition active:scale-[0.99] cursor-pointer ${
+                  isDark ? 'hover:bg-[#111622]/50' : 'hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${row.assetBg}`}>
+                    <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-sm ${row.assetBg}`}>
                       {row.asset}
                     </span>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                      isDark ? 'bg-[#0f1626] text-slate-300 border border-slate-800' : 'bg-slate-100 text-slate-600'
+                    <span className={`text-xs font-mono px-2 py-0.5 rounded-sm ${
+                      isDark ? 'bg-[#111622] text-slate-300 border border-[#232d44]' : 'bg-slate-100 text-slate-700'
                     }`}>
                       {row.source}
                     </span>
                   </div>
                   {row.dateTime && (
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-                      <Clock className="w-3 h-3 text-slate-500" />
+                    <div className="flex items-center gap-1 text-xs font-mono text-slate-400">
+                      <IconClock className="w-3.5 h-3.5 text-slate-500" />
                       <span>{row.dateTime}</span>
                     </div>
                   )}
                 </div>
 
-                <p className={`font-semibold text-xs leading-snug ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                <p className={`font-semibold text-sm sm:text-base leading-snug ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
                   {row.headline}
                 </p>
 
                 <div className="flex items-center justify-between pt-1">
                   <span
-                    className={`inline-flex items-center gap-1 font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
+                    className={`inline-flex items-center gap-1 font-mono font-bold px-2.5 py-0.5 rounded-sm text-xs ${
                       row.label === 'BULLISH'
                         ? isDark
                           ? 'bg-emerald-950/70 text-[#10b981] border border-emerald-500/40'
@@ -301,12 +301,12 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                         : 'bg-rose-50 text-rose-700 border border-rose-300'
                     }`}
                   >
-                    {row.label === 'BULLISH' ? <ArrowUpRight className="w-3 h-3" /> : row.label === 'NEUTRAL' ? <Minus className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {row.label === 'BULLISH' ? <IconArrowUpRight className="w-3.5 h-3.5" /> : row.label === 'NEUTRAL' ? <IconMinus className="w-3.5 h-3.5" /> : <IconArrowDownRight className="w-3.5 h-3.5" />}
                     {row.label} ({row.polarity})
                   </span>
 
-                  <div className="flex items-center gap-1 text-amber-400 font-mono font-bold text-[11px]">
-                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                  <div className="flex items-center gap-1 text-amber-400 font-mono font-bold text-xs">
+                    <IconStar className="w-3.5 h-3.5" />
                     <span>{row.confidence}</span>
                   </div>
                 </div>
@@ -317,24 +317,24 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
           {/* Desktop Table View (>= md) with Docked Inspector on lg+ */}
           <div className="hidden md:flex gap-4 items-start">
             <div className={`overflow-x-auto transition-all duration-200 ${selectedItem ? 'w-full lg:w-3/5 xl:w-2/3' : 'w-full'}`}>
-              <table className="w-full text-left text-xs min-w-[680px]">
+              <table className="w-full text-left text-xs sm:text-sm min-w-[680px]">
               <thead>
                 <tr
-                  className={`border-b font-mono font-bold uppercase tracking-wider text-[11px] ${
-                    isDark ? 'border-[#1f2d48] text-slate-400' : 'border-slate-100 text-slate-500'
+                  className={`border-b font-mono font-bold uppercase tracking-wider text-xs ${
+                    isDark ? 'border-[#1a2035] text-[#8b95b0]' : 'border-slate-200 text-slate-500'
                   }`}
                 >
-                  <th className="pb-3 pl-4 sm:pl-0 pr-3 w-32">Fecha y Hora</th>
+                  <th className="pb-3 pl-4 sm:pl-0 pr-3 w-36">Fecha y Hora</th>
                   <th className="pb-3 pr-3 w-32">Fuente</th>
                   <th className="pb-3 pr-4">Titular Analizado</th>
-                  <th className="pb-3 pr-3 w-36">Clasificación FinBERT</th>
-                  <th className="pb-3 pr-3 w-24 text-right">Confianza</th>
+                  <th className="pb-3 pr-3 w-40">Clasificación FinBERT</th>
+                  <th className="pb-3 pr-3 w-28 text-right">Confianza</th>
                   <th className="pb-3 pr-4 sm:pr-0 w-20 text-center">Detalle</th>
                 </tr>
               </thead>
               <tbody
                 className={`divide-y ${
-                  isDark ? 'divide-[#1a253a] text-slate-200' : 'divide-slate-100 text-slate-700'
+                  isDark ? 'divide-[#1a2035] text-slate-200' : 'divide-slate-100 text-slate-700'
                 }`}
               >
                 {filteredItems.map((row) => (
@@ -343,27 +343,27 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                     onClick={() => setSelectedItem(row)}
                     className={`transition cursor-pointer group ${
                       selectedItem?.id === row.id
-                        ? isDark ? 'bg-sky-500/15' : 'bg-blue-50'
-                        : isDark ? 'hover:bg-[#1a253d]/50' : 'hover:bg-slate-50/90'
+                        ? isDark ? 'bg-[#6366f1]/15' : 'bg-blue-50'
+                        : isDark ? 'hover:bg-[#111622]/60' : 'hover:bg-slate-50/90'
                     }`}
                   >
                     {/* DATE & TIME */}
                     <td className="py-3 pl-4 sm:pl-0 pr-3 align-top whitespace-nowrap">
                       {row.dateTime ? (
-                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
-                          <Clock className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                        <div className="flex items-center gap-1.5 font-mono text-xs text-slate-400">
+                          <IconClock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                           <span>{row.dateTime}</span>
                         </div>
                       ) : (
-                        <span className="text-slate-600 font-mono text-[11px]">-</span>
+                        <span className="text-slate-600 font-mono text-xs">-</span>
                       )}
                     </td>
 
                     {/* SOURCE */}
                     <td className="py-3 pr-3 align-top">
                       <span
-                        className={`inline-block font-mono text-[11px] px-2 py-0.5 rounded ${
-                          isDark ? 'bg-[#0f1626] text-slate-300 border border-slate-800' : 'bg-slate-100 text-slate-600'
+                        className={`inline-block font-mono text-xs font-bold px-2 py-0.5 rounded-sm ${
+                          isDark ? 'bg-[#111622] text-slate-300 border border-[#232d44]' : 'bg-slate-100 text-slate-700'
                         }`}
                       >
                         {row.source}
@@ -373,15 +373,15 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                     {/* FULL HEADLINE TEXT */}
                     <td className="py-3 pr-4 align-top">
                       <div className="flex items-start gap-2">
-                        <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${row.assetBg}`}>
+                        <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-sm shrink-0 mt-0.5 ${row.assetBg}`}>
                           {row.asset}
                         </span>
                         <div>
-                          <p className={`font-semibold text-xs leading-relaxed group-hover:text-blue-400 transition ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                          <p className={`font-semibold text-sm leading-relaxed group-hover:text-[#818cf8] transition ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
                             {row.headline}
                           </p>
                           {row.content && (
-                            <p className={`text-[11px] line-clamp-1 mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <p className={`text-xs line-clamp-1 mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                               {row.content}
                             </p>
                           )}
@@ -392,7 +392,7 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                     {/* POLARITY BADGE */}
                     <td className="py-3 pr-3 align-top whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1 font-mono font-bold px-2.5 py-0.5 rounded-md text-[11px] ${
+                        className={`inline-flex items-center gap-1 font-mono font-bold px-2.5 py-0.5 rounded-sm text-xs ${
                           row.label === 'BULLISH'
                             ? isDark
                               ? 'bg-emerald-950/70 text-[#10b981] border border-emerald-500/40'
@@ -407,11 +407,11 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                         }`}
                       >
                         {row.label === 'BULLISH' ? (
-                          <ArrowUpRight className="w-3 h-3" />
+                          <IconArrowUpRight className="w-3.5 h-3.5" />
                         ) : row.label === 'NEUTRAL' ? (
-                          <Minus className="w-3 h-3" />
+                          <IconMinus className="w-3.5 h-3.5" />
                         ) : (
-                          <ArrowDownRight className="w-3 h-3" />
+                          <IconArrowDownRight className="w-3.5 h-3.5" />
                         )}
                         {row.label} ({row.polarity})
                       </span>
@@ -420,7 +420,7 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                     {/* CONFIDENCE */}
                     <td className="py-3 pr-3 align-top text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-1 text-amber-400 font-mono font-bold text-xs">
-                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        <IconStar className="w-3.5 h-3.5" />
                         <span>{row.confidence}</span>
                       </div>
                     </td>
@@ -432,14 +432,14 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                           e.stopPropagation();
                           setSelectedItem(row);
                         }}
-                        className={`p-1.5 rounded-md border text-[11px] font-mono transition inline-flex items-center gap-1 ${
+                        className={`p-1.5 rounded-sm border text-xs font-mono font-bold transition inline-flex items-center gap-1 ${
                           isDark
-                            ? 'border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-blue-500'
+                            ? 'border-[#232d44] text-slate-300 hover:text-white hover:bg-[#111622] hover:border-[#6366f1]/40'
                             : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                         }`}
                         title="Inspeccionar noticia"
                       >
-                        <Eye className="w-3.5 h-3.5 text-blue-400" />
+                        <IconEye className="w-3.5 h-3.5 text-[#818cf8]" />
                         <span className="hidden sm:inline">Ver</span>
                       </button>
                     </td>
@@ -452,13 +452,13 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
             {/* Desktop Docked Deep-Inspector Panel (>= lg) */}
             {selectedItem && (
               <div
-                className={`hidden lg:flex flex-col w-2/5 xl:w-1/3 rounded-xl border p-4 space-y-3.5 shadow-xl transition-all duration-200 sticky top-24 ${
-                  isDark ? 'bg-[#0e1628] border-slate-700/80 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+                className={`hidden lg:flex flex-col w-2/5 xl:w-1/3 rounded-lg border p-5 space-y-4 shadow-xl transition-all duration-200 sticky top-24 ${
+                  isDark ? 'bg-[#0c101a] border-[#1a2035] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                 }`}
               >
-                <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/40">
+                <div className="flex items-center justify-between pb-3 border-b border-[#1a2035]">
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${selectedItem.assetBg}`}>
+                    <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-sm ${selectedItem.assetBg}`}>
                       {selectedItem.asset}
                     </span>
                     <span className="text-xs font-mono font-bold text-slate-300">
@@ -467,22 +467,22 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                   </div>
                   <button
                     onClick={() => setSelectedItem(null)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition"
+                    className="p-1.5 rounded-sm text-slate-400 hover:text-white hover:bg-[#111622] transition"
                     title="Cerrar panel de inspección"
                   >
-                    <X className="w-4 h-4" />
+                    <IconClose className="w-4 h-4" />
                   </button>
                 </div>
 
-                <h4 className="font-bold text-xs sm:text-sm leading-snug tracking-tight">
+                <h4 className="font-bold text-sm sm:text-base leading-snug tracking-tight">
                   {selectedItem.headline}
                 </h4>
 
-                <div className={`p-3 rounded-lg border text-xs font-mono space-y-2 ${
-                  isDark ? 'bg-[#090e1a] border-slate-800' : 'bg-white border-slate-200'
+                <div className={`p-4 rounded-sm border text-xs sm:text-sm font-mono space-y-2.5 ${
+                  isDark ? 'bg-[#111622] border-[#1a2035]' : 'bg-white border-slate-200'
                 }`}>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400 text-[11px]">Sentimiento FinBERT:</span>
+                    <span className="text-slate-400 text-xs">Sentimiento FinBERT:</span>
                     <span
                       className={`px-2 py-0.5 rounded font-bold text-xs ${
                         selectedItem.label === 'BULLISH'
@@ -495,20 +495,20 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                       {selectedItem.label} ({selectedItem.polarity})
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-slate-400 text-[11px]">
+                  <div className="flex justify-between items-center text-slate-400 text-xs">
                     <span>Certeza Softmax:</span>
                     <span className="font-bold text-amber-400">{selectedItem.confidence}</span>
                   </div>
                 </div>
 
                 <div className="space-y-1.5 flex-1 max-h-[300px] overflow-y-auto">
-                  <span className="text-[10px] font-mono uppercase font-bold text-slate-400">Texto Completo / Resumen:</span>
-                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                  <span className="text-xs font-mono uppercase font-bold text-slate-400">Texto Completo / Resumen:</span>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
                     {selectedItem.content || 'Sin cuerpo extendido en el feed RSS.'}
                   </p>
                 </div>
 
-                <div className="pt-2.5 border-t border-slate-800/40 text-[10px] font-mono text-slate-400 flex items-center justify-between">
+                <div className="pt-3 border-t border-[#1a2035] text-xs font-mono text-slate-400 flex items-center justify-between">
                   <span>{selectedItem.dateTime ?? 'Reciente'}</span>
                   <span>ID: {selectedItem.id}</span>
                 </div>
@@ -523,21 +523,21 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
         <div
           role="dialog"
           aria-modal="true"
-          className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
+          className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => setSelectedItem(null)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden transition-all ${
+            className={`relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-lg border shadow-2xl overflow-hidden transition-all ${
               isDark
-                ? 'bg-[#101726] border-[#1e293b] text-slate-100 shadow-black/90'
+                ? 'bg-[#0c101a] border-[#1a2035] text-slate-100 shadow-black/90'
                 : 'bg-white border-slate-200 text-slate-800 shadow-slate-400/40'
             }`}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-800/40">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[#1a2035]">
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${selectedItem.assetBg}`}>
+                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-sm ${selectedItem.assetBg}`}>
                   {selectedItem.asset}
                 </span>
                 <span className="text-xs font-mono text-slate-400">
@@ -546,10 +546,10 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
               </div>
               <button
                 onClick={() => setSelectedItem(null)}
-                className="w-10 h-10 -mr-1 -my-1 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/60 active:scale-95 transition"
+                className="w-10 h-10 -mr-1 -my-1 rounded-sm flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#111622] active:scale-95 transition"
                 aria-label="Cerrar modal de noticia"
               >
-                <X className="w-5 h-5" />
+                <IconClose className="w-5 h-5" />
               </button>
             </div>
 
@@ -561,17 +561,17 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
               </h2>
 
               {/* Metadata Row */}
-              <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 pb-3 border-b border-slate-800/30">
+              <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 pb-3 border-b border-[#1a2035]">
                 {selectedItem.dateTime && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="flex items-center gap-1.5">
+                    <IconClock className="w-3.5 h-3.5 text-slate-500" />
                     {selectedItem.dateTime}
                   </span>
                 )}
                 {selectedItem.dateTime && selectedItem.author && <span>•</span>}
                 {selectedItem.author && (
-                  <span className="flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="flex items-center gap-1.5">
+                    <IconUser className="w-3.5 h-3.5 text-slate-500" />
                     {selectedItem.author}
                   </span>
                 )}
@@ -581,15 +581,15 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
 
               {/* FinBERT Scoring Insights Card */}
               <div
-                className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 text-xs font-mono ${
-                  isDark ? 'bg-[#0b0f19] border-[#1e293b]' : 'bg-slate-50 border-slate-200'
+                className={`p-4 rounded-sm border flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm font-mono ${
+                  isDark ? 'bg-[#111622] border-[#1a2035]' : 'bg-slate-50 border-slate-200'
                 }`}
               >
                 <div>
-                  <div className="text-slate-400 text-[11px]">Sentimiento FinBERT:</div>
-                  <div className="font-bold text-sm mt-0.5 flex items-center gap-1.5">
+                  <div className="text-slate-400 text-xs">Sentimiento FinBERT:</div>
+                  <div className="font-bold text-sm sm:text-base mt-0.5 flex items-center gap-2">
                     <span
-                      className={`px-2 py-0.5 rounded text-xs ${
+                      className={`px-2 py-0.5 rounded-sm text-xs ${
                         selectedItem.label === 'BULLISH'
                           ? 'bg-emerald-500/20 text-emerald-400'
                           : selectedItem.label === 'BEARISH'
@@ -599,13 +599,13 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                     >
                       {selectedItem.label}
                     </span>
-                    <span className="text-slate-300">Puntaje: {selectedItem.polarity}</span>
+                    <span className="text-slate-200">Score: {selectedItem.polarity}</span>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <div className="text-slate-400 text-[11px]">Certeza Softmax:</div>
-                  <div className="font-bold text-amber-400 text-sm mt-0.5">
+                  <div className="text-slate-400 text-xs">Certeza Softmax:</div>
+                  <div className="font-bold text-amber-400 text-sm sm:text-base mt-0.5">
                     {selectedItem.confidence}
                   </div>
                 </div>
@@ -617,14 +617,14 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
                   Contenido de la Noticia / Resumen:
                 </h4>
                 {selectedItem.content ? (
-                  <div className={`text-xs sm:text-sm leading-relaxed p-4 rounded-xl border font-sans whitespace-pre-wrap ${
-                    isDark ? 'bg-[#0f1626] border-slate-800 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+                  <div className={`text-sm sm:text-base leading-relaxed p-4 rounded-sm border font-sans whitespace-pre-wrap ${
+                    isDark ? 'bg-[#111622] border-[#1a2035] text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
                   }`}>
                     {selectedItem.content}
                   </div>
                 ) : (
-                  <div className={`p-4 rounded-xl border text-xs font-mono text-center ${
-                    isDark ? 'bg-[#0f1626] border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
+                  <div className={`p-4 rounded-sm border text-xs sm:text-sm font-mono text-center ${
+                    isDark ? 'bg-[#111622] border-[#1a2035] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
                   }`}>
                     Sin contenido extendido disponible para este titular (el feed no proveyó cuerpo adicional).
                   </div>
@@ -633,10 +633,10 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-800/40 flex justify-end">
+            <div className="p-4 border-t border-[#1a2035] flex justify-end">
               <button
                 onClick={() => setSelectedItem(null)}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm"
+                className="px-4 py-2 rounded-sm bg-[#6366f1] hover:bg-[#818cf8] text-white text-xs sm:text-sm font-bold font-mono transition shadow-sm active:scale-95"
               >
                 Cerrar Noticia
               </button>

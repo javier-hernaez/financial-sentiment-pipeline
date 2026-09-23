@@ -1,7 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, FolderTree, ChevronDown, ChevronUp, Database } from 'lucide-react';
+import {
+  IconSearch,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronDown,
+  IconChevronUp,
+  IconFolderTree,
+  IconDatabase,
+} from './CustomIcons';
 import { TableDataResponse, BronzeFile } from '@/types';
 import { fetchTableData, fetchBronzeTree } from '@/lib/api';
 
@@ -119,7 +127,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                     : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500'
                 }`}
               />
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" />
+              <IconSearch className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" />
             </div>
             <button
               type="submit"
@@ -156,7 +164,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                     : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-30'
                 }`}
               >
-                <ChevronLeft className="w-4 h-4" /> Anterior
+                <IconChevronLeft className="w-4 h-4" /> Anterior
               </button>
               <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 {currentPage} / {totalPages}
@@ -170,7 +178,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                     : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-30'
                 }`}
               >
-                Siguiente <ChevronRight className="w-4 h-4" />
+                Siguiente <IconChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -281,12 +289,12 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                       {isExpanded ? (
                         <>
                           <span>Ocultar columnas</span>
-                          <ChevronUp className="w-3.5 h-3.5" />
+                          <IconChevronUp className="w-3.5 h-3.5" />
                         </>
                       ) : (
                         <>
                           <span>Ver todas las columnas ({tableData.columns.length})</span>
-                          <ChevronDown className="w-3.5 h-3.5" />
+                          <IconChevronDown className="w-3.5 h-3.5" />
                         </>
                       )}
                     </button>
@@ -366,7 +374,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
         >
           <div className={`p-4 border-b flex justify-between items-center text-xs font-mono ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
             <span className={`font-bold flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <FolderTree className="w-4 h-4 text-emerald-500" />
+              <IconFolderTree className="w-4 h-4 text-emerald-500" />
               Particiones Parquet en Disco
             </span>
             <span className="text-emerald-500 font-bold bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[11px]">

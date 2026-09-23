@@ -1,7 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Terminal, ArrowRight, Layers, Database, Sparkles, Cpu, CheckCircle2, AlertCircle, Info, AlertTriangle, Trash2 } from 'lucide-react';
+import {
+  IconPlay,
+  IconTerminal,
+  IconArrowRight,
+  IconLayers,
+  IconDatabase,
+  IconSparkles,
+  IconCpu,
+  IconCheckCircle,
+  IconAlertCircle,
+  IconInfo,
+  IconAlertTriangle,
+  IconTrash,
+} from './CustomIcons';
 import { runStage } from '@/lib/api';
 
 interface PipelineRunnerProps {
@@ -189,7 +202,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                 disabled={isRunning}
                 className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition"
               >
-                <Play className={`w-3.5 h-3.5 ${isRunning && activeStage === 'full' ? 'animate-spin' : ''}`} />
+                <IconPlay className={`w-3.5 h-3.5 ${isRunning && activeStage === 'full' ? 'animate-spin' : ''}`} />
                 <span>
                   {isRunning && activeStage === 'full'
                     ? 'Ejecutando Pipeline Completo...'
@@ -224,7 +237,10 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold font-mono text-amber-500">1. BRONZE LAKE</span>
+                    <span className="text-xs font-bold font-mono text-amber-500 flex items-center gap-1.5">
+                      <IconLayers className="w-3.5 h-3.5" />
+                      1. BRONZE LAKE
+                    </span>
                     <span className="text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full">RAW</span>
                   </div>
                   <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Extracción Inmutable</h4>
@@ -238,10 +254,10 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                   className={`w-full py-2 px-3 text-xs font-bold rounded-xl border transition flex items-center justify-center gap-1.5 ${
                     isDark
                       ? 'bg-[#162137] hover:bg-[#1e2d4a] text-slate-200 border-[#233352]'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs'
                   }`}
                 >
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <IconArrowRight className="w-3.5 h-3.5" />
                   <span>Extraer a Bronze</span>
                 </button>
               </div>
@@ -254,7 +270,10 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold font-mono text-blue-500">2. SILVER TABLES</span>
+                    <span className="text-xs font-bold font-mono text-blue-500 flex items-center gap-1.5">
+                      <IconCpu className="w-3.5 h-3.5" />
+                      2. SILVER TABLES
+                    </span>
                     <span className="text-[10px] font-mono font-bold bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">NLP</span>
                   </div>
                   <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Limpieza y Scoring</h4>
@@ -268,10 +287,10 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                   className={`w-full py-2 px-3 text-xs font-bold rounded-xl border transition flex items-center justify-center gap-1.5 ${
                     isDark
                       ? 'bg-[#162137] hover:bg-[#1e2d4a] text-slate-200 border-[#233352]'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs'
                   }`}
                 >
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <IconArrowRight className="w-3.5 h-3.5" />
                   <span>Procesar Silver</span>
                 </button>
               </div>
@@ -284,12 +303,15 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold font-mono text-emerald-500">3. GOLD FEATURES</span>
+                    <span className="text-xs font-bold font-mono text-emerald-500 flex items-center gap-1.5">
+                      <IconDatabase className="w-3.5 h-3.5" />
+                      3. GOLD FEATURES
+                    </span>
                     <span className="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-500 px-2 py-0.5 rounded-full">GOLD</span>
                   </div>
                   <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Feature Store</h4>
                   <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Alineación horaria de retornos de precios y agregaciones de polaridad FinBERT en DuckDB.
+                    Alineación horaria de retornos y agregaciones de polaridad FinBERT en DuckDB.
                   </p>
                 </div>
                 <button
@@ -298,10 +320,10 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                   className={`w-full py-2 px-3 text-xs font-bold rounded-xl border transition flex items-center justify-center gap-1.5 ${
                     isDark
                       ? 'bg-[#162137] hover:bg-[#1e2d4a] text-slate-200 border-[#233352]'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs'
                   }`}
                 >
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <IconArrowRight className="w-3.5 h-3.5" />
                   <span>Actualizar Gold</span>
                 </button>
               </div>
@@ -320,7 +342,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <h3 className={`text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                  <Terminal className="w-3.5 h-3.5 text-blue-500" />
+                  <IconTerminal className="w-3.5 h-3.5 text-blue-500" />
                   Registro de Operaciones ELT
                 </h3>
               </div>
@@ -328,7 +350,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                 onClick={() => setLogs([])}
                 className={`flex items-center gap-1 text-xs font-mono transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                <Trash2 className="w-3 h-3" />
+                <IconTrash className="w-3 h-3" />
                 Limpiar
               </button>
             </div>
@@ -341,7 +363,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
               }`}
             >
               {/* Header bar */}
-              <div className={`sticky top-0 px-4 py-1.5 text-[10px] flex items-center gap-3 border-b ${
+              <div className={`sticky top-0 px-4 py-1.5 text-[10px] flex items-center gap-3 border-b font-mono ${
                 isDark ? 'bg-[#0a0f1d] border-[#1a2640] text-slate-500' : 'bg-slate-900 border-slate-800 text-slate-400'
               }`}>
                 <span>TIMESTAMP</span>
@@ -359,10 +381,10 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                 <div className="px-2 py-2 space-y-0.5">
                   {logs.map((log, idx) => {
                     const Icon =
-                      log.type === 'success' ? CheckCircle2
-                      : log.type === 'error' ? AlertCircle
-                      : log.type === 'warning' ? AlertTriangle
-                      : Info;
+                      log.type === 'success' ? IconCheckCircle
+                      : log.type === 'error' ? IconAlertCircle
+                      : log.type === 'warning' ? IconAlertTriangle
+                      : IconInfo;
                     const iconColor =
                       log.type === 'success' ? 'text-emerald-400'
                       : log.type === 'error' ? 'text-rose-400'
@@ -389,7 +411,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                             : ''
                         }`}
                       >
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
                           <span className="text-slate-500 whitespace-nowrap text-[10px]">{log.timestamp}</span>
                           {stageBadgeColor && (

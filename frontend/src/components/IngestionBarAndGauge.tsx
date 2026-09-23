@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Database, Layers, Radio } from 'lucide-react';
+import { IconDatabase, IconObservability } from './CustomIcons';
 import { Diagnostics, SystemMetrics } from '@/types';
 import { fetchMetrics, fetchGoldData } from '@/lib/api';
 
@@ -81,40 +81,40 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   // Gauge color: red < 30, amber 30-50, green > 50
   const gaugeColor = score >= 55 ? '#10b981' : score >= 35 ? '#f59e0b' : '#f43f5e';
 
+  const cardBase = isDark
+    ? 'bg-[#0c101a] border-[#1a2035] text-white shadow-md'
+    : 'bg-white border-slate-200 text-slate-800 shadow-sm';
+
   return (
     <div className="h-full flex flex-col gap-6">
       
       {/* 1. Real Pipeline Ingestion Breakdown */}
       <div
-        className={`p-5 rounded-lg border transition-all duration-200 flex-1 flex flex-col justify-between ${
-          isDark
-            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
-            : 'bg-white border-slate-200 text-slate-800 shadow-sm'
-        }`}
+        className={`p-5 rounded-lg border transition-all duration-200 flex-1 flex flex-col justify-between ${cardBase}`}
       >
         <div className="flex items-center justify-between">
           <div>
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            <h3 className={`text-sm sm:text-base font-bold ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
               Volumen de Ingesta por Fuente
             </h3>
-            <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className={`text-xs sm:text-sm font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
               Registros limpios en DuckDB Silver ({totalRaw.toLocaleString()} totales)
             </span>
           </div>
-          <Database className="w-4 h-4 text-slate-400" />
+          <IconDatabase className="w-4 h-4 text-[#818cf8]" />
         </div>
 
         {/* Source Bars */}
-        <div className="mt-5 space-y-3.5 text-xs font-mono">
+        <div className="mt-5 space-y-4 text-xs sm:text-sm font-mono">
           {sources.map((src, idx) => (
             <div key={idx} className="space-y-1.5">
-              <div className="flex justify-between items-center text-[11px]">
+              <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{src.name}</span>
-                <span className="font-bold">
+                <span className="font-bold tabular-nums">
                   {src.count.toLocaleString()} ({src.pct}%)
                 </span>
               </div>
-              <div className={`w-full rounded-full h-2 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+              <div className={`w-full rounded-full h-2 overflow-hidden ${isDark ? 'bg-[#111622]' : 'bg-slate-100'}`}>
                 <div
                   className={`${src.color} h-2 rounded-full transition-all duration-500`}
                   style={{ width: `${src.pct}%` }}
@@ -127,28 +127,24 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
 
       {/* 2. Sentiment Consensus Speedometer */}
       <div
-        className={`p-5 rounded-lg border transition-all duration-200 flex-1 flex flex-col justify-between ${
-          isDark
-            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
-            : 'bg-white border-slate-200 text-slate-800 shadow-sm'
-        }`}
+        className={`p-5 rounded-lg border transition-all duration-200 flex-1 flex flex-col justify-between ${cardBase}`}
       >
         <div className="flex items-center justify-between">
           <div>
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            <h3 className={`text-sm sm:text-base font-bold ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
               Termómetro de Sentimiento (FinBERT)
             </h3>
-            <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Consolidado en DuckDB Gold a partir de noticias en tiempo real (0–100)
+            <span className={`text-xs sm:text-sm font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+              Consolidado en DuckDB Gold (0–100)
             </span>
           </div>
-          <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+          <IconObservability className="w-4 h-4 text-emerald-400" />
         </div>
 
         {/* Semi-circular Speedometer SVG Gauge */}
         <div className="mt-2 flex-1 flex flex-col items-center justify-center">
           {consensoScore === null ? (
-            <div className="py-6 text-xs font-mono text-slate-500 text-center">
+            <div className="py-6 text-xs sm:text-sm font-mono text-slate-500 text-center">
               Sin datos Gold. Ejecuta el pipeline ELT para calcular el consenso.
             </div>
           ) : (
@@ -158,15 +154,13 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
                   {Array.from({ length: totalTicks }).map((_, i) => {
                     const angle = 180 + (i / (totalTicks - 1)) * 180;
                     const rad = (angle * Math.PI) / 180;
-                    const r1 = 70;
-                    const r2 = 90;
-                    const cx = 100;
-                    const cy = 100;
-                    const x1 = cx + r1 * Math.cos(rad);
-                    const y1 = cy + r1 * Math.sin(rad);
-                    const x2 = cx + r2 * Math.cos(rad);
-                    const y2 = cy + r2 * Math.sin(rad);
-                    const isTickActive = i <= activeTicks;
+                    const rInner = 68;
+                    const rOuter = 88;
+                    const x1 = 100 + rInner * Math.cos(rad);
+                    const y1 = 100 + rInner * Math.sin(rad);
+                    const x2 = 100 + rOuter * Math.cos(rad);
+                    const y2 = 100 + rOuter * Math.sin(rad);
+                    const isActive = i < activeTicks;
 
                     return (
                       <line
@@ -175,32 +169,42 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
                         y1={y1}
                         x2={x2}
                         y2={y2}
-                        stroke={
-                          isTickActive
-                            ? gaugeColor
-                            : isDark
-                            ? '#1e293b'
-                            : '#e2e8f0'
-                        }
-                        strokeWidth={4.5}
+                        stroke={isActive ? gaugeColor : isDark ? '#1a2035' : '#e2e8f0'}
+                        strokeWidth={isActive ? 3.5 : 2}
                         strokeLinecap="round"
-                        className="transition-colors duration-200"
+                        className="transition-colors duration-300"
                       />
                     );
                   })}
                 </svg>
 
-                {/* Inner Center Value */}
-                <div className="absolute bottom-0 flex flex-col items-center">
-                  <span className="text-3xl font-extrabold font-mono tracking-tight" style={{ color: gaugeColor }}>
-                    {score}%
+                {/* Central score display */}
+                <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-center">
+                  <span
+                    className="text-3xl sm:text-4xl font-black font-mono tabular-nums tracking-tight transition-colors duration-300"
+                    style={{ color: gaugeColor }}
+                  >
+                    {score}
+                  </span>
+                  <span className={`text-xs font-mono font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    / 100
                   </span>
                 </div>
               </div>
 
-              <p className={`text-xs mt-3 font-medium text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Estado: {consensoLabel}
-              </p>
+              {/* Text label underneath */}
+              <div className="mt-3 text-center">
+                <span
+                  className="font-bold text-sm sm:text-base px-3 py-1 rounded-sm border inline-block transition-colors font-mono"
+                  style={{
+                    color: gaugeColor,
+                    borderColor: `${gaugeColor}40`,
+                    backgroundColor: `${gaugeColor}15`,
+                  }}
+                >
+                  {consensoLabel}
+                </span>
+              </div>
             </>
           )}
         </div>

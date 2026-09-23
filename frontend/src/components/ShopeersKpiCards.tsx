@@ -128,7 +128,7 @@ export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isD
             {/* Header */}
             <div className="flex items-start justify-between gap-1 mb-3">
               <div className="min-w-0">
-                <span className={`text-[10px] font-mono font-bold uppercase tracking-wide ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+                <span className={`text-xs font-mono font-bold uppercase tracking-wider ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
                   {c.title}
                 </span>
               </div>
@@ -136,23 +136,23 @@ export const ShopeersKpiCards: React.FC<ShopeersKpiCardsProps> = ({ metrics, isD
             </div>
 
             {/* Main value */}
-            <div className="flex items-baseline gap-1.5 mb-1">
-              <span className={`text-2xl font-black font-mono tabular-nums tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+            <div className="flex items-baseline gap-1.5 mb-1.5">
+              <span className={`text-2xl sm:text-3xl font-black font-mono tabular-nums tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
                 {c.value}
               </span>
-              <span className={`text-xs font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+              <span className={`text-sm font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
                 {c.unit}
               </span>
             </div>
 
             {/* Tag badge */}
-            <span className={`inline-flex text-[9px] font-mono font-bold px-1.5 py-px rounded-xs border ${c.tagClass}`}>
+            <span className={`inline-flex text-xs font-mono font-bold px-2 py-0.5 rounded-sm border ${c.tagClass}`}>
               {c.tag}
             </span>
 
             {/* Spark + secondary row */}
             <div className="flex items-end justify-between mt-3 pt-2.5 border-t border-[#1a2035]/60">
-              <p className={`text-[10px] font-mono ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+              <p className={`text-xs font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
                 {c.secondary}
               </p>
               <SparkLine color={c.sparkColor} pattern={c.sparkPattern} />

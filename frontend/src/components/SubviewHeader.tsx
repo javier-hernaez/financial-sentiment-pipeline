@@ -24,20 +24,20 @@ export const SubviewHeader: React.FC<SubviewHeaderProps> = ({
         <button
           onClick={onBack}
           className={`
-            inline-flex items-center gap-1.5 text-[10px] font-mono mb-2
+            inline-flex items-center gap-2 text-xs font-mono font-bold mb-2.5
             transition-colors
-            ${isDark ? 'text-[#4e5d7a] hover:text-[#818cf8]' : 'text-slate-400 hover:text-indigo-500'}
+            ${isDark ? 'text-[#8b95b0] hover:text-[#818cf8]' : 'text-slate-500 hover:text-indigo-600'}
           `}
         >
-          <IconArrowLeft className="w-3 h-3" />
+          <IconArrowLeft className="w-3.5 h-3.5" />
           <span>Dashboard</span>
-          <span className={isDark ? 'text-[#232d44]' : 'text-slate-300'}>/</span>
+          <span className={isDark ? 'text-[#4e5d7a]' : 'text-slate-300'}>/</span>
         </button>
 
-        <h2 className={`text-lg font-bold tracking-tight leading-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
+        <h2 className={`text-xl sm:text-2xl font-bold tracking-tight leading-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
           {title}
         </h2>
-        <p className={`text-[11px] mt-1 font-mono ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+        <p className={`text-sm sm:text-base mt-1.5 font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
           {description}
         </p>
       </div>

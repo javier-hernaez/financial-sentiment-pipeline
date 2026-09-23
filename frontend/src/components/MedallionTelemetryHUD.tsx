@@ -95,30 +95,30 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
 
   const container = isDark
     ? 'bg-[#0c101a] border-[#1a2035]'
-    : 'bg-white border-slate-200';
+    : 'bg-white border-slate-200 shadow-sm';
 
-  const divider = isDark ? 'divide-[#1a2035]' : 'divide-slate-100';
-  const schemaColor = isDark ? 'text-[#818cf8]' : 'text-indigo-500';
-  const labelColor  = isDark ? 'text-[#4e5d7a]' : 'text-slate-400';
-  const subColor    = isDark ? 'text-[#8b95b0]' : 'text-slate-600';
+  const divider = isDark ? 'divide-[#1a2035]' : 'divide-slate-200';
+  const schemaColor = isDark ? 'text-[#818cf8]' : 'text-indigo-600';
+  const labelColor  = isDark ? 'text-[#8b95b0]' : 'text-slate-500';
+  const subColor    = isDark ? 'text-slate-300' : 'text-slate-700';
 
   return (
     <div className={`rounded-lg border overflow-hidden transition-all ${container}`}>
 
       {/* ── Banner ─────────────────────────────────────────────────────────── */}
       <div className={`
-        px-5 py-2 border-b flex items-center justify-between gap-2 text-[10px] font-mono
+        px-5 py-2.5 border-b flex items-center justify-between gap-2 text-xs sm:text-sm font-mono
         ${isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-50 border-slate-100'}
       `}>
         <div className="flex items-center gap-2.5">
-          <span className={`font-bold tracking-widest uppercase ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+          <span className={`font-bold tracking-wider uppercase ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
             Arquitectura Medallion
           </span>
           <span className={labelColor}>·</span>
           <span className={labelColor}>Flujo de telemetría End-to-End</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <IconShield className={`w-3 h-3 ${isDark ? 'text-[#818cf8]' : 'text-indigo-500'}`} />
+        <div className="flex items-center gap-1.5 font-bold">
+          <IconShield className={`w-4 h-4 ${isDark ? 'text-[#818cf8]' : 'text-indigo-600'}`} />
           <span className={isDark ? 'text-[#818cf8]' : 'text-indigo-600'}>ACID · DuckDB</span>
         </div>
       </div>
@@ -135,7 +135,7 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
               className={`
                 relative p-5 flex flex-col justify-between transition-colors
                 border-t-2 ${stage.borderTop}
-                ${isDark ? 'hover:bg-[#111622]/50' : 'hover:bg-slate-50/80'}
+                ${isDark ? 'hover:bg-[#111622]/60' : 'hover:bg-slate-50/80'}
               `}
             >
               {/* Arrow connector (desktop, between cells, not on last) */}
@@ -146,7 +146,7 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
                   ${isDark ? 'text-[#232d44]' : 'text-slate-300'}
                 `}>
                   <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
-                    strokeLinecap="square" className="w-3 h-3">
+                    strokeLinecap="square" className="w-3.5 h-3.5">
                     <line x1="0" y1="6" x2="10" y2="6" />
                     <polyline points="7,3 10,6 7,9" />
                   </svg>
@@ -157,36 +157,36 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2.5">
                   <div className="flex items-baseline gap-2">
-                    <span className={`text-[9px] font-mono font-bold ${labelColor}`}>{stage.step}</span>
-                    <span className={`text-xs font-mono font-black tracking-wider ${stage.layerColor}`}>
+                    <span className={`text-xs font-mono font-bold ${labelColor}`}>{stage.step}</span>
+                    <span className={`text-sm font-mono font-black tracking-wider ${stage.layerColor}`}>
                       {stage.layer}
                     </span>
                   </div>
-                  <Icon className={`w-4 h-4 ${stage.layerColor}`} />
+                  <Icon className={`w-5 h-5 ${stage.layerColor}`} />
                 </div>
 
                 {/* Sublabel + badge */}
                 <div className="flex items-center gap-2 mb-3">
-                  <span className={`text-[10px] ${labelColor}`}>{stage.sublabel}</span>
-                  <span className={`text-[9px] font-mono font-bold px-1.5 py-px rounded-xs border ${stage.badgeClass}`}>
+                  <span className={`text-xs ${labelColor}`}>{stage.sublabel}</span>
+                  <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-sm border ${stage.badgeClass}`}>
                     {stage.badge}
                   </span>
                 </div>
 
                 {/* Main value */}
-                <div className="flex items-baseline gap-1.5">
-                  <span className={`text-2xl font-black font-mono tabular-nums tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl sm:text-3xl font-black font-mono tabular-nums tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
                     {stage.mainValue}
                   </span>
-                  <span className={`text-xs font-mono ${subColor}`}>{stage.mainUnit}</span>
+                  <span className={`text-sm font-mono font-medium ${labelColor}`}>{stage.mainUnit}</span>
                 </div>
               </div>
 
               {/* Bottom: technical spec */}
-              <div className={`mt-4 pt-3 border-t text-[10px] font-mono space-y-1 ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
+              <div className={`mt-4 pt-3 border-t text-xs font-mono space-y-1.5 ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
                 <div className="flex justify-between items-center">
                   <span className={labelColor}>Esquema:</span>
-                  <span className={`${schemaColor} font-bold truncate max-w-[130px]`}>{stage.schema}</span>
+                  <span className={`${schemaColor} font-bold truncate max-w-[150px]`}>{stage.schema}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className={labelColor}>Detalle:</span>

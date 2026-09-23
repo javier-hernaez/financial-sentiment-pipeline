@@ -71,7 +71,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         ${nav}
       `}
     >
-      <div className="flex items-stretch justify-around h-14 max-w-md mx-auto">
+      <div className="flex items-stretch justify-around h-16 max-w-md mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isTabActive = tab.match(activeView);
@@ -82,36 +82,36 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               key={tab.id}
               onClick={() => setActiveView(tab.id)}
               className={`
-                relative flex flex-col items-center justify-center flex-1 py-1
-                transition-all duration-150 active:scale-95 rounded-md
+                relative flex flex-col items-center justify-center flex-1 py-1.5
+                transition-all duration-150 active:scale-95 rounded-sm
                 ${isTabActive
                   ? isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'
-                  : isDark ? 'text-[#4e5d7a] hover:text-[#8b95b0]' : 'text-slate-400 hover:text-slate-600'}
+                  : isDark ? 'text-[#8b95b0] hover:text-white' : 'text-slate-400 hover:text-slate-700'}
               `}
             >
               {/* Active pill — floats above icon */}
               {isTabActive && (
                 <span className={`
-                  absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full
-                  ${isDark ? 'bg-[#6366f1]' : 'bg-[#6366f1]'}
+                  absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full
+                  ${isDark ? 'bg-[#818cf8]' : 'bg-[#6366f1]'}
                 `} />
               )}
 
               {/* Background fill for active */}
               {isTabActive && (
-                <span className="absolute inset-1 rounded-md bg-[#6366f1]/6" />
+                <span className="absolute inset-1 rounded-sm bg-[#6366f1]/10" />
               )}
 
               {/* Icon */}
               <div className="relative z-10">
-                <Icon className={`w-5 h-5 transition-transform ${isTabActive ? 'scale-105' : ''}`} />
+                <Icon className={`w-5 h-5 transition-transform ${isTabActive ? 'scale-110' : ''}`} />
                 {/* Pipeline running pulse */}
                 {isPipeline && isRunningPipeline && (
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-status-blink" />
                 )}
               </div>
 
-              <span className={`relative z-10 text-[9px] font-mono font-bold mt-1 leading-none tracking-wide`}>
+              <span className={`relative z-10 text-[11px] font-mono font-bold mt-1.5 leading-none tracking-wide`}>
                 {tab.label}
               </span>
             </button>

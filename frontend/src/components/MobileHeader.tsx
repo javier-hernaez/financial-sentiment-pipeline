@@ -29,12 +29,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onToggleMenu,
 }) => {
   const header = isDark
-    ? 'bg-[#0c101a]/97 border-[#1a2035]'
-    : 'bg-white/97 border-slate-200';
+    ? 'bg-[#0c101a]/98 border-[#1a2035]'
+    : 'bg-white/98 border-slate-200';
 
   const iconBtn = isDark
-    ? 'text-[#4e5d7a] hover:text-[#eef0f6] hover:bg-[#111622]'
-    : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100';
+    ? 'text-[#8b95b0] hover:text-[#eef0f6] hover:bg-[#111622] active:bg-[#171d2e]'
+    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:bg-slate-200';
 
   return (
     <header
@@ -52,17 +52,17 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <button
             onClick={onToggleMenu}
             aria-label="Abrir menú de navegación"
-            className={`w-9 h-9 flex items-center justify-center rounded-md transition active:scale-95 ${iconBtn}`}
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition active:scale-95 ${iconBtn}`}
           >
-            <IconMenu className="w-4 h-4" />
+            <IconMenu className="w-5 h-5" />
           </button>
 
           <div className="flex items-center gap-1.5">
             <div className={`w-6 h-6 flex items-center justify-center ${isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'}`}>
-              <IconBrand className="w-4.5 h-4.5" />
+              <IconBrand className="w-5 h-5" />
             </div>
             <div className="flex flex-col leading-none">
-              <span className={`text-[10px] font-mono font-black tracking-widest uppercase ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
+              <span className={`text-xs font-mono font-black tracking-wider uppercase ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
                 Q ELT
               </span>
               <span className="flex items-center gap-1 mt-0.5">
@@ -70,7 +70,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                   w-1.5 h-1.5 rounded-full animate-status-blink shrink-0
                   ${isOnline ? (isDark ? 'bg-emerald-400' : 'bg-emerald-500') : 'bg-rose-500'}
                 `} />
-                <span className={`text-[8px] font-mono ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+                <span className={`text-[10px] font-mono font-semibold ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
                   {isOnline ? 'DUCKDB' : 'OFFLINE'}
                 </span>
               </span>
@@ -78,9 +78,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           </div>
         </div>
 
-        {/* Center: Ticker switcher */}
+        {/* Center: Clean Ticker switcher */}
         <div className={`
-          flex items-center gap-px p-0.5 rounded-md border
+          flex items-center gap-1 p-1 rounded-sm border
           ${isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-100 border-slate-200'}
         `}>
           {SYMBOLS.map((sym) => {
@@ -90,15 +90,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                 key={sym}
                 onClick={() => onSelectSymbol(sym)}
                 className={`
-                  min-w-[38px] h-7 px-2 rounded-sm text-[10px] font-mono font-bold
+                  min-w-[44px] h-8 px-2.5 rounded-xs text-xs font-mono font-bold
                   transition-all flex items-center justify-center
                   ${isSelected
-                    ? isDark
-                      ? 'bg-[#6366f1] text-white'
-                      : 'bg-[#6366f1] text-white'
+                    ? 'bg-[#6366f1] text-white shadow-xs'
                     : isDark
-                    ? 'text-[#4e5d7a] hover:text-[#8b95b0]'
-                    : 'text-slate-400 hover:text-slate-700'}
+                    ? 'text-[#8b95b0] hover:text-white'
+                    : 'text-slate-500 hover:text-slate-900'}
                 `}
               >
                 {getClean(sym)}
@@ -108,12 +106,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         </div>
 
         {/* Right: Refresh + Theme */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
             aria-label="Refrescar datos"
-            className={`w-9 h-9 flex items-center justify-center rounded-md transition active:scale-95 ${iconBtn}`}
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition active:scale-95 ${iconBtn}`}
           >
             <IconRefresh className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#818cf8]' : ''}`} />
           </button>
@@ -121,7 +119,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <button
             onClick={onToggleTheme}
             aria-label="Cambiar tema"
-            className={`w-9 h-9 flex items-center justify-center rounded-md transition active:scale-95 ${iconBtn}`}
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition active:scale-95 ${iconBtn}`}
           >
             {isDark
               ? <IconSun className="w-4 h-4" />
