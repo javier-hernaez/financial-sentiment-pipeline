@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/Sidebar';
 import { TopNav } from '@/components/TopNav';
 import { MobileHeader } from '@/components/MobileHeader';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { CommandPalette } from '@/components/CommandPalette';
+import { OperationalStatusRibbon } from '@/components/OperationalStatusRibbon';
+import { MedallionTelemetryHUD } from '@/components/MedallionTelemetryHUD';
 import { ShopeersKpiCards } from '@/components/ShopeersKpiCards';
 import { IngestionBarAndGauge } from '@/components/IngestionBarAndGauge';
 import { AssetFeedTable } from '@/components/AssetFeedTable';
@@ -26,16 +29,12 @@ import { ObservabilityView } from '@/components/ObservabilityView';
 import { DocumentationGuide } from '@/components/DocumentationGuide';
 import { SubviewHeader } from '@/components/SubviewHeader';
 import {
-  Calendar,
-  Play,
-  Download,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  X,
-  RefreshCw,
-  Info,
-} from 'lucide-react';
+  IconCalendar,
+  IconPlay,
+  IconDownload,
+  IconRefresh,
+  IconClose,
+} from '@/components/CustomIcons';
 import { SystemMetrics, Diagnostics } from '@/types';
 import { fetchMetrics, fetchDiagnostics, runStage } from '@/lib/api';
 
@@ -143,12 +142,87 @@ export default function Home() {
     setIsDark(!isDark);
   };
 
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const pipelineRef = useRef(handleDirectRunPipeline);
+  pipelineRef.current = handleDirectRunPipeline;
+  const loadAllRef = useRef(loadAll);
+  loadAllRef.current = loadAll;
+
+  // Global Keyboard Shortcuts (Institutional Quant Ergonomics: ⌘K, 1-7, P, R)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ⌘K or Ctrl+K to toggle Command Palette
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
+      // Do not capture hotkeys if typing in inputs/textareas
+      const activeEl = document.activeElement;
+      const isTyping =
+        activeEl?.tagName === 'INPUT' ||
+        activeEl?.tagName === 'TEXTAREA' ||
+        (activeEl as HTMLElement)?.isContentEditable;
+      if (isTyping) return;
+
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.key === '1') {
+          e.preventDefault();
+          setActiveView('dashboard');
+        } else if (e.key === '2') {
+          e.preventDefault();
+          setActiveView('terminal');
+        } else if (e.key === '3') {
+          e.preventDefault();
+          setActiveView('nlp');
+        } else if (e.key === '4') {
+          e.preventDefault();
+          setActiveView('orchestration');
+        } else if (e.key === '5') {
+          e.preventDefault();
+          setActiveView('warehouse');
+        } else if (e.key === '6') {
+          e.preventDefault();
+          setActiveView('observability');
+        } else if (e.key === '7') {
+          e.preventDefault();
+          setActiveView('documentation');
+        } else if (e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          pipelineRef.current();
+        } else if (e.key.toLowerCase() === 'r') {
+          e.preventDefault();
+          loadAllRef.current();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-slate-400 font-mono text-xs">
-          <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-          <span>Iniciando Terminal de Mercado...</span>
+      <div className="min-h-screen bg-[#080b12] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-5">
+          {/* Brand mark */}
+          <div className="text-[#818cf8]">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6"
+              strokeLinecap="square" strokeLinejoin="miter" className="w-10 h-10">
+              <rect x="3" y="3" width="12" height="12" rx="1" />
+              <line x1="12" y1="12" x2="17" y2="17" strokeWidth="2" />
+              <line x1="9" y1="6" x2="9" y2="12" strokeWidth="1" opacity="0.7" />
+              <line x1="6" y1="9" x2="12" y2="9" strokeWidth="1" opacity="0.7" />
+            </svg>
+          </div>
+          {/* Scan bar */}
+          <div className="w-48 h-0.5 bg-[#1a2035] rounded-full overflow-hidden relative">
+            <div className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-[#6366f1] to-transparent animate-scan" />
+          </div>
+          <span className="text-[10px] font-mono tracking-widest text-[#4e5d7a] uppercase">
+            Iniciando Q&nbsp;ELT Terminal...
+          </span>
         </div>
       </div>
     );
@@ -160,6 +234,19 @@ export default function Home() {
         isDark ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f4f5f7] text-slate-800'
       }`}
     >
+      {/* Institutional Command Palette (⌘K / Ctrl+K) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        isDark={isDark}
+        onNavigate={(view) => setActiveView(view)}
+        onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+        onTriggerPipeline={handleDirectRunPipeline}
+        onRefreshData={loadAll}
+        onToggleTheme={toggleTheme}
+        currentSymbol={selectedSymbol}
+      />
+
       {/* Left Sidebar */}
       <Sidebar
         activeView={activeView}
@@ -176,7 +263,7 @@ export default function Home() {
       {/* Main Content Area */}
       <div
         className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ml-0 ${
-          isCollapsed ? 'md:ml-20' : 'md:ml-64'
+          isCollapsed ? 'md:ml-[52px]' : 'md:ml-60'
         }`}
       >
         {/* Mobile Smartphone Header */}
@@ -192,7 +279,7 @@ export default function Home() {
           onToggleMenu={() => setIsMobileOpen(!isMobileOpen)}
         />
 
-        {/* Desktop Top Navbar */}
+        {/* Desktop Top Navbar & Operational Telemetry Ribbon */}
         <div className="hidden md:block">
           <TopNav
             onToggleMobileMenu={() => setIsMobileOpen(!isMobileOpen)}
@@ -200,6 +287,14 @@ export default function Home() {
             onToggleTheme={toggleTheme}
             onNavigate={(v) => setActiveView(v)}
             activeView={activeView}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          />
+          <OperationalStatusRibbon
+            metrics={metrics}
+            diagnostics={diagnostics}
+            isDark={isDark}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            currentSymbol={selectedSymbol}
           />
         </div>
 
@@ -210,111 +305,89 @@ export default function Home() {
           {activeView === 'dashboard' && (
             <div className="space-y-6">
               
-              {/* Header Bar: Title + Date Range + Window + Run Pipeline + Export CSV */}
+              {/* Header Bar: Title + Date Range + Run Pipeline + Export CSV */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                  <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Dashboard de Sentimiento &amp; Pipeline ELT
+                  <h1 className={`text-xl sm:text-2xl font-black tracking-tight font-sans ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+                    Dashboard de Sentimiento & Pipeline ELT
                   </h1>
-                  <p className={`text-xs mt-1 font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Lago de Datos Medallion · FinBERT NLP · Almacenamiento DuckDB
+                  <p className={`text-[10px] mt-1 font-mono tracking-wide ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+                    Medallion Lakehouse · FinBERT NLP · DuckDB OLAP
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                   {/* Date Range Pill */}
                   <div
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-md border text-xs font-medium cursor-pointer shadow-2xs ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-sm border text-[11px] font-mono cursor-pointer transition ${
                       isDark
-                        ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:bg-[#1a253d]'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#111622] border-[#232d44] text-[#8b95b0] hover:border-[#2e3d5c]'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <IconCalendar className="w-3.5 h-3.5 text-[#4e5d7a]" />
                     <span>En Tiempo Real · Lote Activo</span>
                   </div>
 
-                  {/* Trigger Pipeline Button (Runs in-place without switching views) */}
+                  {/* Trigger Pipeline Button */}
                   <button
                     onClick={handleDirectRunPipeline}
                     disabled={isPipelineRunning}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-xs font-semibold transition shadow-2xs ${
-                      isPipelineRunning ? 'opacity-70 cursor-not-allowed' : ''
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm border text-[11px] font-mono font-semibold transition ${
+                      isPipelineRunning ? 'opacity-60 cursor-not-allowed' : ''
                     } ${
                       isDark
-                        ? 'bg-[#131b2e] border-[#1f2d48] text-blue-400 hover:text-white hover:bg-[#1a253d]'
-                        : 'bg-white border-slate-200 text-blue-600 hover:bg-slate-50'
+                        ? 'bg-[#111622] border-[#232d44] text-[#818cf8] hover:text-[#eef0f6] hover:border-[#6366f1]/40'
+                        : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50'
                     }`}
-                    title="Ejecuta la extracción, inferencia FinBERT y actualización en DuckDB sin salir de esta vista"
+                    title="Ejecuta extracción, FinBERT y actualización DuckDB sin salir de esta vista"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isPipelineRunning ? 'animate-spin text-blue-400' : ''}`} />
-                    <span>{isPipelineRunning ? 'Ejecutando Pipeline...' : 'Ejecutar Pipeline'}</span>
+                    <IconRefresh className={`w-3.5 h-3.5 ${isPipelineRunning ? 'animate-spin' : ''}`} />
+                    <span>{isPipelineRunning ? 'Ejecutando...' : 'Ejecutar Pipeline'}</span>
                   </button>
 
-                  {/* Primary Blue Export Button */}
+                  {/* Export Button — indigo */}
                   <a
                     href={`/api/export-csv?symbol=${selectedSymbol}`}
-                    className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#6366f1] hover:bg-[#818cf8] active:bg-[#4f46e5] text-white text-[11px] font-mono font-bold transition"
                   >
-                    <Download className="w-3.5 h-3.5" />
+                    <IconDownload className="w-3.5 h-3.5" />
                     <span>Exportar Gold CSV</span>
                   </a>
                 </div>
               </div>
 
-              {/* Mobile Segmented Filter: Reduce 3500px scroll fatigue */}
+
+              {/* Mobile Segmented Filter */}
               <div
-                className={`sm:hidden flex items-center p-1 rounded-xl border text-xs font-mono font-bold ${
-                  isDark ? 'bg-[#131b2e] border-[#1f2d48]' : 'bg-slate-100 border-slate-200'
+                className={`sm:hidden flex items-center p-0.5 rounded-md border text-[10px] font-mono font-bold ${
+                  isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-100 border-slate-200'
                 }`}
               >
-                <button
-                  onClick={() => setMobileDashboardTab('all')}
-                  className={`flex-1 py-2 rounded-lg text-center transition ${
-                    mobileDashboardTab === 'all'
-                      ? isDark
-                        ? 'bg-sky-500 text-white shadow-xs'
-                        : 'bg-blue-600 text-white shadow-xs'
-                      : isDark
-                      ? 'text-slate-400 hover:text-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Vista Completa
-                </button>
-                <button
-                  onClick={() => setMobileDashboardTab('charts')}
-                  className={`flex-1 py-2 rounded-lg text-center transition ${
-                    mobileDashboardTab === 'charts'
-                      ? isDark
-                        ? 'bg-sky-500 text-white shadow-xs'
-                        : 'bg-blue-600 text-white shadow-xs'
-                      : isDark
-                      ? 'text-slate-400 hover:text-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Gráficos &amp; KPIs
-                </button>
-                <button
-                  onClick={() => setMobileDashboardTab('feed')}
-                  className={`flex-1 py-2 rounded-lg text-center transition ${
-                    mobileDashboardTab === 'feed'
-                      ? isDark
-                        ? 'bg-sky-500 text-white shadow-xs'
-                        : 'bg-blue-600 text-white shadow-xs'
-                      : isDark
-                      ? 'text-slate-400 hover:text-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Titulares RSS
-                </button>
+                {[
+                  { tab: 'all', label: 'Todo' },
+                  { tab: 'charts', label: 'Gráficos' },
+                  { tab: 'feed', label: 'Titulares' },
+                ].map(({ tab, label }) => (
+                  <button
+                    key={tab}
+                    onClick={() => setMobileDashboardTab(tab as any)}
+                    className={`flex-1 py-1.5 rounded-sm text-center transition ${
+                      mobileDashboardTab === tab
+                        ? 'bg-[#6366f1] text-white'
+                        : isDark
+                        ? 'text-[#4e5d7a] hover:text-[#8b95b0]'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
-              {/* 1. Top 4 KPI Cards (Bronze Ingestion, Silver NLP, FinBERT Inference, Gold DuckDB) */}
+              {/* 1. Medallion Telemetry HUD: 4-Stage Continuous Architecture Pipeline */}
               <div className={mobileDashboardTab === 'feed' ? 'hidden sm:block' : 'block'}>
-                <ShopeersKpiCards metrics={metrics} isDark={isDark} />
+                <MedallionTelemetryHUD metrics={metrics} isDark={isDark} />
               </div>
 
               {/* 2. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
@@ -440,57 +513,98 @@ export default function Home() {
           isDark={isDark}
         />
 
-        {/* Floating Non-Intrusive Notification Toast (Only visible on Dashboard, never displaces layout) */}
         {activeView === 'dashboard' && systemAlert && (
           <div
             role="status"
-            className={`fixed bottom-20 sm:bottom-6 right-3 left-3 sm:left-auto sm:right-6 z-50 max-w-sm sm:max-w-md p-3.5 rounded-xl border shadow-2xl backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-3 ${
-              systemAlert.type === 'error'
+            className={`
+              fixed bottom-20 sm:bottom-6 right-3 left-3 sm:left-auto sm:right-6 z-50
+              max-w-sm sm:max-w-md animate-slide-up
+              border-l-4 rounded-sm shadow-lg backdrop-blur-md overflow-hidden
+              ${systemAlert.type === 'error'
                 ? isDark
-                  ? 'bg-[#180f14]/95 border-rose-600/40 text-rose-100 shadow-rose-950/40'
-                  : 'bg-white border-rose-300 text-rose-950 shadow-rose-100'
+                  ? 'bg-[#0c101a]/97 border-l-rose-500 text-[#eef0f6]'
+                  : 'bg-white border-l-rose-500 text-slate-800'
                 : systemAlert.type === 'warning'
                 ? isDark
-                  ? 'bg-[#1a1408]/95 border-amber-600/40 text-amber-100 shadow-amber-950/40'
-                  : 'bg-white border-amber-300 text-amber-950 shadow-amber-100'
+                  ? 'bg-[#0c101a]/97 border-l-amber-400 text-[#eef0f6]'
+                  : 'bg-white border-l-amber-400 text-slate-800'
                 : systemAlert.type === 'success'
                 ? isDark
-                  ? 'bg-[#0a1b14]/95 border-emerald-600/40 text-emerald-100 shadow-emerald-950/40'
-                  : 'bg-white border-emerald-300 text-emerald-950 shadow-emerald-100'
+                  ? 'bg-[#0c101a]/97 border-l-emerald-400 text-[#eef0f6]'
+                  : 'bg-white border-l-emerald-500 text-slate-800'
                 : isDark
-                ? 'bg-[#0f172a]/95 border-blue-600/40 text-blue-100 shadow-blue-950/40'
-                : 'bg-white border-blue-300 text-blue-950 shadow-blue-100'
-            }`}
+                ? 'bg-[#0c101a]/97 border-l-[#818cf8] text-[#eef0f6]'
+                : 'bg-white border-l-[#6366f1] text-slate-800'}
+            `}
           >
-            <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 flex-shrink-0">
-                {systemAlert.type === 'error' && <XCircle className="w-4 h-4 text-rose-400" />}
-                {systemAlert.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400" />}
-                {systemAlert.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                {systemAlert.type === 'info' && <Info className="w-4 h-4 text-blue-400" />}
+            {/* Thin top border */}
+            <div className={`h-px w-full ${isDark ? 'bg-[#1a2035]' : 'bg-slate-200'}`} />
+
+            <div className="flex items-start gap-3 p-3.5">
+              {/* Status icon — inline SVGs, no Lucide */}
+              <div className="mt-0.5 shrink-0">
+                {systemAlert.type === 'error' && (
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    strokeLinecap="square" className="w-4 h-4 text-rose-400">
+                    <rect x="2" y="2" width="12" height="12" rx="0.5" />
+                    <line x1="5" y1="5" x2="11" y2="11" />
+                    <line x1="11" y1="5" x2="5" y2="11" />
+                  </svg>
+                )}
+                {systemAlert.type === 'warning' && (
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    strokeLinecap="square" className="w-4 h-4 text-amber-400">
+                    <polygon points="8,2 15,14 1,14" />
+                    <line x1="8" y1="7" x2="8" y2="10" />
+                    <circle cx="8" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
+                  </svg>
+                )}
+                {systemAlert.type === 'success' && (
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    strokeLinecap="square" className="w-4 h-4 text-emerald-400">
+                    <rect x="2" y="2" width="12" height="12" rx="0.5" />
+                    <polyline points="5,8 7,10 11,6" />
+                  </svg>
+                )}
+                {systemAlert.type === 'info' && (
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    strokeLinecap="square" className="w-4 h-4 text-[#818cf8]">
+                    <rect x="2" y="2" width="12" height="12" rx="0.5" />
+                    <line x1="8" y1="7" x2="8" y2="11" />
+                    <circle cx="8" cy="5.5" r="0.6" fill="currentColor" stroke="none" />
+                  </svg>
+                )}
               </div>
+
               <div className="flex-1 min-w-0 pr-1">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className="font-bold text-xs leading-tight tracking-tight">{systemAlert.title}</h4>
-                  <span className="text-[9px] font-mono opacity-50 flex-shrink-0">[{systemAlert.timestamp}]</span>
+                  <h4 className={`text-xs font-bold tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
+                    {systemAlert.title}
+                  </h4>
+                  <span className={`text-[9px] font-mono shrink-0 ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+                    {systemAlert.timestamp}
+                  </span>
                 </div>
-                <p className="text-[11px] mt-1 leading-relaxed opacity-85 break-words">{systemAlert.message}</p>
+                <p className={`text-[11px] mt-1 leading-relaxed break-words ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+                  {systemAlert.message}
+                </p>
                 {systemAlert.actionLabel && systemAlert.onAction && (
                   <button
                     onClick={systemAlert.onAction}
-                    className="mt-2 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-600 hover:bg-blue-500 text-white transition flex items-center gap-1 active:scale-95"
+                    className="mt-2 px-2.5 py-1 rounded-xs text-[10px] font-mono font-bold bg-[#6366f1] hover:bg-[#818cf8] text-white transition flex items-center gap-1.5 active:scale-95"
                   >
-                    <RefreshCw className="w-3 h-3" />
+                    <IconRefresh className="w-3 h-3" />
                     <span>{systemAlert.actionLabel}</span>
                   </button>
                 )}
               </div>
+
               <button
                 onClick={() => setSystemAlert(null)}
-                className="w-9 h-9 -mr-1 -mt-1 rounded-xl flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition text-current flex-shrink-0"
+                className={`w-7 h-7 -mr-1 -mt-1 rounded-sm flex items-center justify-center transition shrink-0 ${isDark ? 'text-[#4e5d7a] hover:text-[#eef0f6] hover:bg-[#111622]' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}
                 aria-label="Cerrar notificación"
               >
-                <X className="w-4 h-4" />
+                <IconClose className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>

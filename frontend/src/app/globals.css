@@ -2,46 +2,231 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ── Geist (Vercel) + JetBrains Mono ─────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* Geist via CDN de Vercel */
+@font-face {
+  font-family: 'Geist';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Design Tokens ────────────────────────────────────────────────────────── */
 :root {
-  --font-google-sans: 'Google Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-jetbrains-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Fonts */
+  --font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Surfaces — Obsidian spectrum */
+  --color-bg:            #080b12;
+  --color-surface-0:     #0c101a;
+  --color-surface-1:     #111622;
+  --color-surface-2:     #171d2e;
+  --color-surface-3:     #1e2640;
+
+  /* Borders */
+  --color-border-subtle: #1a2035;
+  --color-border:        #232d44;
+  --color-border-strong: #2e3d5c;
+
+  /* Text */
+  --color-text-primary:   #eef0f6;
+  --color-text-secondary: #8b95b0;
+  --color-text-muted:     #4e5d7a;
+
+  /* Brand — Indigo-Violet (único en finanzas) */
+  --color-brand:          #6366f1;
+  --color-brand-bright:   #818cf8;
+  --color-brand-dim:      #4f46e5;
+  --color-brand-glow:     rgba(99, 102, 241, 0.12);
+  --color-brand-border:   rgba(99, 102, 241, 0.25);
+
+  /* Semantic — Data financiero */
+  --color-bull:           #10b981;
+  --color-bull-bg:        rgba(16, 185, 129, 0.08);
+  --color-bull-border:    rgba(16, 185, 129, 0.20);
+
+  --color-bear:           #f43f5e;
+  --color-bear-bg:        rgba(244, 63, 94, 0.08);
+  --color-bear-border:    rgba(244, 63, 94, 0.20);
+
+  --color-warn:           #f59e0b;
+  --color-warn-bg:        rgba(245, 158, 11, 0.08);
+  --color-warn-border:    rgba(245, 158, 11, 0.20);
+
+  /* Layer badges */
+  --color-bronze:         #d97706;
+  --color-bronze-bg:      rgba(217, 119, 6, 0.10);
+  --color-silver:         #a78bfa;
+  --color-silver-bg:      rgba(167, 139, 250, 0.10);
+  --color-gold:           #10b981;
+  --color-gold-bg:        rgba(16, 185, 129, 0.10);
+
+  /* Radius — Diseño técnico, no "bubble" */
+  --radius-sm:  3px;
+  --radius-md:  5px;
+  --radius-lg:  8px;
+  --radius-xl:  10px;
+
+  /* Shadows */
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:   0 4px 16px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
+  --shadow-glow: 0 0 0 1px var(--color-brand-border), 0 4px 16px rgba(99,102,241,0.08);
 }
 
-body {
-  background-color: #11141a;
-  color: #e5e7eb;
-  font-family: var(--font-google-sans);
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+html, body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;           /* slightly larger base — was browser default 16px */
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+  text-rendering: optimizeLegibility;
 }
 
+/* ── Utility classes ──────────────────────────────────────────────────────── */
 .font-tabular {
   font-variant-numeric: tabular-nums;
 }
 
-/* Subtle, standard enterprise scrollbars */
+.font-sans-display {
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv11";
+  letter-spacing: -0.02em;
+}
+
+/* ── Scrollbars — Técnicos, no invisibles ─────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #11141a;
+  background: var(--color-surface-0);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #2e3748;
-  border-radius: 3px;
+  background: var(--color-border);
+  border-radius: 2px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #3e4b62;
+  background: var(--color-border-strong);
 }
 
-/* Clean accessible focus ring */
+/* ── Focus ring — Accesible con identidad ─────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid #1a73e8;
+  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Animaciones del sistema ─────────────────────────────────────────────── */
+
+/* Scanner horizontal (loading state) */
+@keyframes scan {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+/* Status indicator — parpadeo técnico, no dot-ping */
+@keyframes status-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* Entrada de datos — muy sutil */
+@keyframes data-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Slide in desde abajo (toast) */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade in simple */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-scan {
+  animation: scan 1.6s ease-in-out infinite;
+}
+
+.animate-status-blink {
+  animation: status-blink 2s ease-in-out infinite;
+}
+
+.animate-data-in {
+  animation: data-in 0.15s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out forwards;
+}
+
+/* ── Sidebar active border ────────────────────────────────────────────────── */
+.nav-item-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 60%;
+  background: var(--color-brand);
+  border-radius: 0 1px 1px 0;
+}
+
+/* ── Data grid helper ─────────────────────────────────────────────────────── */
+.data-grid {
+  display: grid;
+  gap: 0;
+}
+
+/* ── Selection color ─────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(99, 102, 241, 0.20);
+  color: var(--color-text-primary);
 }

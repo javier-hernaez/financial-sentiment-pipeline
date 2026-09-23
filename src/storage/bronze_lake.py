@@ -69,6 +69,15 @@ class BronzeDataLake:
 
     def read_latest_partition(self, source: str, symbol: Optional[str] = None) -> Optional[pl.DataFrame]:
         """Scans the latest partition for a given data source, optionally filtered by symbol."""
+        df = self.read_partitions(source=source, symbol=symbol, max_files=1)
+        return df
+
+    def read_partitions(
+        self, source: str, symbol: Optional[str] = None, max_files: int = 50
+    ) -> Optional[pl.DataFrame]:
+        """
+        Scans and concatenates recent Parquet partitions for a data source, avoiding data loss.
+        """
         if not SAFE_NAME_RE.match(source):
             raise ValueError(f"Invalid source identifier: {source}")
         if symbol and not SAFE_NAME_RE.match(symbol):
@@ -91,5 +100,23 @@ class BronzeDataLake:
         if not parquet_files:
             return None
 
-        latest_file = parquet_files[-1]
-        return pl.read_parquet(latest_file)
+        selected_files = parquet_files[-max_files:]
+        dfs = []
+        for file in selected_files:
+            try:
+                dfs.append(pl.read_parquet(file))
+            except Exception:
+                continue
+
+        if not dfs:
+            return None
+
+        if len(dfs) == 1:
+            return dfs[0]
+
+        # Concatenate and return combined dataframe with schema alignment
+        try:
+            return pl.concat(dfs, how="diagonal_relaxed")
+        except Exception:
+            return dfs[-1]
+

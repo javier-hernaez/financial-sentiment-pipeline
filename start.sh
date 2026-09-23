@@ -26,13 +26,29 @@ done
 # 3. Start Next.js Frontend in production on public port 7860
 echo "[*] Launching Next.js Production Server on port 7860..."
 cd /app/frontend
+npx next start -p 7860 &
+FRONTEND_PID=$!
 
 # Function to handle shutdown
 cleanup() {
   echo "Stopping services..."
   kill -TERM "$BACKEND_PID" 2>/dev/null || true
+  kill -TERM "$FRONTEND_PID" 2>/dev/null || true
   exit 0
 }
 trap cleanup SIGINT SIGTERM
 
-exec npx next start -p 7860
+# 4. Supervisor watchdog loop: if either process dies, exit container with error so Docker restarts
+while true; do
+  if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    echo "[!] CRITICAL ERROR: Python Quant API Backend exited unexpectedly."
+    cleanup
+    exit 1
+  fi
+  if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+    echo "[!] CRITICAL ERROR: Next.js Frontend Server exited unexpectedly."
+    cleanup
+    exit 1
+  fi
+  sleep 3
+done

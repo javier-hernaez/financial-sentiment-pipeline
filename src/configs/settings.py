@@ -21,8 +21,10 @@ class Settings(BaseSettings):
     gold_dir: Path = Path("data/gold")
     duckdb_path: Path = Path("data/warehouse.duckdb")
 
-    # Market Data (Binance)
+    # Market Data (Binance & Macro)
     binance_base_url: str = Field(default="https://api.binance.com", alias="BINANCE_BASE_URL")
+    binance_fallback_url: str = Field(default="https://data-api.binance.vision", alias="BINANCE_FALLBACK_URL")
+    fear_greed_base_url: str = Field(default="https://api.alternative.me", alias="FEAR_GREED_BASE_URL")
     default_symbol: str = Field(default="BTCUSDT", alias="DEFAULT_SYMBOL")
     default_interval: str = Field(default="1h", alias="DEFAULT_INTERVAL")
 
@@ -56,6 +58,7 @@ class Settings(BaseSettings):
             path.mkdir(parents=True, exist_ok=True)
             (path / "market").mkdir(parents=True, exist_ok=True)
             (path / "social").mkdir(parents=True, exist_ok=True)
+            (path / "fear_greed").mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()

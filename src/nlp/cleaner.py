@@ -38,14 +38,32 @@ class TextCleaner:
         cls, df: pl.DataFrame, title_col: str = "title", body_col: str = "text_body"
     ) -> pl.DataFrame:
         """
-        Cleans and unifies title and body in a Polars DataFrame using vectorized operations.
+        Cleans and unifies title and body in a Polars DataFrame using vectorized string operations.
         """
+        if df.is_empty():
+            return df.with_columns(pl.lit("").alias("cleaned_text"))
+
         # Combine title and text_body
         df_combined = df.with_columns(
-            pl.concat_str([pl.col(title_col), pl.lit(". "), pl.col(body_col)]).alias("raw_text")
+            pl.concat_str(
+                [
+                    pl.col(title_col).fill_null(""),
+                    pl.lit(". "),
+                    pl.col(body_col).fill_null(""),
+                ]
+            ).alias("raw_text")
         )
 
-        # Apply cleaning expressions
-        cleaned_series = df_combined["raw_text"].map_elements(cls.clean_string, return_dtype=pl.String)
+        # Apply vectorized cleaning expressions directly in Polars Rust engine
+        cleaned_expr = (
+            pl.col("raw_text")
+            .str.replace_all(r"https?://\S+|www\.\S+", "")
+            .str.replace_all(r"/?(?:r|u)/[A-Za-z0-9_-]+", "")
+            .str.replace_all(r"[^\w\s\$\%\.\,\!\?\-]", " ")
+            .str.replace_all(r"\s+", " ")
+            .str.strip_chars()
+            .str.slice(0, 280)
+        )
 
-        return df_combined.with_columns(cleaned_series.alias("cleaned_text"))
+        return df_combined.with_columns(cleaned_expr.alias("cleaned_text"))
+

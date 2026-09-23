@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { IconArrowLeft } from './CustomIcons';
 
 interface SubviewHeaderProps {
   title: string;
@@ -17,26 +17,30 @@ export const SubviewHeader: React.FC<SubviewHeaderProps> = ({
   isDark = true,
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/40">
+    <div className={`flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b ${isDark ? 'border-[#1a2035]' : 'border-slate-200'}`}>
+      {/* Breadcrumb + Title */}
       <div>
-        <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        {/* Breadcrumb */}
+        <button
+          onClick={onBack}
+          className={`
+            inline-flex items-center gap-1.5 text-[10px] font-mono mb-2
+            transition-colors
+            ${isDark ? 'text-[#4e5d7a] hover:text-[#818cf8]' : 'text-slate-400 hover:text-indigo-500'}
+          `}
+        >
+          <IconArrowLeft className="w-3 h-3" />
+          <span>Dashboard</span>
+          <span className={isDark ? 'text-[#232d44]' : 'text-slate-300'}>/</span>
+        </button>
+
+        <h2 className={`text-lg font-bold tracking-tight leading-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
           {title}
         </h2>
-        <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <p className={`text-[11px] mt-1 font-mono ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
           {description}
         </p>
       </div>
-      <button
-        onClick={onBack}
-        className={`px-3 py-1.5 rounded-md border text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto ${
-          isDark
-            ? 'bg-[#131b2e] border-[#1f2d48] text-slate-300 hover:text-white hover:bg-[#1a253d]'
-            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-        }`}
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        <span>Volver al Dashboard</span>
-      </button>
     </div>
   );
 };

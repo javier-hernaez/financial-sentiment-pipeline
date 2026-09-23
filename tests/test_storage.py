@@ -88,7 +88,9 @@ def test_duckdb_warehouse_schema_and_query():
         assert row["asset_ticker"] == "BTCUSDT"
         assert row["social_volume_mentions"] == 1
         assert row["avg_hourly_sentiment"] == pytest.approx(0.85, 0.01)
+        # Reflects the pure FinBERT NLP-derived Fear & Greed index ((0.85 + 1) * 50 = 93)
         assert row["fear_and_greed_score"] == 93
+        assert row["fear_and_greed_classification"] == "Extreme Greed"
         assert row["finbert_sentiment_index"] == 93
 
         warehouse.close()

@@ -63,6 +63,7 @@ class MarketIntelligencePipeline:
     async def extract(self) -> Dict[str, Any]:
         """
         Executes parallel extraction of Market and Social/News feeds.
+        Fear & Greed is derived exclusively from NLP in subsequent stages.
         Must be called within an active async event loop.
         """
         console.print("[bold blue]1. Extracting parallel data streams...[/bold blue]")
@@ -107,7 +108,7 @@ class MarketIntelligencePipeline:
     ) -> Dict[str, Any]:
         """
         Transforms raw records (or latest Bronze partitions) into DuckDB Silver tables.
-        Applies text cleaning and FinBERT NLP sentiment scoring.
+        Applies text cleaning, FinBERT NLP sentiment scoring, and derives sentiment metrics.
         """
         console.print("[bold blue]3. Transforming & Enriching into Silver Layer...[/bold blue]")
 
@@ -115,7 +116,7 @@ class MarketIntelligencePipeline:
         if raw_market is not None:
             df_market = pl.DataFrame(raw_market) if not isinstance(raw_market, pl.DataFrame) else raw_market
         else:
-            df_market = self.lake.read_latest_partition("market", symbol=self.symbol)
+            df_market = self.lake.read_partitions("market", symbol=self.symbol)
 
         total_market = (
             self.warehouse.upsert_market_prices(df_market) if df_market is not None and not df_market.is_empty() else 0
@@ -125,7 +126,7 @@ class MarketIntelligencePipeline:
         if raw_social is not None:
             df_social_raw = pl.DataFrame(raw_social) if not isinstance(raw_social, pl.DataFrame) else raw_social
         else:
-            df_social_raw = self.lake.read_latest_partition("social")
+            df_social_raw = self.lake.read_partitions("social")
 
         if df_social_raw is not None and not df_social_raw.is_empty():
             df_social_cleaned = TextCleaner.clean_polars_column(df_social_raw, title_col="title", body_col="text_body")
@@ -159,7 +160,7 @@ class MarketIntelligencePipeline:
         2. Ingestion into Bronze Data Lake (Parquet).
         3. Text cleaning (Polars) and NLP Sentiment Scoring (FinBERT).
         4. Upsert into DuckDB Silver Layer.
-        5. Consolidation into Gold Layer with FinBERT consensus.
+        5. Consolidation into Gold Layer with pure NLP-derived Fear & Greed consensus.
         """
         start_time = datetime.now(timezone.utc)
         console.rule(f"[bold green]Starting Market Intelligence Pipeline ({self.symbol})[/bold green]")

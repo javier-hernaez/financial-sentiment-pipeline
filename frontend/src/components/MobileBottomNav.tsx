@@ -2,12 +2,12 @@
 
 import React from 'react';
 import {
-  LayoutDashboard,
-  TrendingUp,
-  Cpu,
-  PlayCircle,
-  Database,
-} from 'lucide-react';
+  IconDashboard,
+  IconMarket,
+  IconFinbertLab,
+  IconPipeline,
+  IconDuckDB,
+} from './CustomIcons';
 
 interface MobileBottomNavProps {
   activeView: string;
@@ -17,95 +17,101 @@ interface MobileBottomNavProps {
   isRunningPipeline?: boolean;
 }
 
+const tabs = [
+  {
+    id: 'dashboard',
+    label: 'Inicio',
+    icon: IconDashboard,
+    match: (v: string) => v === 'dashboard',
+  },
+  {
+    id: 'terminal',
+    label: 'Mercado',
+    icon: IconMarket,
+    match: (v: string) => ['terminal', 'market', 'alpha'].includes(v),
+  },
+  {
+    id: 'nlp',
+    label: 'FinBERT',
+    icon: IconFinbertLab,
+    match: (v: string) => ['nlp', 'finbert'].includes(v),
+  },
+  {
+    id: 'orchestration',
+    label: 'Pipeline',
+    icon: IconPipeline,
+    match: (v: string) => ['orchestration', 'pipeline'].includes(v),
+    hasPulse: false,
+  },
+  {
+    id: 'warehouse',
+    label: 'DuckDB',
+    icon: IconDuckDB,
+    match: (v: string) => ['warehouse', 'medallion', 'silver', 'gold'].includes(v),
+  },
+];
+
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   activeView,
   setActiveView,
   isDark,
   isRunningPipeline = false,
 }) => {
-  const tabs = [
-    {
-      id: 'dashboard',
-      label: 'Inicio',
-      icon: LayoutDashboard,
-      isActive: activeView === 'dashboard',
-    },
-    {
-      id: 'terminal',
-      label: 'Mercado',
-      icon: TrendingUp,
-      isActive: activeView === 'terminal' || activeView === 'market' || activeView === 'alpha',
-    },
-    {
-      id: 'nlp',
-      label: 'FinBERT',
-      icon: Cpu,
-      isActive: activeView === 'nlp' || activeView === 'finbert',
-    },
-    {
-      id: 'orchestration',
-      label: 'Pipeline',
-      icon: PlayCircle,
-      hasPulse: isRunningPipeline,
-      isActive: activeView === 'orchestration' || activeView === 'pipeline',
-    },
-    {
-      id: 'warehouse',
-      label: 'DuckDB',
-      icon: Database,
-      isActive: activeView === 'warehouse' || activeView === 'medallion' || activeView === 'silver' || activeView === 'gold',
-    },
-  ];
+  const nav = isDark
+    ? 'bg-[#0c101a]/97 border-[#1a2035] backdrop-blur-md'
+    : 'bg-white/97 border-slate-200 backdrop-blur-md';
 
   return (
     <nav
       aria-label="Navegación móvil"
-      className={`md:hidden fixed bottom-0 left-0 right-0 z-40 transition-colors duration-200 border-t ${
-        isDark
-          ? 'bg-[#0e1424]/95 border-[#1d2942] text-slate-400 backdrop-blur-lg'
-          : 'bg-white/95 border-slate-200 text-slate-500 backdrop-blur-lg'
-      } pb-[env(safe-area-inset-bottom,10px)] pt-1 px-1.5 shadow-2xl`}
+      className={`
+        md:hidden fixed bottom-0 left-0 right-0 z-40 border-t
+        transition-colors duration-200 shadow-lg
+        pb-[env(safe-area-inset-bottom,8px)] pt-1 px-1
+        ${nav}
+      `}
     >
-      <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
+      <div className="flex items-stretch justify-around h-14 max-w-md mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isTabActive = tab.isActive;
+          const isTabActive = tab.match(activeView);
+          const isPipeline = tab.id === 'orchestration';
 
           return (
             <button
               key={tab.id}
               onClick={() => setActiveView(tab.id)}
-              className={`relative flex flex-col items-center justify-center flex-1 py-1 min-h-[48px] transition-all duration-150 active:scale-95 ${
-                isTabActive
-                  ? isDark
-                    ? 'text-sky-400 font-bold'
-                    : 'text-blue-600 font-bold'
-                  : isDark
-                  ? 'hover:text-slate-200'
-                  : 'hover:text-slate-800'
-              }`}
+              className={`
+                relative flex flex-col items-center justify-center flex-1 py-1
+                transition-all duration-150 active:scale-95 rounded-md
+                ${isTabActive
+                  ? isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'
+                  : isDark ? 'text-[#4e5d7a] hover:text-[#8b95b0]' : 'text-slate-400 hover:text-slate-600'}
+              `}
             >
-              {/* Active pill indicator */}
+              {/* Active pill — floats above icon */}
               {isTabActive && (
-                <span
-                  className={`absolute -top-1 w-8 h-1 rounded-full ${
-                    isDark ? 'bg-sky-500 shadow-sm shadow-sky-500/50' : 'bg-blue-600'
-                  }`}
-                />
+                <span className={`
+                  absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full
+                  ${isDark ? 'bg-[#6366f1]' : 'bg-[#6366f1]'}
+                `} />
               )}
 
-              <div className="relative">
-                <Icon
-                  className={`w-5 h-5 transition-transform ${
-                    isTabActive ? 'scale-110' : ''
-                  }`}
-                />
-                {tab.hasPulse && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              {/* Background fill for active */}
+              {isTabActive && (
+                <span className="absolute inset-1 rounded-md bg-[#6366f1]/6" />
+              )}
+
+              {/* Icon */}
+              <div className="relative z-10">
+                <Icon className={`w-5 h-5 transition-transform ${isTabActive ? 'scale-105' : ''}`} />
+                {/* Pipeline running pulse */}
+                {isPipeline && isRunningPipeline && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-status-blink" />
                 )}
               </div>
 
-              <span className="text-[10px] tracking-tight mt-1 leading-none font-medium">
+              <span className={`relative z-10 text-[9px] font-mono font-bold mt-1 leading-none tracking-wide`}>
                 {tab.label}
               </span>
             </button>

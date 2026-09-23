@@ -62,6 +62,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
   const bearPct = totalMentions > 0 ? ((totalBear / totalMentions) * 100).toFixed(1) : '0.0';
 
   const latest = records.length > 0 ? records[records.length - 1] : null;
+  const prevRecord = records.length > 1 ? records[records.length - 2] : null;
   const avgSentiment =
     records.length > 0
       ? records.reduce((acc, r) => acc + r.avg_hourly_sentiment, 0) / records.length
@@ -73,6 +74,33 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
       : avgSentiment < -0.15
       ? 'Consenso Bajista (Bearish)'
       : 'Consenso Neutral';
+
+  // Divergence Engine: Price Delta vs Sentiment Delta
+  const priceDelta = latest && prevRecord && prevRecord.close_price ? latest.close_price - prevRecord.close_price : 0;
+  const sentDelta = latest && prevRecord ? latest.avg_hourly_sentiment - prevRecord.avg_hourly_sentiment : 0;
+  let divergenceBadge = null;
+
+  if (latest && prevRecord) {
+    if (priceDelta < 0 && sentDelta > 0.08) {
+      divergenceBadge = {
+        label: 'Divergencia Alcista Detectada',
+        sub: 'Precio bajando con acumulación de sentimiento FinBERT',
+        color: isDark ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40' : 'bg-emerald-50 text-emerald-700 border-emerald-300',
+      };
+    } else if (priceDelta > 0 && sentDelta < -0.08) {
+      divergenceBadge = {
+        label: 'Divergencia Bajista Detectada',
+        sub: 'Precio subiendo con deterioro de sentimiento FinBERT',
+        color: isDark ? 'bg-rose-500/15 text-rose-400 border-rose-500/40' : 'bg-rose-50 text-rose-700 border-rose-300',
+      };
+    } else {
+      divergenceBadge = {
+        label: 'Dinámica Convergente',
+        sub: 'Precio y sentimiento horario sincronizados',
+        color: isDark ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-blue-50 text-blue-700 border-blue-200',
+      };
+    }
+  }
 
   const chartData = records.map((d) => {
     const timeLabel = d.timestamp_hour ? d.timestamp_hour.slice(11, 16) : '';
@@ -88,18 +116,18 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
 
   return (
     <div
-      className={`p-5 rounded-lg border transition-all duration-200 h-full flex flex-col justify-between ${
+      className={`p-5 rounded-2xl border transition-all duration-200 h-full flex flex-col justify-between ${
         isDark
-          ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
+          ? 'bg-[#101726] border-[#1e2a42] text-white shadow-md'
           : 'bg-white border-slate-200 text-slate-800 shadow-sm'
       }`}
     >
-      {/* Top Header: Sentiment Index & Pipeline Velocity */}
+      {/* Top Header: Sentiment Index & Quantitative Divergence */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <span className={`text-sm font-medium flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            <Cpu className="w-4 h-4 text-blue-500" />
-            Polaridad FinBERT Agregada &amp; Flujo de Noticias (DuckDB Gold)
+            <Cpu className="w-4 h-4 text-sky-400" />
+            Polaridad FinBERT Agregada &amp; Detección de Divergencias
           </span>
           <div className="mt-1 flex items-baseline gap-3 flex-wrap">
             <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-mono ${
@@ -124,6 +152,12 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
               >
                 <ArrowUpRight className="w-3 h-3" />
                 Última hora: {latest.avg_hourly_sentiment > 0 ? `+${latest.avg_hourly_sentiment.toFixed(2)}` : latest.avg_hourly_sentiment.toFixed(2)}
+              </span>
+            )}
+            {divergenceBadge && (
+              <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${divergenceBadge.color}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                {divergenceBadge.label}
               </span>
             )}
           </div>

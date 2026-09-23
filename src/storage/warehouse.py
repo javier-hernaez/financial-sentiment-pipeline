@@ -27,27 +27,32 @@ class MarketWarehouse:
         self.isolated = isolated if isolated is not None else (not is_default)
 
         with self._conn_lock:
-            if self.isolated:
-                self.conn = duckdb.connect(path_resolved, read_only=read_only)
-                self._is_cursor = False
-            else:
-                if path_resolved not in self._shared_connections:
-                    self._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=False)
+            # If database file is already open in this process, reuse connection via cursor
+            if path_resolved in self._shared_connections:
                 self.conn = self._shared_connections[path_resolved].cursor()
                 self._is_cursor = True
+            else:
+                if self.isolated:
+                    self.conn = duckdb.connect(path_resolved, read_only=read_only)
+                    self._is_cursor = False
+                else:
+                    self._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=read_only)
+                    self.conn = self._shared_connections[path_resolved].cursor()
+                    self._is_cursor = True
 
         if not self.read_only:
             self._init_schema()
 
     @classmethod
-    def get_shared_cursor(cls, db_path: Optional[Path] = None) -> duckdb.DuckDBPyConnection:
+    def get_shared_cursor(cls, db_path: Optional[Path] = None, read_only: bool = False) -> duckdb.DuckDBPyConnection:
         """Returns a thread-safe cursor from the shared DuckDB connection."""
         target_path = Path(db_path or settings.duckdb_path)
         target_path.parent.mkdir(parents=True, exist_ok=True)
         path_resolved = str(target_path.resolve())
+
         with cls._conn_lock:
             if path_resolved not in cls._shared_connections:
-                cls._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=False)
+                cls._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=read_only)
             return cls._shared_connections[path_resolved].cursor()
 
     @classmethod
@@ -114,7 +119,30 @@ class MarketWarehouse:
         self.conn.execute("ALTER TABLE silver_social_sentiment ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMP;")
         self.conn.execute("ALTER TABLE silver_social_sentiment ADD COLUMN IF NOT EXISTS asset_ticker VARCHAR DEFAULT 'ALL';")
 
-        # Gold analytical view: merges hourly candles with asset-specific social sentiment and FinBERT index
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS silver_fear_greed (
+                source VARCHAR,
+                date_str VARCHAR PRIMARY KEY,
+                datetime_utc TIMESTAMP,
+                timestamp_hour VARCHAR,
+                fear_and_greed_score INTEGER,
+                fear_and_greed_classification VARCHAR,
+                ingested_at TIMESTAMP
+            );
+        """)
+        self.conn.execute("ALTER TABLE silver_fear_greed ADD COLUMN IF NOT EXISTS date_str VARCHAR;")
+        self.conn.execute("ALTER TABLE silver_fear_greed ADD COLUMN IF NOT EXISTS date VARCHAR;")
+        self.conn.execute("ALTER TABLE silver_fear_greed ADD COLUMN IF NOT EXISTS timestamp_hour VARCHAR;")
+        self.conn.execute("ALTER TABLE silver_fear_greed ADD COLUMN IF NOT EXISTS datetime_utc TIMESTAMP;")
+        self.conn.execute("ALTER TABLE silver_fear_greed ADD COLUMN IF NOT EXISTS fear_and_greed_score INTEGER;")
+        self.conn.execute("ALTER TABLE silver_fear_greed ADD COLUMN IF NOT EXISTS fear_and_greed_classification VARCHAR;")
+        self.conn.execute("ALTER TABLE silver_fear_greed ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMP;")
+        try:
+            self.conn.execute("UPDATE silver_fear_greed SET date_str = date WHERE date_str IS NULL AND date IS NOT NULL;")
+        except Exception:
+            pass
+
+        # Gold analytical view: merges hourly candles with asset-specific social sentiment and FinBERT Fear & Greed
         self.conn.execute("""
             CREATE OR REPLACE VIEW gold_hourly_market_sentiment AS
             SELECT
@@ -251,6 +279,50 @@ class MarketWarehouse:
         count = self.conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
         return count
 
+    def upsert_fear_greed(self, df: pl.DataFrame) -> int:
+        """Upserts Macro Fear & Greed Index records into silver_fear_greed."""
+        if df.is_empty():
+            return 0
+        if "ingested_at" not in df.columns:
+            df = df.with_columns(pl.lit(None).cast(pl.Utf8).alias("ingested_at"))
+        arrow_table = df.to_arrow()
+        self.conn.register("tmp_fg_arrow", arrow_table)
+        # Ensure table column compatibility
+        cols = [r[0] for r in self.conn.execute("DESCRIBE silver_fear_greed").fetchall()]
+        has_date = "date" in cols
+        has_date_str = "date_str" in cols
+
+        insert_cols = ["source"]
+        select_cols = ["source"]
+
+        if has_date:
+            insert_cols.append("date")
+            select_cols.append("date_str AS date")
+        if has_date_str:
+            insert_cols.append("date_str")
+            select_cols.append("date_str")
+
+        insert_cols.extend(["datetime_utc", "timestamp_hour", "fear_and_greed_score", "fear_and_greed_classification", "ingested_at"])
+        select_cols.extend([
+            "TRY_CAST(datetime_utc AS TIMESTAMPTZ)",
+            "timestamp_hour",
+            "fear_and_greed_score",
+            "fear_and_greed_classification",
+            "COALESCE(TRY_CAST(ingested_at AS TIMESTAMPTZ), CURRENT_TIMESTAMP)",
+        ])
+
+        cols_str = ", ".join(insert_cols)
+        select_str = ", ".join(select_cols)
+
+        self.conn.execute(f"""
+            INSERT OR REPLACE INTO silver_fear_greed ({cols_str})
+            SELECT {select_str}
+            FROM tmp_fg_arrow;
+        """)
+        self.conn.unregister("tmp_fg_arrow")
+        count = self.conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
+        return count
+
     def query_gold(self, symbol: Optional[str] = None, limit: int = 24) -> pl.DataFrame:
         """Queries the consolidated gold layer dataset, optionally filtered by asset_ticker."""
         if symbol:
@@ -259,7 +331,10 @@ class MarketWarehouse:
         else:
             query = "SELECT * FROM gold_hourly_market_sentiment ORDER BY timestamp_hour DESC LIMIT ?"
             res = self.conn.execute(query, [limit]).arrow()
-        return pl.from_arrow(res)
+        try:
+            return pl.from_arrow(res)
+        except Exception:
+            return pl.DataFrame()
 
     def query_social_posts(self, limit: int = 20) -> pl.DataFrame:
         """Queries the latest enriched social sentiment posts from silver layer."""
@@ -282,7 +357,10 @@ class MarketWarehouse:
             LIMIT ?
         """
         res = self.conn.execute(query, [limit]).arrow()
-        return pl.from_arrow(res)
+        try:
+            return pl.from_arrow(res)
+        except Exception:
+            return pl.DataFrame()
 
     def close(self) -> None:
         """Closes connection cleanly."""

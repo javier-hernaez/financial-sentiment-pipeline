@@ -13,6 +13,8 @@ $ErrorActionPreference = "Stop"
 $Host.UI.RawUI.WindowTitle = "Market Intelligence Platform • Launcher"
 $env:NEXT_TELEMETRY_DISABLED = "1"
 $env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "   MARKET INTELLIGENCE PLATFORM • INICIO DE SERVICIOS    " -ForegroundColor Cyan
@@ -65,6 +67,10 @@ $retries = 30
 $backendReady = $false
 
 while ($retries -gt 0) {
+    if ($backendProcess.HasExited) {
+        Write-Host " [ERROR: El backend finalizo con codigo $($backendProcess.ExitCode)]" -ForegroundColor Red
+        exit 1
+    }
     try {
         $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($resp.StatusCode -eq 200) {
@@ -86,15 +92,15 @@ if ($backendReady) {
 # 5. Iniciar el Frontend (Next.js 3000)
 Write-Host "`n[3/3] Iniciando Frontend Next.js (Dashboard en puerto 3000)..." -ForegroundColor Green
 $hasBuild = Test-Path (Join-Path $FRONTEND_DIR ".next\BUILD_ID")
-if (-not $hasBuild) {
-    Write-Host "[INFO] Generando build de produccion de Next.js..." -ForegroundColor Cyan
-    Push-Location $FRONTEND_DIR
-    cmd.exe /c "npm run build"
-    Pop-Location
-    $hasBuild = Test-Path (Join-Path $FRONTEND_DIR ".next\BUILD_ID")
+if ($hasBuild) {
+    Write-Host "[INFO] Build de produccion detectado. Usando modo desarrollo (npm run dev)." -ForegroundColor Cyan
+} else {
+    Write-Host "[INFO] Sin build previo. Iniciando en modo desarrollo (npm run dev)." -ForegroundColor Cyan
 }
 
-$startCmd = if ($hasBuild) { "npm run start" } else { "npm run dev" }
+# Always use 'dev' mode for local development — avoids Next.js 14 production
+# mode conflicts with App Router and Windows path resolution of _document.js
+$startCmd = "npm run dev"
 
 $frontendProcess = Start-Process -FilePath "cmd.exe" `
     -ArgumentList "/c", $startCmd `

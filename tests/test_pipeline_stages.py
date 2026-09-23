@@ -99,11 +99,13 @@ async def test_pipeline_stages_modular(mock_pipeline_network):
             assert silver_res["total_silver_market"] == 2
             assert silver_res["total_silver_social"] > 0
 
-            # 4. Gold Consolidation
+            # 4. Gold Consolidation (NLP-derived Fear & Greed)
             gold_df = pipeline.aggregate_gold()
             assert isinstance(gold_df, pl.DataFrame)
             assert len(gold_df) > 0
             assert "alpha_signal" in gold_df.columns
+            assert "fear_and_greed_score" in gold_df.columns
+            assert "finbert_sentiment_index" in gold_df.columns
         finally:
             pipeline.close()
 
