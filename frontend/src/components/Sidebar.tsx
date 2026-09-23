@@ -6,6 +6,7 @@ import {
   X,
   PanelLeftClose,
   RefreshCw,
+  Activity,
 } from 'lucide-react';
 import {
   IconDashboard,
@@ -125,7 +126,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Mobile Close Button */}
             <button
               onClick={() => setIsMobileOpen && setIsMobileOpen(false)}
-              className="p-1.5 text-slate-400 hover:text-white md:hidden"
+              className="w-10 h-10 -mr-1 rounded-xl flex items-center justify-center text-slate-400 hover:text-white active:bg-white/10 active:scale-95 transition md:hidden"
+              aria-label="Cerrar menú lateral"
             >
               <X className="w-5 h-5" />
             </button>
@@ -141,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => handleSelect(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold transition-all ${
                     isSelected
                       ? isDark
                         ? 'bg-blue-600/15 text-blue-400 font-bold'
@@ -171,11 +173,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
           </nav>
 
-          {/* Bottom Settings Section */}
+          {/* Bottom Settings & Maintenance Section */}
           <div className="pt-2 border-t border-slate-700/30 space-y-1">
             <button
+              onClick={() => handleSelect('observability')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-xl text-xs font-medium transition ${
+                activeView === 'observability'
+                  ? isDark
+                    ? 'bg-blue-600/15 text-blue-400 font-bold'
+                    : 'bg-blue-50 text-blue-600 font-bold'
+                  : isDark
+                  ? 'text-slate-400 hover:text-white hover:bg-[#131b2e]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              } ${isCollapsed && !isMobileOpen ? 'justify-center px-0' : ''}`}
+            >
+              <Activity className={`w-4 h-4 flex-shrink-0 ${activeView === 'observability' ? 'text-blue-500' : ''}`} />
+              {(!isCollapsed || isMobileOpen) && <span>Observabilidad &amp; DuckDB</span>}
+            </button>
+
+            <button
               onClick={() => handleSelect('documentation')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-xl text-xs font-medium transition ${
                 activeView === 'documentation'
                   ? isDark
                     ? 'bg-blue-600/15 text-blue-400 font-bold'

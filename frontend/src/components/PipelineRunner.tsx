@@ -383,20 +383,22 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
                     return (
                       <div
                         key={log.id}
-                        className={`flex items-start gap-2 px-3 py-1.5 rounded-md transition-colors ${
+                        className={`flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 px-3 py-1.5 rounded-md transition-colors ${
                           idx === logs.length - 1
                             ? isDark ? 'bg-white/5' : 'bg-slate-800/60'
                             : ''
                         }`}
                       >
-                        <Icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${iconColor}`} />
-                        <span className="text-slate-500 whitespace-nowrap text-[10px] mt-0.5">{log.timestamp}</span>
-                        {stageBadgeColor && (
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase flex-shrink-0 ${stageBadgeColor}`}>
-                            {log.stage}
-                          </span>
-                        )}
-                        <span className={`${textColor} leading-relaxed`}>{log.message}</span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
+                          <span className="text-slate-500 whitespace-nowrap text-[10px]">{log.timestamp}</span>
+                          {stageBadgeColor && (
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${stageBadgeColor}`}>
+                              {log.stage}
+                            </span>
+                          )}
+                        </div>
+                        <span className={`${textColor} leading-relaxed text-[11px] sm:text-xs break-words`}>{log.message}</span>
                       </div>
                     );
                   })}

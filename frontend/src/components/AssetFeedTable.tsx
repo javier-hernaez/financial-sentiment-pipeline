@@ -198,7 +198,11 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
               className="bg-transparent outline-none w-full text-xs placeholder:text-slate-500"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-white text-xs">
+              <button
+                onClick={() => setSearchQuery('')}
+                aria-label="Limpiar búsqueda"
+                className="w-8 h-8 -mr-1 flex items-center justify-center text-slate-400 hover:text-white active:scale-95 text-xs rounded-md transition"
+              >
                 ✕
               </button>
             )}
@@ -472,7 +476,7 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true })
               </div>
               <button
                 onClick={() => setSelectedItem(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition"
+                className="w-10 h-10 -mr-1 -my-1 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/60 active:scale-95 transition"
                 aria-label="Cerrar modal de noticia"
               >
                 <X className="w-5 h-5" />

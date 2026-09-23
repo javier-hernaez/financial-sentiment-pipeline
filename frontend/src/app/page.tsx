@@ -57,6 +57,7 @@ export default function Home() {
   const [isDark, setIsDark] = useState(true);
 
   const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
+  const [mobileDashboardTab, setMobileDashboardTab] = useState<'all' | 'charts' | 'feed'>('all');
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -188,6 +189,7 @@ export default function Home() {
           isRefreshing={isRefreshing}
           isOnline={diagnostics?.duckdb?.status === 'ok'}
           activeView={activeView}
+          onToggleMenu={() => setIsMobileOpen(!isMobileOpen)}
         />
 
         {/* Desktop Top Navbar */}
@@ -202,7 +204,7 @@ export default function Home() {
         </div>
 
         {/* Dashboard Content Container */}
-        <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 space-y-6 max-w-full w-full mx-auto pb-24 md:pb-8 overflow-x-hidden">
+        <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 space-y-6 max-w-full w-full mx-auto pb-32 md:pb-8 overflow-x-hidden">
           
           {/* Main Dashboard View */}
           {activeView === 'dashboard' && (
@@ -251,7 +253,7 @@ export default function Home() {
 
                   {/* Primary Blue Export Button */}
                   <a
-                    href="/api/export-csv?symbol=BTCUSDT"
+                    href={`/api/export-csv?symbol=${selectedSymbol}`}
                     className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold transition shadow-sm"
                   >
                     <Download className="w-3.5 h-3.5" />
@@ -260,21 +262,73 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 1. Top 4 KPI Cards (Bronze Ingestion, Silver NLP, FinBERT Inference, Gold DuckDB) */}
-              <ShopeersKpiCards metrics={metrics} isDark={isDark} />
+              {/* Mobile Segmented Filter: Reduce 3500px scroll fatigue */}
+              <div
+                className={`sm:hidden flex items-center p-1 rounded-xl border text-xs font-mono font-bold ${
+                  isDark ? 'bg-[#131b2e] border-[#1f2d48]' : 'bg-slate-100 border-slate-200'
+                }`}
+              >
+                <button
+                  onClick={() => setMobileDashboardTab('all')}
+                  className={`flex-1 py-2 rounded-lg text-center transition ${
+                    mobileDashboardTab === 'all'
+                      ? isDark
+                        ? 'bg-sky-500 text-white shadow-xs'
+                        : 'bg-blue-600 text-white shadow-xs'
+                      : isDark
+                      ? 'text-slate-400 hover:text-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Vista Completa
+                </button>
+                <button
+                  onClick={() => setMobileDashboardTab('charts')}
+                  className={`flex-1 py-2 rounded-lg text-center transition ${
+                    mobileDashboardTab === 'charts'
+                      ? isDark
+                        ? 'bg-sky-500 text-white shadow-xs'
+                        : 'bg-blue-600 text-white shadow-xs'
+                      : isDark
+                      ? 'text-slate-400 hover:text-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Gráficos &amp; KPIs
+                </button>
+                <button
+                  onClick={() => setMobileDashboardTab('feed')}
+                  className={`flex-1 py-2 rounded-lg text-center transition ${
+                    mobileDashboardTab === 'feed'
+                      ? isDark
+                        ? 'bg-sky-500 text-white shadow-xs'
+                        : 'bg-blue-600 text-white shadow-xs'
+                      : isDark
+                      ? 'text-slate-400 hover:text-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Titulares RSS
+                </button>
+              </div>
 
-              {/* 3. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) - Perfectly Height-Aligned */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+              {/* 1. Top 4 KPI Cards (Bronze Ingestion, Silver NLP, FinBERT Inference, Gold DuckDB) */}
+              <div className={mobileDashboardTab === 'feed' ? 'hidden sm:block' : 'block'}>
+                <ShopeersKpiCards metrics={metrics} isDark={isDark} />
+              </div>
+
+              {/* 2. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
+              <div className={`${mobileDashboardTab === 'feed' ? 'hidden sm:grid' : 'grid'} grid-cols-1 lg:grid-cols-3 gap-6 items-stretch`}>
                 <div className="lg:col-span-2 flex flex-col">
-                  <ProfitAndSourcesChart metrics={metrics} isDark={isDark} />
+                  <ProfitAndSourcesChart metrics={metrics} isDark={isDark} symbol={selectedSymbol} />
                 </div>
                 <div className="lg:col-span-1 flex flex-col">
-                  <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} />
+                  <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} symbol={selectedSymbol} />
                 </div>
               </div>
 
-              {/* 4. Bottom Row: Real-time FinBERT Headlines & RSS Feeds (Full-width for readability) */}
-              <div className="w-full">
+              {/* 3. Bottom Row: Real-time FinBERT Headlines & RSS Feeds */}
+              <div className={`${mobileDashboardTab === 'charts' ? 'hidden sm:block' : 'block'} w-full`}>
                 <AssetFeedTable isDark={isDark} />
               </div>
 
@@ -390,7 +444,7 @@ export default function Home() {
         {activeView === 'dashboard' && systemAlert && (
           <div
             role="status"
-            className={`fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md p-3.5 rounded-xl border shadow-2xl backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-3 ${
+            className={`fixed bottom-20 sm:bottom-6 right-3 left-3 sm:left-auto sm:right-6 z-50 max-w-sm sm:max-w-md p-3.5 rounded-xl border shadow-2xl backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-3 ${
               systemAlert.type === 'error'
                 ? isDark
                   ? 'bg-[#180f14]/95 border-rose-600/40 text-rose-100 shadow-rose-950/40'
@@ -424,7 +478,7 @@ export default function Home() {
                 {systemAlert.actionLabel && systemAlert.onAction && (
                   <button
                     onClick={systemAlert.onAction}
-                    className="mt-2 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-600 hover:bg-blue-500 text-white transition flex items-center gap-1"
+                    className="mt-2 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-600 hover:bg-blue-500 text-white transition flex items-center gap-1 active:scale-95"
                   >
                     <RefreshCw className="w-3 h-3" />
                     <span>{systemAlert.actionLabel}</span>
@@ -433,10 +487,10 @@ export default function Home() {
               </div>
               <button
                 onClick={() => setSystemAlert(null)}
-                className="p-1 -mr-1 -mt-1 rounded-lg opacity-60 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition text-current flex-shrink-0"
-                title="Cerrar notificación"
+                className="w-9 h-9 -mr-1 -mt-1 rounded-xl flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 active:scale-95 transition text-current flex-shrink-0"
+                aria-label="Cerrar notificación"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>

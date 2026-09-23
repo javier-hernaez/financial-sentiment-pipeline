@@ -252,7 +252,7 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
             <span className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Fuente: Binance REST</span>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-64 w-full" style={{ touchAction: 'pan-y' }}>
             {isLoading || !isMounted ? (
               <div className="h-full flex items-center justify-center text-slate-500 font-mono text-xs">Cargando serie...</div>
             ) : (
@@ -314,7 +314,7 @@ export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true })
             <span className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>CoinTelegraph &amp; Desk</span>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-64 w-full" style={{ touchAction: 'pan-y' }}>
             {isLoading || !isMounted ? (
               <div className="h-full flex items-center justify-center text-slate-500 font-mono text-xs">Cargando sentimiento...</div>
             ) : (

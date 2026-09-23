@@ -8,11 +8,13 @@ import { fetchMetrics, fetchGoldData } from '@/lib/api';
 interface IngestionBarAndGaugeProps {
   diagnostics?: Diagnostics | null;
   isDark?: boolean;
+  symbol?: string;
 }
 
 export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   diagnostics,
   isDark = true,
+  symbol = 'BTCUSDT',
 }) => {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [consensoScore, setConsensoScore] = useState<number | null>(null);
@@ -21,11 +23,11 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   useEffect(() => {
     fetchMetrics().then(setMetrics).catch(() => null);
     loadConsensus();
-  }, []);
+  }, [symbol]);
 
   const loadConsensus = async () => {
     try {
-      const goldData = await fetchGoldData('BTCUSDT', 24);
+      const goldData = await fetchGoldData(symbol, 24);
       if (goldData && goldData.length > 0) {
         // Compute composite consensus directly from FinBERT Fear & Greed index (0-100)
         const withFG = goldData.filter(r => r.fear_and_greed_score !== null);

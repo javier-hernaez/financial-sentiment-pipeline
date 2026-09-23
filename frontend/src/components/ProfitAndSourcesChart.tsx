@@ -19,12 +19,14 @@ interface ProfitAndSourcesChartProps {
   records?: GoldRecord[];
   metrics?: SystemMetrics | null;
   isDark?: boolean;
+  symbol?: string;
 }
 
 export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
   records: initialRecords,
   metrics,
   isDark = true,
+  symbol = 'BTCUSDT',
 }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [records, setRecords] = useState<GoldRecord[]>(initialRecords || []);
@@ -32,15 +34,13 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
 
   useEffect(() => {
     setIsMounted(true);
-    if (!initialRecords || initialRecords.length === 0) {
-      loadRealData();
-    }
-  }, [initialRecords]);
+    loadRealData();
+  }, [initialRecords, symbol]);
 
   const loadRealData = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchGoldData('BTCUSDT', 24);
+      const data = await fetchGoldData(symbol, 24);
       if (Array.isArray(data)) {
         setRecords([...data].reverse());
       }
@@ -143,7 +143,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
       </div>
 
       {/* Main Dual-Line Area Chart: Sentiment Curve + Ingestion Volume */}
-      <div className="flex-1 min-h-[220px] w-full mt-4">
+      <div className="flex-1 min-h-[220px] w-full mt-4" style={{ touchAction: 'pan-y' }}>
         {!isMounted || isLoading ? (
           <div className="h-full w-full flex items-center justify-center text-xs font-mono text-slate-500">
             <RefreshCw className="w-4 h-4 animate-spin text-blue-400 mr-2" />
