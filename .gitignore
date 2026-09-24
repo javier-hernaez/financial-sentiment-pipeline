@@ -72,5 +72,7 @@ yarn-error.log*
 
 # Scratch scripts & temporary tests
 scratch/
-MOBILE_REDESIGN_SPEC.md
+
+# Internal documentation & specifications
+internal/
 
