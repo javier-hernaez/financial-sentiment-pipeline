@@ -13,6 +13,7 @@ import { ShopeersKpiCards } from '@/components/ShopeersKpiCards';
 import { IngestionBarAndGauge } from '@/components/IngestionBarAndGauge';
 import { AssetFeedTable } from '@/components/AssetFeedTable';
 import { PipelineRunner } from '@/components/PipelineRunner';
+import { MobileEltConsole } from '@/components/MobileEltConsole';
 
 const ProfitAndSourcesChart = dynamic(
   () => import('@/components/ProfitAndSourcesChart').then((m) => m.ProfitAndSourcesChart),
@@ -302,81 +303,99 @@ export default function Home() {
           
           {/* Main Dashboard View */}
           {activeView === 'dashboard' && (
-            <div className="space-y-6">
-              
-              {/* Header Bar: Title + Date Range + Run Pipeline + Export CSV */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
-                  <h1 className={`text-2xl sm:text-3xl font-black tracking-tight font-sans ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
-                    Dashboard de Sentimiento &amp; Pipeline ELT
-                  </h1>
-                  <p className={`text-xs sm:text-sm mt-1.5 font-mono tracking-wide ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
-                    Medallion Lakehouse · FinBERT NLP · DuckDB OLAP
-                  </p>
-                </div>
+            <>
+              {/* Mobile-Only Streamlined ELT Console (< 768px) */}
+              <div className="block md:hidden">
+                <MobileEltConsole
+                  metrics={metrics}
+                  diagnostics={diagnostics}
+                  selectedSymbol={selectedSymbol}
+                  isDark={isDark}
+                  onTriggerPipeline={handleDirectRunPipeline}
+                  isPipelineRunning={isPipelineRunning}
+                  onRefresh={loadAll}
+                  isRefreshing={isRefreshing}
+                  onNavigate={(v) => setActiveView(v)}
+                />
+              </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {/* Date Range Pill */}
-                  <div
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono cursor-pointer transition ${
-                      isDark
-                        ? 'bg-[#111622] border-[#232d44] text-[#8b95b0] hover:border-[#2e3d5c]'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <IconCalendar className="w-4 h-4 text-[#818cf8]" />
-                    <span>Lote Activo · Tiempo Real</span>
+              {/* Desktop-Only Full Analytics Workspace (>= 768px) */}
+              <div className="hidden md:block space-y-6">
+                
+                {/* Header Bar: Title + Date Range + Run Pipeline + Export CSV */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div>
+                    <h1 className={`text-2xl sm:text-3xl font-black tracking-tight font-sans ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+                      Dashboard de Sentimiento &amp; Pipeline ELT
+                    </h1>
+                    <p className={`text-xs sm:text-sm mt-1.5 font-mono tracking-wide ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+                      Medallion Lakehouse · FinBERT NLP · DuckDB OLAP
+                    </p>
                   </div>
 
-                  {/* Trigger Pipeline Button */}
-                  <button
-                    onClick={handleDirectRunPipeline}
-                    disabled={isPipelineRunning}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono font-bold transition active:scale-95 ${
-                      isPipelineRunning ? 'opacity-60 cursor-not-allowed' : ''
-                    } ${
-                      isDark
-                        ? 'bg-[#111622] border-[#232d44] text-[#818cf8] hover:text-[#eef0f6] hover:border-[#6366f1]/50'
-                        : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50'
-                    }`}
-                    title="Ejecuta extracción, FinBERT y actualización DuckDB sin salir de esta vista"
-                  >
-                    <IconRefresh className={`w-4 h-4 ${isPipelineRunning ? 'animate-spin' : ''}`} />
-                    <span>{isPipelineRunning ? 'Ejecutando...' : 'Ejecutar Pipeline'}</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Date Range Pill */}
+                    <div
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono cursor-pointer transition ${
+                        isDark
+                          ? 'bg-[#111622] border-[#232d44] text-[#8b95b0] hover:border-[#2e3d5c]'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <IconCalendar className="w-4 h-4 text-[#818cf8]" />
+                      <span>Lote Activo · Tiempo Real</span>
+                    </div>
 
-                  {/* Export Button — indigo */}
-                  <a
-                    href={`/api/export-csv?symbol=${selectedSymbol}`}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-sm bg-[#6366f1] hover:bg-[#818cf8] active:bg-[#4f46e5] text-white text-xs sm:text-sm font-mono font-bold transition active:scale-95"
-                  >
-                    <IconDownload className="w-4 h-4" />
-                    <span>Exportar Gold CSV</span>
-                  </a>
+                    {/* Trigger Pipeline Button */}
+                    <button
+                      onClick={handleDirectRunPipeline}
+                      disabled={isPipelineRunning}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono font-bold transition active:scale-95 ${
+                        isPipelineRunning ? 'opacity-60 cursor-not-allowed' : ''
+                      } ${
+                        isDark
+                          ? 'bg-[#111622] border-[#232d44] text-[#818cf8] hover:text-[#eef0f6] hover:border-[#6366f1]/50'
+                          : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50'
+                      }`}
+                      title="Ejecuta extracción, FinBERT y actualización DuckDB sin salir de esta vista"
+                    >
+                      <IconRefresh className={`w-4 h-4 ${isPipelineRunning ? 'animate-spin' : ''}`} />
+                      <span>{isPipelineRunning ? 'Ejecutando...' : 'Ejecutar Pipeline'}</span>
+                    </button>
+
+                    {/* Export Button — indigo */}
+                    <a
+                      href={`/api/export-csv?symbol=${selectedSymbol}`}
+                      className="flex items-center gap-2 px-3.5 py-2 rounded-sm bg-[#6366f1] hover:bg-[#818cf8] active:bg-[#4f46e5] text-white text-xs sm:text-sm font-mono font-bold transition active:scale-95"
+                    >
+                      <IconDownload className="w-4 h-4" />
+                      <span>Exportar Gold CSV</span>
+                    </a>
+                  </div>
                 </div>
-              </div>
 
-              {/* 1. Medallion Telemetry HUD: 4-Stage Continuous Architecture Pipeline */}
-              <div className="w-full">
-                <MedallionTelemetryHUD metrics={metrics} isDark={isDark} />
-              </div>
-
-              {/* 2. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-                <div className="lg:col-span-2 flex flex-col">
-                  <ProfitAndSourcesChart metrics={metrics} isDark={isDark} symbol={selectedSymbol} />
+                {/* 1. Medallion Telemetry HUD: 4-Stage Continuous Architecture Pipeline */}
+                <div className="w-full">
+                  <MedallionTelemetryHUD metrics={metrics} isDark={isDark} />
                 </div>
-                <div className="lg:col-span-1 flex flex-col">
-                  <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} symbol={selectedSymbol} />
+
+                {/* 2. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+                  <div className="lg:col-span-2 flex flex-col">
+                    <ProfitAndSourcesChart metrics={metrics} isDark={isDark} symbol={selectedSymbol} />
+                  </div>
+                  <div className="lg:col-span-1 flex flex-col">
+                    <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} symbol={selectedSymbol} />
+                  </div>
                 </div>
-              </div>
 
-              {/* 3. Bottom Row: Real-time FinBERT Headlines & RSS Feeds */}
-              <div className="w-full">
-                <AssetFeedTable isDark={isDark} />
-              </div>
+                {/* 3. Bottom Row: Real-time FinBERT Headlines & RSS Feeds */}
+                <div className="w-full">
+                  <AssetFeedTable isDark={isDark} />
+                </div>
 
-            </div>
+              </div>
+            </>
           )}
 
           {/* Subview: Pipeline Orchestration */}

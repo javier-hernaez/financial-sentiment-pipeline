@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  IconWifi,
-  IconDatabase,
-  IconServer,
-  IconWrench,
-  IconShieldAlert,
+  IconObservability,
+  IconMarket,
+  IconDuckDB,
+  IconNews,
   IconRefresh,
-  IconHardDrive,
-  IconLayers,
-  IconAlertTriangle,
+  IconShield,
+  IconPipeline,
+  IconFinbertLab,
+  IconPlay,
 } from './CustomIcons';
 import { Diagnostics, SystemMetrics } from '@/types';
 import { runWarehouseOp } from '@/lib/api';
@@ -23,6 +23,42 @@ interface ObservabilityViewProps {
   isDark?: boolean;
 }
 
+/* ── tiny helpers ─────────────────────────────────────────────────────────── */
+const StatusBadge: React.FC<{ ok: boolean; labelOk?: string; labelErr?: string }> = ({
+  ok, labelOk = 'ONLINE', labelErr = 'ERROR',
+}) => (
+  <span className={`
+    inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-xs border
+    ${ok
+      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+      : 'bg-rose-500/10 text-rose-400 border-rose-500/25'}
+  `}>
+    <span className={`w-1.5 h-1.5 rounded-full animate-status-blink ${ok ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+    {ok ? labelOk : labelErr}
+  </span>
+);
+
+const SectionHeader: React.FC<{
+  icon: React.FC<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+  iconClass?: string;
+  isDark: boolean;
+}> = ({ icon: Icon, title, subtitle, iconClass = 'text-[#818cf8]', isDark }) => (
+  <div className={`flex items-center justify-between pb-3 border-b mb-4 ${isDark ? 'border-[#1a2035]' : 'border-slate-200'}`}>
+    <div className="flex items-center gap-2.5">
+      <Icon className={`w-4 h-4 ${iconClass}`} />
+      <span className={`text-[11px] font-mono font-bold tracking-widest uppercase ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+        {title}
+      </span>
+    </div>
+    {subtitle && (
+      <span className={`text-[10px] font-mono ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>{subtitle}</span>
+    )}
+  </div>
+);
+
+/* ── Main component ───────────────────────────────────────────────────────── */
 export const ObservabilityView: React.FC<ObservabilityViewProps> = ({
   diagnostics,
   metrics,
@@ -36,9 +72,7 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({
 
   useEffect(() => {
     if (diagnostics) {
-      setLastChecked(
-        new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-      );
+      setLastChecked(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     }
   }, [diagnostics]);
 
@@ -60,7 +94,6 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({
     const target = purgeTarget;
     setPurgeTarget(null);
     setRunningOp('purge');
-
     try {
       const res = await runWarehouseOp('clear_table', target);
       onAlert(res.message, 'info');
@@ -72,400 +105,368 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({
     }
   };
 
-  const dbSizeMb = metrics?.duckdb_size_kb ? (metrics.duckdb_size_kb / 1024).toFixed(2) : '0.00';
-  const bronzeKb = metrics?.bronze.total_size_kb ? Math.round(metrics.bronze.total_size_kb) : 0;
-  const isDuckDbOnline = diagnostics?.duckdb?.status === 'ok';
-  const isBinanceOnline = diagnostics?.binance?.status === 200;
+  const dbSizeMb    = metrics?.duckdb_size_kb ? (metrics.duckdb_size_kb / 1024).toFixed(2) : '0.00';
+  const bronzeKb    = metrics?.bronze.total_size_kb ? Math.round(metrics.bronze.total_size_kb) : 0;
+  const silverTotal = (metrics?.silver.social_rows ?? 0) + (metrics?.silver.market_rows ?? 0);
+  const binanceOk   = diagnostics?.binance?.status === 200;
+  const duckdbOk    = diagnostics?.duckdb?.status === 'ok';
 
-  const cardBase = isDark
-    ? 'bg-[#0c101a] border-[#1a2035] text-[#eef0f6]'
-    : 'bg-white border-slate-200 text-slate-800 shadow-sm';
-
-  const subCardBase = isDark
-    ? 'bg-[#111622] border-[#1a2035]'
-    : 'bg-slate-50 border-slate-200';
-
-  const textMuted = isDark ? 'text-[#8b95b0]' : 'text-slate-500';
-  const textDim = isDark ? 'text-[#4e5d7a]' : 'text-slate-400';
+  /* surfaces */
+  const card = isDark ? 'bg-[#0c101a] border-[#1a2035]' : 'bg-white border-slate-200';
+  const inner = isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-50 border-slate-200';
+  const label = isDark ? 'text-[#4e5d7a]' : 'text-slate-400';
+  const val   = isDark ? 'text-[#eef0f6]' : 'text-slate-900';
+  const sub   = isDark ? 'text-[#8b95b0]' : 'text-slate-600';
 
   return (
     <div className="space-y-6">
-      
-      {/* ── 1. Top Header Banner ────────────────────────────────────────────── */}
-      <div
-        className={`p-6 rounded-lg border transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 ${cardBase}`}
-      >
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5">
-            <span
-              className={`w-3 h-3 rounded-full animate-status-blink shrink-0 ${
-                isDuckDbOnline ? 'bg-emerald-400' : 'bg-rose-500'
-              }`}
-            />
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-              Observabilidad, Telemetría &amp; Mantenimiento
-            </h2>
+
+      {/* ── Page header ────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className={`flex items-center gap-2 mb-1`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-status-blink" />
+            <span className={`text-[10px] font-mono font-bold tracking-widest uppercase ${label}`}>
+              Módulo de Observabilidad
+            </span>
           </div>
-          <p className={`text-sm sm:text-base leading-relaxed ${textMuted}`}>
-            Monitor en tiempo real de latencias externas, integridad ACID columnar en DuckDB y telemetría del Data Lake.
+          <h1 className={`text-xl font-black tracking-tight ${val}`}>
+            Telemetría, Diagnóstico & Mantenimiento
+          </h1>
+          <p className={`text-sm mt-1 ${sub}`}>
+            Latencias de red, salud del almacén DuckDB y operaciones ACID en tiempo real
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
-          <button
-            onClick={onRefresh}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-sm border text-xs sm:text-sm font-mono font-bold transition active:scale-95 ${
-              isDark
-                ? 'bg-[#111622] border-[#232d44] text-[#818cf8] hover:text-white hover:border-[#6366f1]/50'
-                : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50'
-            }`}
-          >
-            <IconRefresh className="w-4 h-4" />
-            <span>Refrescar Telemetría</span>
-          </button>
+        <button
+          onClick={onRefresh}
+          className={`
+            self-start sm:self-auto flex items-center gap-2 px-3.5 py-2 rounded-sm border
+            text-sm font-mono font-semibold transition
+            ${isDark
+              ? 'border-[#232d44] text-[#8b95b0] hover:text-[#eef0f6] hover:border-[#2e3d5c] bg-[#111622]'
+              : 'border-slate-200 text-slate-600 hover:bg-slate-50'}
+          `}
+        >
+          <IconRefresh className="w-3.5 h-3.5" />
+          <span>Refrescar diagnóstico</span>
+          {lastChecked && (
+            <span className={`text-[10px] font-mono ${label} hidden sm:inline`}>· {lastChecked}</span>
+          )}
+        </button>
+      </div>
+
+      {/* ── 1. Conectividad ─────────────────────────────────────────────── */}
+      <div className={`rounded-lg border p-5 sm:p-6 ${card}`}>
+        <SectionHeader
+          icon={IconObservability}
+          title="Conectividad & Endpoints"
+          subtitle="Latencia en milisegundos"
+          iconClass={isDark ? 'text-[#818cf8]' : 'text-indigo-500'}
+          isDark={isDark}
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+          {/* Binance REST */}
+          <div className={`rounded-md border border-l-2 p-4 space-y-3 ${inner} ${binanceOk ? 'border-l-emerald-400' : 'border-l-rose-500'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconMarket className={`w-3.5 h-3.5 ${isDark ? 'text-[#38bdf8]' : 'text-sky-500'}`} />
+                <span className={`text-sm font-bold ${val}`}>Binance REST</span>
+              </div>
+              <StatusBadge ok={binanceOk} />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${label}`}>Latencia ping</span>
+                <span className={`text-sm font-mono font-bold ${binanceOk ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-[#f59e0b]' : 'text-amber-600')}`}>
+                  {diagnostics?.binance?.latency_ms ? `${diagnostics.binance.latency_ms} ms` : '— ms'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${label}`}>Última verificación</span>
+                <span className={`text-xs font-mono ${sub}`}>{lastChecked ?? '—'}</span>
+              </div>
+            </div>
+            <div className={`text-[10px] font-mono pt-1 border-t ${label} ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
+              API klines horarias OHLCV
+            </div>
+          </div>
+
+          {/* DuckDB Engine */}
+          <div className={`rounded-md border border-l-2 p-4 space-y-3 ${inner} ${duckdbOk ? 'border-l-emerald-400' : 'border-l-rose-500'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconDuckDB className={`w-3.5 h-3.5 ${isDark ? 'text-[#d97706]' : 'text-amber-600'}`} />
+                <span className={`text-sm font-bold ${val}`}>DuckDB Engine</span>
+              </div>
+              <StatusBadge ok={duckdbOk} labelOk="ACID OK" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${label}`}>Almacenamiento</span>
+                <span className={`text-xs font-mono ${sub}`}>Local Columnar</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${label}`}>Tamaño en disco</span>
+                <span className={`text-sm font-mono font-bold ${isDark ? 'text-[#10b981]' : 'text-emerald-600'}`}>
+                  {dbSizeMb} MB
+                </span>
+              </div>
+            </div>
+            <div className={`text-[10px] font-mono pt-1 border-t ${label} ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
+              Feature store analítico Gold
+            </div>
+          </div>
+
+          {/* Feeds RSS & Social */}
+          <div className={`rounded-md border border-l-2 border-l-emerald-400 p-4 space-y-3 ${inner}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconNews className={`w-3.5 h-3.5 ${isDark ? 'text-[#a78bfa]' : 'text-purple-500'}`} />
+                <span className={`text-sm font-bold ${val}`}>Feeds Noticias</span>
+              </div>
+              <StatusBadge ok={true} labelOk="12 ACTIVOS" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${label}`}>Fuentes RSS</span>
+                <span className={`text-xs font-mono ${sub}`}>Yahoo, CT, CoinDesk…</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${label}`}>Comunidades Reddit</span>
+                <span className={`text-xs font-mono font-bold ${isDark ? 'text-[#a78bfa]' : 'text-purple-600'}`}>13 subreddits</span>
+              </div>
+            </div>
+            <div className={`text-[10px] font-mono pt-1 border-t ${label} ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
+              Polling cadencial + dedup SHA-256
+            </div>
+          </div>
+
+          {/* DuckDB In-Process */}
+          <div className={`rounded-md border border-l-2 border-l-[#818cf8] p-4 space-y-3 ${inner}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconShield className={`w-3.5 h-3.5 ${isDark ? 'text-[#818cf8]' : 'text-indigo-500'}`} />
+                <span className={`text-sm font-bold ${val}`}>DuckDB In-Process</span>
+              </div>
+              <StatusBadge ok={true} labelOk="LOCAL" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${label}`}>Latencia E/S</span>
+                <span className={`text-sm font-mono font-bold ${isDark ? 'text-[#818cf8]' : 'text-indigo-600'}`}>&lt; 1 ms</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${label}`}>Modo</span>
+                <span className={`text-xs font-mono ${sub}`}>NVMe · ACID</span>
+              </div>
+            </div>
+            <div className={`text-[10px] font-mono pt-1 border-t ${label} ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
+              Motor columnar embebido local
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {/* ── 2. Telemetría de Conectividad y Latencias ───────────────────────── */}
-      <div className={`p-6 rounded-lg border transition-all space-y-5 ${cardBase}`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-[#1a2035]">
-          <div className="flex items-center gap-2.5">
-            <IconWifi className="w-5 h-5 text-[#818cf8]" />
-            <h3 className="text-sm sm:text-base font-mono font-bold uppercase tracking-wider">
-              Conectividad &amp; Latencias de Red
-            </h3>
-          </div>
-          <span className={`text-xs font-mono ${textDim}`}>
-            Último sondeo: <strong className={isDark ? 'text-slate-300' : 'text-slate-700'}>{lastChecked ?? '—'}</strong>
-          </span>
-        </div>
+      {/* ── 2. Storage metrics ──────────────────────────────────────────── */}
+      <div className={`rounded-lg border p-5 sm:p-6 ${card}`}>
+        <SectionHeader
+          icon={IconDuckDB}
+          title="Estado del Almacén & Particiones"
+          subtitle="Métricas de volumen"
+          iconClass={isDark ? 'text-[#d97706]' : 'text-amber-600'}
+          isDark={isDark}
+        />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          {/* Node 1: Binance REST */}
-          <div className={`p-4 rounded-md border space-y-3 ${subCardBase}`}>
-            <div className="flex justify-between items-center">
-              <span className="font-mono font-bold text-sm">Binance REST v3</span>
-              <span
-                className={`px-2.5 py-0.5 rounded-sm text-xs font-mono font-bold border ${
-                  isBinanceOnline
-                    ? isDark
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : isDark
-                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                    : 'bg-rose-50 text-rose-700 border-rose-200'
-                }`}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            {
+              label: 'DuckDB en Disco',
+              value: `${dbSizeMb} MB`,
+              detail: 'market_intelligence.duckdb',
+              color: isDark ? 'text-[#10b981]' : 'text-emerald-600',
+              borderColor: 'border-t-[#10b981]/50',
+            },
+            {
+              label: 'Bronze Lake (Parquet)',
+              value: `${metrics?.bronze.total_files ?? 0} lotes`,
+              detail: `${bronzeKb} KB · Snappy`,
+              color: isDark ? 'text-[#d97706]' : 'text-amber-600',
+              borderColor: 'border-t-[#d97706]/50',
+            },
+            {
+              label: 'Filas Silver (Total)',
+              value: `${silverTotal.toLocaleString()}`,
+              detail: 'Mercado + NLP Noticias',
+              color: isDark ? 'text-[#a78bfa]' : 'text-purple-600',
+              borderColor: 'border-t-[#a78bfa]/50',
+            },
+            {
+              label: 'Runtime & Aceleración',
+              value: 'Python 3.12',
+              detail: 'Polars · Torch · Arrow',
+              color: isDark ? 'text-[#818cf8]' : 'text-indigo-600',
+              borderColor: 'border-t-[#818cf8]/50',
+            },
+          ].map(({ label: l, value, detail, color, borderColor }) => (
+            <div key={l} className={`rounded-md border border-t-2 p-4 ${inner} ${borderColor}`}>
+              <div className={`text-xs font-mono mb-2 ${label}`}>{l}</div>
+              <div className={`text-2xl font-black font-mono tabular-nums tracking-tight ${color}`}>{value}</div>
+              <div className={`text-[10px] font-mono mt-1.5 ${label}`}>{detail}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 3. Mantenimiento DuckDB ─────────────────────────────────────── */}
+      <div className={`rounded-lg border p-5 sm:p-6 ${card}`}>
+        <SectionHeader
+          icon={IconPipeline}
+          title="Operaciones de Mantenimiento"
+          subtitle="Optimización columnar ACID"
+          iconClass={isDark ? 'text-[#f59e0b]' : 'text-amber-600'}
+          isDark={isDark}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {[
+            {
+              op: 'vacuum' as const,
+              title: 'VACUUM',
+              subtitle: 'Compactación',
+              borderColor: 'border-t-[#38bdf8]/50',
+              iconClass: isDark ? 'text-[#38bdf8]' : 'text-sky-500',
+              icon: IconDuckDB,
+              desc: 'Reorganiza páginas internas, recupera espacio libre de transacciones obsoletas y optimiza índices B-Tree.',
+              runningLabel: 'Compactando…',
+              runLabel: 'Ejecutar VACUUM',
+            },
+            {
+              op: 'checkpoint' as const,
+              title: 'CHECKPOINT',
+              subtitle: 'WAL → Disco',
+              borderColor: 'border-t-[#a78bfa]/50',
+              iconClass: isDark ? 'text-[#a78bfa]' : 'text-purple-500',
+              icon: IconShield,
+              desc: 'Consolida el Write-Ahead Log (WAL) a los bloques principales, garantizando persistencia inmediata.',
+              runningLabel: 'Guardando WAL…',
+              runLabel: 'Ejecutar CHECKPOINT',
+            },
+            {
+              op: 'refresh_views' as const,
+              title: 'REFRESH DDL',
+              subtitle: 'Recalcular vistas',
+              borderColor: 'border-t-[#10b981]/50',
+              iconClass: isDark ? 'text-[#10b981]' : 'text-emerald-600',
+              icon: IconFinbertLab,
+              desc: 'Re-ejecuta las definiciones DDL de gold_hourly_market_sentiment sincronizando precios y sentimiento NLP.',
+              runningLabel: 'Recalculando…',
+              runLabel: 'Recalcular Vistas DDL',
+            },
+          ].map(({ op, title, subtitle, borderColor, iconClass, icon: Icon, desc, runningLabel, runLabel }) => (
+            <div
+              key={op}
+              className={`rounded-md border border-t-2 p-4 flex flex-col gap-3 ${inner} ${borderColor}`}
+            >
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className={`w-4 h-4 ${iconClass}`} />
+                  <div>
+                    <div className={`text-sm font-black font-mono ${val}`}>{title}</div>
+                    <div className={`text-[10px] font-mono ${label}`}>{subtitle}</div>
+                  </div>
+                </div>
+                <p className={`text-sm leading-relaxed ${sub}`}>{desc}</p>
+              </div>
+              <button
+                onClick={() => handleOp(op)}
+                disabled={runningOp !== null}
+                className={`
+                  w-full h-9 px-3 rounded-sm text-xs font-mono font-bold border flex items-center justify-center gap-2
+                  transition disabled:opacity-50 disabled:cursor-not-allowed
+                  ${isDark
+                    ? 'bg-[#111622] hover:bg-[#1a2035] text-[#8b95b0] hover:text-[#eef0f6] border-[#232d44]'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'}
+                `}
               >
-                {isBinanceOnline ? 'ONLINE 200' : 'LATENCIA ALTA'}
-              </span>
+                {runningOp === op ? (
+                  <>
+                    <svg className="w-3 h-3 animate-spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="8" cy="8" r="5" strokeDasharray="14 18" strokeLinecap="square" />
+                    </svg>
+                    {runningLabel}
+                  </>
+                ) : (
+                  <>
+                    <IconPlay className="w-3 h-3" />
+                    {runLabel}
+                  </>
+                )}
+              </button>
             </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className={`text-xs font-mono ${textMuted}`}>Latencia RTT:</span>
-              <span className="text-xl font-bold font-mono text-emerald-400 tabular-nums">
-                {diagnostics?.binance?.latency_ms && diagnostics.binance.latency_ms > 0
-                  ? `${diagnostics.binance.latency_ms} ms`
-                  : 'Sondeando...'}
-              </span>
-            </div>
-            <div className={`pt-2 border-t border-[#1a2035]/60 flex items-center justify-between text-xs font-mono ${textDim}`}>
-              <span>Serie OHLCV</span>
-              <span>Klines 1h</span>
-            </div>
-          </div>
-
-          {/* Node 2: DuckDB OLAP Engine */}
-          <div className={`p-4 rounded-md border space-y-3 ${subCardBase}`}>
-            <div className="flex justify-between items-center">
-              <span className="font-mono font-bold text-sm">DuckDB Storage</span>
-              <span
-                className={`px-2.5 py-0.5 rounded-sm text-xs font-mono font-bold border ${
-                  isDuckDbOnline
-                    ? isDark
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                }`}
-              >
-                {isDuckDbOnline ? 'ACID ACTIVO' : 'OFFLINE'}
-              </span>
-            </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className={`text-xs font-mono ${textMuted}`}>E/S Almacén:</span>
-              <span className="text-xl font-bold font-mono text-[#818cf8] tabular-nums">
-                &lt; 0.8 ms
-              </span>
-            </div>
-            <div className={`pt-2 border-t border-[#1a2035]/60 flex items-center justify-between text-xs font-mono ${textDim}`}>
-              <span>Motor Columnar</span>
-              <span>Local NVMe</span>
-            </div>
-          </div>
-
-          {/* Node 3: Feeds RSS & Social */}
-          <div className={`p-4 rounded-md border space-y-3 ${subCardBase}`}>
-            <div className="flex justify-between items-center">
-              <span className="font-mono font-bold text-sm">Feeds &amp; RSS</span>
-              <span className={`px-2.5 py-0.5 rounded-sm text-xs font-mono font-bold border ${
-                isDark ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-sky-50 text-sky-700 border-sky-200'
-              }`}>
-                12 CANALES
-              </span>
-            </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className={`text-xs font-mono ${textMuted}`}>Cobertura:</span>
-              <span className="text-sm font-bold font-mono text-sky-400">
-                CoinDesk, CT, Decrypt
-              </span>
-            </div>
-            <div className={`pt-2 border-t border-[#1a2035]/60 flex items-center justify-between text-xs font-mono ${textDim}`}>
-              <span>Extracción Async</span>
-              <span>Inmutable</span>
-            </div>
-          </div>
-
-          {/* Node 4: FinBERT NLP Engine */}
-          <div className={`p-4 rounded-md border space-y-3 ${subCardBase}`}>
-            <div className="flex justify-between items-center">
-              <span className="font-mono font-bold text-sm">Motor FinBERT</span>
-              <span className={`px-2.5 py-0.5 rounded-sm text-xs font-mono font-bold border ${
-                isDark ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-purple-50 text-purple-700 border-purple-200'
-              }`}>
-                TRANSFORMER
-              </span>
-            </div>
-            <div className="flex items-baseline justify-between pt-1">
-              <span className={`text-xs font-mono ${textMuted}`}>Inferencia:</span>
-              <span className="text-sm font-bold font-mono text-purple-400">
-                PyTorch Batch (768d)
-              </span>
-            </div>
-            <div className={`pt-2 border-t border-[#1a2035]/60 flex items-center justify-between text-xs font-mono ${textDim}`}>
-              <span>ProsusAI Model</span>
-              <span>3 Clases</span>
-            </div>
-          </div>
-
+          ))}
         </div>
       </div>
 
-      {/* ── 3. Operaciones de Mantenimiento DuckDB ───────────────────────────── */}
-      <div className={`p-6 rounded-lg border transition-all space-y-5 ${cardBase}`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-[#1a2035]">
-          <div className="flex items-center gap-2.5">
-            <IconWrench className="w-5 h-5 text-amber-400" />
-            <h3 className="text-sm sm:text-base font-mono font-bold uppercase tracking-wider">
-              Mantenimiento y Optimización del Almacén Columnar
-            </h3>
-          </div>
-          <span className={`text-xs font-mono ${textDim}`}>
-            Comandos de compactación transaccional y DDL
+      {/* ── 4. Danger Zone ──────────────────────────────────────────────── */}
+      <div className={`rounded-lg border border-rose-900/30 p-5 sm:p-6 ${isDark ? 'bg-[#0c101a]' : 'bg-white'}`}>
+        <div className={`flex items-center gap-2 pb-3 mb-4 border-b ${isDark ? 'border-rose-900/30' : 'border-rose-100'}`}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" className="w-4 h-4 text-rose-500">
+            <polygon points="8,2 15,14 1,14" />
+            <line x1="8" y1="7" x2="8" y2="10" />
+            <circle cx="8" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
+          </svg>
+          <span className="text-[11px] font-mono font-bold tracking-widest uppercase text-rose-500">
+            Mantenimiento Destructivo Controlado
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          
-          {/* Card A: VACUUM */}
-          <div className={`p-5 rounded-md border flex flex-col justify-between space-y-4 ${subCardBase}`}>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <IconDatabase className="w-4 h-4 text-blue-400" />
-                <h4 className="font-bold text-sm sm:text-base">Compactación (VACUUM)</h4>
-              </div>
-              <p className={`text-xs sm:text-sm leading-relaxed ${textMuted}`}>
-                Reorganiza páginas internas, recupera bloques libres en disco de transacciones sobreescritas y optimiza los índices B-Tree de DuckDB.
-              </p>
-            </div>
-            <button
-              onClick={() => handleOp('vacuum')}
-              disabled={runningOp !== null}
-              className={`w-full py-2.5 px-4 text-xs sm:text-sm font-mono font-bold rounded-sm border transition active:scale-95 ${
-                runningOp === 'vacuum' ? 'opacity-60 cursor-not-allowed' : ''
-              } ${
-                isDark
-                  ? 'bg-[#171d2e] hover:bg-[#1e2640] text-slate-200 border-[#232d44] hover:border-[#6366f1]/40'
-                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-            >
-              {runningOp === 'vacuum' ? 'Compactando bloques...' : 'Ejecutar VACUUM'}
-            </button>
-          </div>
-
-          {/* Card B: CHECKPOINT */}
-          <div className={`p-5 rounded-md border flex flex-col justify-between space-y-4 ${subCardBase}`}>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <IconHardDrive className="w-4 h-4 text-purple-400" />
-                <h4 className="font-bold text-sm sm:text-base">Punto de Control (CHECKPOINT)</h4>
-              </div>
-              <p className={`text-xs sm:text-sm leading-relaxed ${textMuted}`}>
-                Fuerza la consolidación inmediata del registro Write-Ahead Log (WAL) hacia los archivos principales de DuckDB, sellando transacciones.
-              </p>
-            </div>
-            <button
-              onClick={() => handleOp('checkpoint')}
-              disabled={runningOp !== null}
-              className={`w-full py-2.5 px-4 text-xs sm:text-sm font-mono font-bold rounded-sm border transition active:scale-95 ${
-                runningOp === 'checkpoint' ? 'opacity-60 cursor-not-allowed' : ''
-              } ${
-                isDark
-                  ? 'bg-[#171d2e] hover:bg-[#1e2640] text-slate-200 border-[#232d44] hover:border-[#6366f1]/40'
-                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-            >
-              {runningOp === 'checkpoint' ? 'Guardando WAL...' : 'Ejecutar CHECKPOINT'}
-            </button>
-          </div>
-
-          {/* Card C: REFRESH VIEWS */}
-          <div className={`p-5 rounded-md border flex flex-col justify-between space-y-4 ${subCardBase}`}>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <IconLayers className="w-4 h-4 text-emerald-400" />
-                <h4 className="font-bold text-sm sm:text-base">Recalcular Esquema DDL</h4>
-              </div>
-              <p className={`text-xs sm:text-sm leading-relaxed ${textMuted}`}>
-                Re-ejecuta la definición SQL analítica de <code className="text-[#818cf8]">gold_hourly_market_sentiment</code>, sincronizando precios y sentimiento.
-              </p>
-            </div>
-            <button
-              onClick={() => handleOp('refresh_views')}
-              disabled={runningOp !== null}
-              className={`w-full py-2.5 px-4 text-xs sm:text-sm font-mono font-bold rounded-sm border transition active:scale-95 ${
-                runningOp === 'refresh_views' ? 'opacity-60 cursor-not-allowed' : ''
-              } ${
-                isDark
-                  ? 'bg-[#171d2e] hover:bg-[#1e2640] text-slate-200 border-[#232d44] hover:border-[#6366f1]/40'
-                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-            >
-              {runningOp === 'refresh_views' ? 'Recalculando DDL...' : 'Recalcular Vistas DDL'}
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── 4. Estado de Almacenamiento & Capacidad ──────────────────────────── */}
-      <div className={`p-6 rounded-lg border transition-all space-y-5 ${cardBase}`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-[#1a2035]">
-          <div className="flex items-center gap-2.5">
-            <IconServer className="w-5 h-5 text-emerald-400" />
-            <h3 className="text-sm sm:text-base font-mono font-bold uppercase tracking-wider">
-              Infraestructura &amp; Almacenamiento Medallion
-            </h3>
-          </div>
-          <span className={`text-xs font-mono ${textDim}`}>
-            Persistencia local particionada y columnar
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          <div className={`p-4 rounded-md border space-y-1.5 ${subCardBase}`}>
-            <span className={`text-xs font-mono uppercase tracking-wide block ${textDim}`}>
-              Tamaño DuckDB en Disco
-            </span>
-            <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-emerald-400">
-              {dbSizeMb} <span className="text-sm font-normal text-slate-400">MB</span>
-            </div>
-            <span className={`text-xs font-mono block ${textDim}`}>
-              market_intelligence.duckdb
-            </span>
-          </div>
-
-          <div className={`p-4 rounded-md border space-y-1.5 ${subCardBase}`}>
-            <span className={`text-xs font-mono uppercase tracking-wide block ${textDim}`}>
-              Data Lake Bronze
-            </span>
-            <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-blue-400">
-              {metrics?.bronze?.total_files ?? 0} <span className="text-sm font-normal text-slate-400">lotes</span>
-            </div>
-            <span className={`text-xs font-mono block ${textDim}`}>
-              {bronzeKb} KB en ficheros Parquet
-            </span>
-          </div>
-
-          <div className={`p-4 rounded-md border space-y-1.5 ${subCardBase}`}>
-            <span className={`text-xs font-mono uppercase tracking-wide block ${textDim}`}>
-              Registros Silver Limpios
-            </span>
-            <div className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-purple-400">
-              {((metrics?.silver?.social_rows || 0) + (metrics?.silver?.market_rows || 0)).toLocaleString()}{' '}
-              <span className="text-sm font-normal text-slate-400">filas</span>
-            </div>
-            <span className={`text-xs font-mono block ${textDim}`}>
-              Series de mercado + scoring FinBERT
-            </span>
-          </div>
-
-          <div className={`p-4 rounded-md border space-y-1.5 ${subCardBase}`}>
-            <span className={`text-xs font-mono uppercase tracking-wide block ${textDim}`}>
-              Aceleración &amp; Vectorización
-            </span>
-            <div className="text-base sm:text-lg font-bold font-mono text-slate-200 mt-1">
-              Polars · Arrow · PyTorch
-            </div>
-            <span className={`text-xs font-mono block ${textDim}`}>
-              Python 3.12 Runtime
-            </span>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── 5. Danger Zone: Purgado Selectivo ─────────────────────────────────── */}
-      <div
-        className={`p-6 rounded-lg border transition-all space-y-4 ${
-          isDark
-            ? 'bg-[#0c101a] border-rose-950/60 text-white'
-            : 'bg-white border-rose-200 text-slate-800 shadow-sm'
-        }`}
-      >
-        <div className="flex items-center gap-2.5">
-          <IconShieldAlert className="w-5 h-5 text-rose-500" />
-          <h3 className="text-sm sm:text-base font-mono font-bold uppercase tracking-wider text-rose-400">
-            Mantenimiento Selectivo (Zona Crítica)
-          </h3>
-        </div>
-        <p className={`text-xs sm:text-sm leading-relaxed ${textMuted}`}>
-          Permite purgar de manera segura tablas intermedias en DuckDB para forzar una reconstrucción limpia desde el Data Lake Bronze inmutable, sin tocar los archivos Parquet físicos en disco.
+        <p className={`text-sm mb-4 leading-relaxed ${sub}`}>
+          Vaciado selectivo de tablas en DuckDB para forzar una re-ingesta limpia desde Bronze.
+          <strong className="text-rose-400"> No altera particiones Parquet en disco.</strong>
         </p>
 
-        <div className="flex flex-wrap gap-3 pt-1">
-          <button
-            onClick={() => setPurgeTarget('silver_social_sentiment')}
-            className="px-3.5 py-2 text-xs sm:text-sm font-mono font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-sm transition active:scale-95"
-          >
-            Purgar silver_social_sentiment
-          </button>
-          <button
-            onClick={() => setPurgeTarget('silver_market_prices')}
-            className="px-3.5 py-2 text-xs sm:text-sm font-mono font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-sm transition active:scale-95"
-          >
-            Purgar silver_market_prices
-          </button>
+        <div className="flex flex-wrap gap-2.5">
+          {['silver_social_sentiment', 'silver_market_prices'].map((table) => (
+            <button
+              key={table}
+              onClick={() => setPurgeTarget(table)}
+              disabled={runningOp !== null}
+              className="px-3 py-1.5 text-xs font-mono font-bold text-rose-400 bg-rose-500/8 hover:bg-rose-500/15 border border-rose-500/25 rounded-sm transition disabled:opacity-40"
+            >
+              Purgar {table}
+            </button>
+          ))}
         </div>
 
-        {/* Modal de confirmación explícita */}
+        {/* Confirmation inline */}
         {purgeTarget && (
-          <div className="p-4 rounded-md bg-rose-950/40 border border-rose-800/80 text-xs sm:text-sm font-mono text-rose-200 space-y-3 mt-2 animate-data-in">
-            <div className="flex items-center gap-2">
-              <IconAlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-              <span>
-                ¿Confirmar vaciado de registros en <strong className="text-white underline">{purgeTarget}</strong>?
-              </span>
+          <div className={`mt-4 p-4 rounded-md border border-rose-800/60 space-y-3 ${isDark ? 'bg-rose-950/30' : 'bg-rose-50'}`}>
+            <div className="flex items-start gap-2">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" className="w-4 h-4 text-rose-400 shrink-0 mt-0.5">
+                <polygon points="8,2 15,14 1,14" />
+                <line x1="8" y1="7" x2="8" y2="10" />
+                <circle cx="8" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
+              </svg>
+              <p className="text-sm text-rose-200">
+                ¿Confirmar eliminación de todos los registros en{' '}
+                <code className="font-mono font-bold text-rose-300 bg-rose-900/40 px-1 rounded-xs">{purgeTarget}</code>?
+                Esta operación es irreversible desde la UI.
+              </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={handlePurge}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-sm font-bold text-xs sm:text-sm transition"
+                className="px-4 py-1.5 rounded-sm bg-rose-600 hover:bg-rose-500 text-white text-xs font-mono font-bold transition"
               >
-                Confirmar Eliminación
+                Confirmar purga
               </button>
               <button
                 onClick={() => setPurgeTarget(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-sm text-xs sm:text-sm transition"
+                className={`px-4 py-1.5 rounded-sm text-xs font-mono transition ${isDark ? 'bg-[#111622] hover:bg-[#1a2035] text-[#8b95b0]' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
               >
                 Cancelar
               </button>

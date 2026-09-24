@@ -20,34 +20,21 @@ interface MobileBottomNavProps {
 const tabs = [
   {
     id: 'dashboard',
-    label: 'Inicio',
-    icon: IconDashboard,
-    match: (v: string) => v === 'dashboard',
-  },
-  {
-    id: 'terminal',
-    label: 'Mercado',
-    icon: IconMarket,
-    match: (v: string) => ['terminal', 'market', 'alpha'].includes(v),
+    label: 'Pipeline ELT',
+    icon: IconPipeline,
+    match: (v: string) => ['dashboard', 'orchestration', 'pipeline'].includes(v),
   },
   {
     id: 'nlp',
-    label: 'FinBERT',
+    label: 'FinBERT Lab',
     icon: IconFinbertLab,
     match: (v: string) => ['nlp', 'finbert'].includes(v),
   },
   {
-    id: 'orchestration',
-    label: 'Pipeline',
-    icon: IconPipeline,
-    match: (v: string) => ['orchestration', 'pipeline'].includes(v),
-    hasPulse: false,
-  },
-  {
     id: 'warehouse',
-    label: 'DuckDB',
+    label: 'DuckDB Lake',
     icon: IconDuckDB,
-    match: (v: string) => ['warehouse', 'medallion', 'silver', 'gold'].includes(v),
+    match: (v: string) => ['warehouse', 'medallion', 'silver', 'gold', 'observability'].includes(v),
   },
 ];
 
