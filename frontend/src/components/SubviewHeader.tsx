@@ -34,10 +34,10 @@ export const SubviewHeader: React.FC<SubviewHeaderProps> = ({
           <span className={isDark ? 'text-[#4e5d7a]' : 'text-slate-300'}>/</span>
         </button>
 
-        <h2 className={`text-xl sm:text-2xl font-bold tracking-tight leading-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+        <h2 className={`text-base sm:text-2xl font-bold tracking-tight leading-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
           {title}
         </h2>
-        <p className={`text-sm sm:text-base mt-1.5 font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+        <p className={`hidden sm:block text-sm sm:text-base mt-1.5 font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
           {description}
         </p>
       </div>

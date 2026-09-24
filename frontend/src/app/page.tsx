@@ -14,6 +14,10 @@ import { IngestionBarAndGauge } from '@/components/IngestionBarAndGauge';
 import { AssetFeedTable } from '@/components/AssetFeedTable';
 import { PipelineRunner } from '@/components/PipelineRunner';
 import { MobileEltConsole } from '@/components/MobileEltConsole';
+import { MobileFinbertLab } from '@/components/MobileFinbertLab';
+import { MobileMedallionExplorer } from '@/components/MobileMedallionExplorer';
+import { MobilePipelineRunner } from '@/components/MobilePipelineRunner';
+import { MobileObservabilityView } from '@/components/MobileObservabilityView';
 
 const ProfitAndSourcesChart = dynamic(
   () => import('@/components/ProfitAndSourcesChart').then((m) => m.ProfitAndSourcesChart),
@@ -400,46 +404,61 @@ export default function Home() {
 
           {/* Subview: Pipeline Orchestration */}
           {(activeView === 'orchestration' || activeView === 'pipeline') && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
                 title="Orquestación y Pipeline de Datos (ELT)"
                 description="Lanza extracciones bajo demanda, revisa los logs de ingestión y procesa lotes hacia DuckDB."
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <PipelineRunner onSuccess={loadAll} isDark={isDark} />
+              <div className="block md:hidden">
+                <MobilePipelineRunner onSuccess={loadAll} isDark={isDark} />
+              </div>
+              <div className="hidden md:block">
+                <PipelineRunner onSuccess={loadAll} isDark={isDark} />
+              </div>
             </div>
           )}
 
           {/* Subview: Medallion Explorer / Data Warehouse */}
           {(activeView === 'warehouse' || activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
                 title="Data Lake & Feature Store DuckDB"
                 description="Inspecciona particiones Bronze (Parquet), registros limpios Silver y agregaciones analíticas Gold."
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <MedallionExplorer isDark={isDark} />
+              <div className="block md:hidden">
+                <MobileMedallionExplorer isDark={isDark} />
+              </div>
+              <div className="hidden md:block">
+                <MedallionExplorer isDark={isDark} />
+              </div>
             </div>
           )}
 
           {/* Subview: FinBERT Lab */}
           {(activeView === 'nlp' || activeView === 'finbert') && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
                 title="Laboratorio FinBERT (Scoring NLP)"
                 description="Introduce cualquier titular o texto financiero para evaluar la polaridad inferida por el modelo."
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <FinbertLab isDark={isDark} />
+              <div className="block md:hidden">
+                <MobileFinbertLab isDark={isDark} />
+              </div>
+              <div className="hidden md:block">
+                <FinbertLab isDark={isDark} />
+              </div>
             </div>
           )}
 
           {/* Subview: Feeds RSS & Titulares */}
           {activeView === 'content' && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
                 title="Feeds RSS & Titulares Procesados"
                 description="Visualización de texto completo, fecha exacta y etiqueta de sentimiento asignada."
@@ -452,7 +471,7 @@ export default function Home() {
 
           {/* Subview: Market Terminal */}
           {(activeView === 'terminal' || activeView === 'market' || activeView === 'alpha') && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
                 title="Terminal de Precios y Sentimiento de Mercado"
                 description="Series de precios y volumen horarios sincronizados con la polaridad social e insights del Data Lake Bronze."
@@ -465,20 +484,31 @@ export default function Home() {
 
           {/* Subview: Observability & DuckDB Maintenance */}
           {(activeView === 'observability' || activeView === 'maintenance') && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
                 title="Observabilidad, Telemetría & Mantenimiento DuckDB"
                 description="Monitoreo de latencias de red, salud del almacenamiento columnar, DDL y optimización de base de datos."
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <ObservabilityView
-                diagnostics={diagnostics}
-                metrics={metrics}
-                onRefresh={loadAll}
-                onAlert={(msg, type) => handleSystemAlert(msg, type)}
-                isDark={isDark}
-              />
+              <div className="block md:hidden">
+                <MobileObservabilityView
+                  diagnostics={diagnostics}
+                  metrics={metrics}
+                  onRefresh={loadAll}
+                  onAlert={(msg, type) => handleSystemAlert(msg, type)}
+                  isDark={isDark}
+                />
+              </div>
+              <div className="hidden md:block">
+                <ObservabilityView
+                  diagnostics={diagnostics}
+                  metrics={metrics}
+                  onRefresh={loadAll}
+                  onAlert={(msg, type) => handleSystemAlert(msg, type)}
+                  isDark={isDark}
+                />
+              </div>
             </div>
           )}
 
