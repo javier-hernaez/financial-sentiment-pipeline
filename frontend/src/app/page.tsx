@@ -57,6 +57,7 @@ export default function Home() {
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+  const [systemAlert, setSystemAlert] = useState<CentralAlert | null>(null);
   const [pipelineLogs, setPipelineLogs] = useState<Array<{
     id: string;
     timestamp: string;

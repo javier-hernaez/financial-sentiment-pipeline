@@ -369,7 +369,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                 </h3>
               </div>
               <button
-                onClick={() => setLogs([])}
+                onClick={() => setLocalLogs([])}
                 className={`flex items-center gap-1 text-xs font-mono transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 <IconTrash className="w-3 h-3" />
