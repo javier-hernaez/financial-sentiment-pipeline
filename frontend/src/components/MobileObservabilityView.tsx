@@ -1,13 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  IconObservability,
-  IconRefresh,
-  IconShield,
-  IconDatabase,
-  IconZap,
-} from './CustomIcons';
+import { IconRefresh } from './CustomIcons';
 import { Diagnostics, SystemMetrics } from '@/types';
 import { runWarehouseOp } from '@/lib/api';
 
@@ -42,81 +36,67 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
   };
 
   const duckDbMb = metrics?.duckdb_size_kb ? (metrics.duckdb_size_kb / 1024).toFixed(1) : '0.0';
-  const cardBg = isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-white border-slate-200 shadow-xs';
 
   return (
-    <div className="md:hidden flex flex-col space-y-3 max-w-lg mx-auto w-full pb-4">
-      {/* 1. Health Status Grid: 3 Connectors in 1 Row */}
-      <div className="grid grid-cols-3 gap-1.5">
-        <div className="p-2.5 rounded-lg bg-[#090d16] border border-emerald-500/20 text-center">
-          <div className="text-[10px] font-mono text-[#64748b] uppercase font-bold">DuckDB</div>
-          <div className="text-xs font-mono font-black text-emerald-400 mt-0.5">ONLINE</div>
-          <div className="text-[9px] font-mono text-[#8b95b0]">11 ms OLAP</div>
+    <div className="md:hidden flex flex-col max-w-lg mx-auto w-full px-2 py-4 space-y-6">
+      {/* 1. Health Status: 3 Floating Columns */}
+      <div className="grid grid-cols-3 gap-2 text-center py-2">
+        <div className="p-2">
+          <div className="text-[10px] font-mono text-[#64748b] uppercase tracking-wider">DuckDB</div>
+          <div className="text-base font-mono font-bold text-emerald-400 mt-0.5">ONLINE</div>
+          <div className="text-[10px] font-mono text-[#8b95b0]">11 ms OLAP</div>
         </div>
 
-        <div className="p-2.5 rounded-lg bg-[#090d16] border border-sky-500/20 text-center">
-          <div className="text-[10px] font-mono text-[#64748b] uppercase font-bold">Binance API</div>
-          <div className="text-xs font-mono font-black text-sky-400 mt-0.5">
+        <div className="p-2">
+          <div className="text-[10px] font-mono text-[#64748b] uppercase tracking-wider">Binance</div>
+          <div className="text-base font-mono font-bold text-sky-400 mt-0.5">
             {diagnostics?.binance?.status === 200 ? 'ONLINE' : 'OK'}
           </div>
-          <div className="text-[9px] font-mono text-[#8b95b0]">{diagnostics?.binance?.latency_ms ?? 34} ms</div>
+          <div className="text-[10px] font-mono text-[#8b95b0]">{diagnostics?.binance?.latency_ms ?? 34} ms</div>
         </div>
 
-        <div className="p-2.5 rounded-lg bg-[#090d16] border border-purple-500/20 text-center">
-          <div className="text-[10px] font-mono text-[#64748b] uppercase font-bold">Fear & Greed</div>
-          <div className="text-xs font-mono font-black text-purple-400 mt-0.5">
+        <div className="p-2">
+          <div className="text-[10px] font-mono text-[#64748b] uppercase tracking-wider">F&G Index</div>
+          <div className="text-base font-mono font-bold text-purple-400 mt-0.5">
             {diagnostics?.fear_greed?.status === 200 ? 'ONLINE' : 'OK'}
           </div>
-          <div className="text-[9px] font-mono text-[#8b95b0]">{diagnostics?.fear_greed?.latency_ms ?? 112} ms</div>
+          <div className="text-[10px] font-mono text-[#8b95b0]">{diagnostics?.fear_greed?.latency_ms ?? 112} ms</div>
         </div>
       </div>
 
-      {/* 2. Storage & Memory Telemetry Card */}
-      <div className={`p-3.5 rounded-lg border ${cardBg} space-y-2.5`}>
-        <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5 text-xs font-mono">
-          <span className="text-[#8b95b0] font-bold flex items-center gap-1.5">
-            <IconDatabase className="w-3.5 h-3.5 text-indigo-400" />
-            Almacenamiento Columnar DuckDB
-          </span>
-          <span className="text-[10px] text-emerald-400">● ACID Seguro</span>
+      {/* 2. Storage Telemetry (Floating Lines with Hairline Dividers) */}
+      <div className="divide-y divide-white/[0.05] text-xs font-mono">
+        <div className="flex justify-between items-center py-2.5">
+          <span className="text-[#8b95b0]">Almacenamiento en Disco</span>
+          <span className="font-bold text-slate-100">{duckDbMb} MB</span>
         </div>
-
-        <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-          <div className="p-2 rounded bg-[#090d16] border border-[#1e293b]">
-            <span className="text-[10px] text-[#64748b] block">Tamaño en Disco:</span>
-            <span className="text-sm font-bold text-slate-100">{duckDbMb} MB</span>
-          </div>
-          <div className="p-2 rounded bg-[#090d16] border border-[#1e293b]">
-            <span className="text-[10px] text-[#64748b] block">Total Horas Gold:</span>
-            <span className="text-sm font-bold text-slate-100">{metrics?.gold.total_rows ?? 0}</span>
-          </div>
-          <div className="p-2 rounded bg-[#090d16] border border-[#1e293b]">
-            <span className="text-[10px] text-[#64748b] block">Lotes Bronze:</span>
-            <span className="text-sm font-bold text-amber-400">{metrics?.bronze.total_files ?? 0} files</span>
-          </div>
-          <div className="p-2 rounded bg-[#090d16] border border-[#1e293b]">
-            <span className="text-[10px] text-[#64748b] block">Filas Silver:</span>
-            <span className="text-sm font-bold text-purple-400">
-              {((metrics?.silver.social_rows ?? 0) + (metrics?.silver.market_rows ?? 0)).toLocaleString()}
-            </span>
-          </div>
+        <div className="flex justify-between items-center py-2.5">
+          <span className="text-[#8b95b0]">Horas Consolidadas (Gold)</span>
+          <span className="font-bold text-emerald-400">{metrics?.gold.total_rows ?? 0}</span>
+        </div>
+        <div className="flex justify-between items-center py-2.5">
+          <span className="text-[#8b95b0]">Particiones Bronze</span>
+          <span className="font-bold text-amber-400">{metrics?.bronze.total_files ?? 0} archivos</span>
+        </div>
+        <div className="flex justify-between items-center py-2.5">
+          <span className="text-[#8b95b0]">Registros Limpios Silver</span>
+          <span className="font-bold text-purple-400">
+            {((metrics?.silver.social_rows ?? 0) + (metrics?.silver.market_rows ?? 0)).toLocaleString()} filas
+          </span>
         </div>
       </div>
 
-      {/* 3. One-Touch Maintenance Operations */}
-      <div className={`p-3.5 rounded-lg border ${cardBg} space-y-2.5`}>
-        <div className="flex items-center justify-between text-xs font-mono">
-          <span className="text-[#8b95b0] font-bold flex items-center gap-1.5">
-            <IconShield className="w-3.5 h-3.5 text-indigo-400" />
-            Mantenimiento y Optimización
-          </span>
+      {/* 3. Operaciones de Mantenimiento (3 Clean Pills) */}
+      <div className="pt-4 space-y-3">
+        <div className="text-[11px] font-mono uppercase text-[#64748b] tracking-wider text-center">
+          Operaciones DuckDB
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => handleOp('checkpoint')}
             disabled={runningOp !== null}
-            className="py-2.5 px-1 rounded-md bg-[#111622] hover:bg-[#1a2234] border border-[#232d44] text-[#818cf8] font-mono text-[11px] font-bold text-center active:scale-95 transition disabled:opacity-50"
+            className="flex-1 h-10 px-3 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8] font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40"
           >
             {runningOp === 'checkpoint' ? 'Guardando...' : '⚡ Checkpoint'}
           </button>
@@ -124,7 +104,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
           <button
             onClick={() => handleOp('vacuum')}
             disabled={runningOp !== null}
-            className="py-2.5 px-1 rounded-md bg-[#111622] hover:bg-[#1a2234] border border-[#232d44] text-[#818cf8] font-mono text-[11px] font-bold text-center active:scale-95 transition disabled:opacity-50"
+            className="flex-1 h-10 px-3 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8] font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40"
           >
             {runningOp === 'vacuum' ? 'Limpiando...' : '🧹 Vacuum'}
           </button>
@@ -132,19 +112,21 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
           <button
             onClick={() => handleOp('refresh_views')}
             disabled={runningOp !== null}
-            className="py-2.5 px-1 rounded-md bg-[#111622] hover:bg-[#1a2234] border border-[#232d44] text-[#818cf8] font-mono text-[11px] font-bold text-center active:scale-95 transition disabled:opacity-50"
+            className="flex-1 h-10 px-3 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8] font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40"
           >
-            {runningOp === 'refresh_views' ? 'Refrescando...' : '⟳ Vistas Gold'}
+            {runningOp === 'refresh_views' ? 'Refrescando...' : '⟳ Vistas'}
           </button>
         </div>
 
-        <button
-          onClick={onRefresh}
-          className="w-full mt-2 py-2 rounded-md bg-[#090d16] hover:bg-[#111622] border border-[#1e293b] text-[#8b95b0] font-mono text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
-        >
-          <IconRefresh className="w-3.5 h-3.5" />
-          <span>Refrescar Diagnósticos y Telemetría</span>
-        </button>
+        <div className="text-center pt-2">
+          <button
+            onClick={onRefresh}
+            className="text-xs font-mono text-[#64748b] hover:text-slate-300 inline-flex items-center gap-1.5 transition-colors"
+          >
+            <IconRefresh className="w-3 h-3" />
+            <span>Refrescar diagnósticos</span>
+          </button>
+        </div>
       </div>
     </div>
   );

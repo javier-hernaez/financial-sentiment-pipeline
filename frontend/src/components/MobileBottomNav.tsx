@@ -45,20 +45,20 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   isRunningPipeline = false,
 }) => {
   const nav = isDark
-    ? 'bg-[#0c101a]/97 border-[#1a2035] backdrop-blur-md'
-    : 'bg-white/97 border-slate-200 backdrop-blur-md';
+    ? 'bg-[#07090e]/90 border-white/[0.06] backdrop-blur-md'
+    : 'bg-white/95 border-slate-200 backdrop-blur-md';
 
   return (
     <nav
       aria-label="Navegación móvil"
       className={`
         md:hidden fixed bottom-0 left-0 right-0 z-40 border-t
-        transition-colors duration-200 shadow-lg
+        transition-colors duration-200
         pb-[env(safe-area-inset-bottom,8px)] pt-1 px-1
         ${nav}
       `}
     >
-      <div className="flex items-stretch justify-around h-16 max-w-md mx-auto">
+      <div className="flex items-stretch justify-around h-14 max-w-md mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isTabActive = tab.match(activeView);
@@ -69,36 +69,22 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               key={tab.id}
               onClick={() => setActiveView(tab.id)}
               className={`
-                relative flex flex-col items-center justify-center flex-1 py-1.5
-                transition-all duration-150 active:scale-95 rounded-sm
+                relative flex flex-col items-center justify-center flex-1 py-1
+                transition-all duration-150 active:scale-95
                 ${isTabActive
-                  ? isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'
-                  : isDark ? 'text-[#8b95b0] hover:text-white' : 'text-slate-400 hover:text-slate-700'}
+                  ? isDark ? 'text-white' : 'text-[#6366f1]'
+                  : isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-400 hover:text-slate-700'}
               `}
             >
-              {/* Active pill — floats above icon */}
-              {isTabActive && (
-                <span className={`
-                  absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full
-                  ${isDark ? 'bg-[#818cf8]' : 'bg-[#6366f1]'}
-                `} />
-              )}
-
-              {/* Background fill for active */}
-              {isTabActive && (
-                <span className="absolute inset-1 rounded-sm bg-[#6366f1]/10" />
-              )}
-
               {/* Icon */}
-              <div className="relative z-10">
-                <Icon className={`w-5 h-5 transition-transform ${isTabActive ? 'scale-110' : ''}`} />
-                {/* Pipeline running pulse */}
+              <div className="relative">
+                <Icon className={`w-4 h-4 transition-transform ${isTabActive ? 'scale-110 text-[#818cf8]' : ''}`} />
                 {isPipeline && isRunningPipeline && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-status-blink" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 )}
               </div>
 
-              <span className={`relative z-10 text-[11px] font-mono font-bold mt-1.5 leading-none tracking-wide`}>
+              <span className={`text-[10px] font-mono mt-1 tracking-wider ${isTabActive ? 'font-bold text-slate-100' : 'text-[#64748b]'}`}>
                 {tab.label}
               </span>
             </button>

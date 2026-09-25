@@ -3,11 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   IconSearch,
-  IconChevronLeft,
-  IconChevronRight,
   IconClose,
-  IconDatabase,
-  IconFolderTree,
 } from './CustomIcons';
 import { TableDataResponse, BronzeFile } from '@/types';
 import { fetchTableData, fetchBronzeTree } from '@/lib/api';
@@ -73,22 +69,19 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
   const totalPages = tableData ? Math.max(1, Math.ceil(tableData.total_count / limit)) : 1;
   const currentPage = Math.floor(offset / limit) + 1;
 
-  const cardBg = isDark ? 'bg-[#0f172a] border-[#1e293b]' : 'bg-white border-slate-200 shadow-xs';
-  const rowBg = isDark ? 'bg-[#090d16] border-[#1e293b] hover:border-[#334155]' : 'bg-slate-50 border-slate-200';
-
   return (
-    <div className="md:hidden flex flex-col space-y-3 max-w-lg mx-auto w-full pb-4">
-      {/* 1. Medallion Layer Segmented Switcher */}
-      <div className="flex rounded-md p-1 bg-[#090d16] border border-[#1e293b] gap-1">
+    <div className="md:hidden flex flex-col max-w-lg mx-auto w-full px-2 py-4 space-y-5">
+      {/* 1. Minimalist Text Tabs for Layers */}
+      <div className="flex items-center justify-around text-xs font-mono pb-2 border-b border-white/[0.06]">
         <button
           onClick={() => {
             setSelectedLayer('bronze');
             setOffset(0);
           }}
-          className={`flex-1 py-1.5 rounded text-xs font-mono font-bold transition ${
+          className={`pb-1 transition-colors ${
             selectedLayer === 'bronze'
-              ? 'bg-amber-600 text-white shadow-xs'
-              : 'text-amber-500/80 hover:text-amber-400'
+              ? 'text-amber-400 border-b-2 border-amber-400 font-bold'
+              : 'text-[#64748b] hover:text-slate-300'
           }`}
         >
           01 Bronze
@@ -98,10 +91,10 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
             setSelectedLayer('silver');
             setOffset(0);
           }}
-          className={`flex-1 py-1.5 rounded text-xs font-mono font-bold transition ${
+          className={`pb-1 transition-colors ${
             selectedLayer === 'silver'
-              ? 'bg-purple-600 text-white shadow-xs'
-              : 'text-purple-400/80 hover:text-purple-300'
+              ? 'text-purple-400 border-b-2 border-purple-400 font-bold'
+              : 'text-[#64748b] hover:text-slate-300'
           }`}
         >
           02 Silver
@@ -111,99 +104,90 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
             setSelectedLayer('gold');
             setOffset(0);
           }}
-          className={`flex-1 py-1.5 rounded text-xs font-mono font-bold transition ${
+          className={`pb-1 transition-colors ${
             selectedLayer === 'gold'
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'text-emerald-400/80 hover:text-emerald-300'
+              ? 'text-emerald-400 border-b-2 border-emerald-400 font-bold'
+              : 'text-[#64748b] hover:text-slate-300'
           }`}
         >
           03 Gold OLAP
         </button>
       </div>
 
-      {/* 2. Compact Search & Filter Bar */}
+      {/* 2. Floating Search Bar */}
       {selectedLayer !== 'bronze' && (
-        <form onSubmit={handleSearchSubmit} className="flex gap-1.5">
+        <form onSubmit={handleSearchSubmit} className="flex gap-2">
           <div className="relative flex-1">
-            <IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748b]" />
+            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748b]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar registros en DuckDB..."
-              className="w-full pl-8 pr-2.5 py-1.5 bg-[#090d16] border border-[#1e293b] rounded-md text-xs font-mono text-slate-100 placeholder:text-[#64748b] outline-none focus:border-indigo-500"
+              className="w-full pl-9 pr-3 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-xs font-mono text-slate-100 placeholder:text-slate-600 outline-none focus:border-indigo-500"
             />
           </div>
           <button
             type="submit"
-            className="px-3 py-1.5 rounded-md bg-[#111622] hover:bg-[#1a2234] border border-[#232d44] text-[#818cf8] font-mono text-xs font-bold active:scale-95 transition"
+            className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 font-mono text-xs font-medium active:scale-95 transition"
           >
             Filtrar
           </button>
         </form>
       )}
 
-      {/* 3. Card List View (Replaces Wide 15-Column Table) */}
-      <div className={`p-3 rounded-lg border ${cardBg} space-y-2`}>
-        <div className="flex items-center justify-between text-xs font-mono pb-1 border-b border-[#1e293b]">
-          <span className="text-[#8b95b0] font-bold">
-            {selectedLayer === 'bronze'
-              ? `Archivos Parquet (${bronzeFiles.length})`
-              : `Registros DuckDB (${tableData?.total_count ?? 0})`}
-          </span>
-          <span className="text-[10px] text-emerald-400">● ACID Columnar</span>
-        </div>
-
+      {/* 3. Airy List of Records (Hairline Dividers, Zero Outer Box) */}
+      <div className="space-y-1">
         {isLoading ? (
-          <div className="py-8 text-center text-xs font-mono text-[#8b95b0] animate-pulse">
+          <div className="py-12 text-center text-xs font-mono text-[#64748b] animate-pulse">
             Consultando almacenamiento DuckDB...
           </div>
         ) : selectedLayer === 'bronze' ? (
-          <div className="space-y-1.5">
+          <div className="divide-y divide-white/[0.04]">
             {bronzeFiles.slice(0, 10).map((file, idx) => (
               <div
                 key={idx}
                 onClick={() => setSelectedRecord(file)}
-                className={`p-2.5 rounded-md border ${rowBg} flex items-center justify-between cursor-pointer active:scale-[0.99] transition`}
+                className="py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition"
               >
-                <div className="min-w-0 pr-2">
-                  <div className="text-xs font-mono font-bold text-slate-100 truncate">{file.filename}</div>
-                  <div className="text-[10px] font-mono text-[#64748b]">
+                <div className="min-w-0 pr-3">
+                  <div className="text-xs font-mono font-medium text-slate-200 truncate">{file.filename}</div>
+                  <div className="text-[10px] font-mono text-[#64748b] mt-0.5">
                     {file.source} · {file.partition}
                   </div>
                 </div>
-                <span className="text-[11px] font-mono font-bold text-amber-400 shrink-0">
+                <span className="text-xs font-mono font-bold text-amber-400 shrink-0">
                   {file.size_kb.toFixed(1)} KB
                 </span>
               </div>
             ))}
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="divide-y divide-white/[0.04]">
             {tableData?.rows && tableData.rows.length > 0 ? (
               tableData.rows.map((row, idx) => (
                 <div
                   key={idx}
                   onClick={() => setSelectedRecord(row)}
-                  className={`p-2.5 rounded-md border ${rowBg} flex items-center justify-between cursor-pointer active:scale-[0.99] transition`}
+                  className="py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition"
                 >
-                  <div className="min-w-0 pr-2">
-                    <div className="text-xs font-mono font-bold text-slate-100 truncate">
+                  <div className="min-w-0 pr-3">
+                    <div className="text-xs font-mono font-medium text-slate-200 truncate">
                       {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${offset + idx + 1}`}
                     </div>
-                    <div className="text-[10px] font-mono text-[#8b95b0] truncate">
+                    <div className="text-[10px] font-mono text-[#8b95b0] truncate mt-0.5">
                       {selectedLayer === 'gold'
                         ? `Close: $${row.close_price ?? '--'} · Menciones: ${row.social_volume_mentions ?? 0}`
                         : `${row.source ?? 'Web'} · Confianza: ${row.confidence ?? '--'}`}
                     </div>
                   </div>
                   <span
-                    className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-xs shrink-0 ${
+                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${
                       (row.avg_hourly_sentiment ?? 0) >= 0.1
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        ? 'text-emerald-400 bg-emerald-500/10'
                         : (row.avg_hourly_sentiment ?? 0) <= -0.1
-                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        ? 'text-rose-400 bg-rose-500/10'
+                        : 'text-amber-400 bg-amber-500/10'
                     }`}
                   >
                     {row.avg_hourly_sentiment !== undefined
@@ -213,30 +197,30 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
                 </div>
               ))
             ) : (
-              <div className="py-6 text-center text-xs font-mono text-[#8b95b0]">
-                No hay registros encontrados en esta capa.
+              <div className="py-12 text-center text-xs font-mono text-[#64748b]">
+                Sin registros en esta capa.
               </div>
             )}
           </div>
         )}
 
-        {/* 4. Compact Pagination Bar */}
+        {/* 4. Compact Pagination */}
         {selectedLayer !== 'bronze' && totalPages > 1 && (
-          <div className="flex items-center justify-between pt-2 border-t border-[#1e293b] text-xs font-mono">
+          <div className="flex items-center justify-between pt-6 border-t border-white/[0.06] text-xs font-mono">
             <button
               onClick={() => setOffset(Math.max(0, offset - limit))}
               disabled={offset === 0}
-              className="px-2.5 py-1 rounded bg-[#111622] border border-[#232d44] disabled:opacity-30 text-[#818cf8] font-bold"
+              className="px-3 py-1.5 rounded-full bg-white/[0.05] disabled:opacity-20 text-slate-300"
             >
               &lt; Anterior
             </button>
-            <span className="text-[#8b95b0] text-[11px]">
-              Pág {currentPage} de {totalPages}
+            <span className="text-[#64748b] text-[11px]">
+              {currentPage} / {totalPages}
             </span>
             <button
               onClick={() => setOffset(offset + limit)}
               disabled={currentPage >= totalPages}
-              className="px-2.5 py-1 rounded bg-[#111622] border border-[#232d44] disabled:opacity-30 text-[#818cf8] font-bold"
+              className="px-3 py-1.5 rounded-full bg-white/[0.05] disabled:opacity-20 text-slate-300"
             >
               Siguiente &gt;
             </button>
@@ -244,13 +228,13 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         )}
       </div>
 
-      {/* 5. Bottom Sheet Record Detail Modal */}
+      {/* 5. Clean Bottom Sheet Modal */}
       {selectedRecord && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-xs p-2">
-          <div className="w-full max-w-lg bg-[#0c101a] border border-[#1e293b] rounded-t-xl p-4 max-h-[75vh] flex flex-col space-y-3 animate-slide-up">
-            <div className="flex items-center justify-between border-b border-[#1e293b] pb-2">
-              <span className="text-xs font-mono font-bold text-slate-100">
-                Detalle del Registro ({selectedLayer.toUpperCase()})
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-xs p-3">
+          <div className="w-full max-w-lg bg-[#0a0d14] border border-white/[0.08] rounded-2xl p-5 max-h-[75vh] flex flex-col space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <span className="text-xs font-mono font-bold text-slate-200">
+                Ficha del Registro · {selectedLayer.toUpperCase()}
               </span>
               <button
                 onClick={() => setSelectedRecord(null)}
@@ -260,11 +244,11 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1.5 text-xs font-mono">
+            <div className="flex-1 overflow-y-auto space-y-2 text-xs font-mono divide-y divide-white/[0.04]">
               {Object.entries(selectedRecord).map(([key, val]) => (
-                <div key={key} className="flex justify-between py-1 border-b border-[#1e293b]/60">
-                  <span className="text-[#8b95b0]">{key}:</span>
-                  <span className="text-slate-200 font-bold max-w-[200px] truncate text-right">
+                <div key={key} className="flex justify-between py-1.5">
+                  <span className="text-[#64748b]">{key}</span>
+                  <span className="text-slate-200 font-medium max-w-[200px] truncate text-right">
                     {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                   </span>
                 </div>
@@ -273,9 +257,9 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
 
             <button
               onClick={() => setSelectedRecord(null)}
-              className="w-full py-2 rounded-md bg-[#6366f1] text-white font-mono text-xs font-bold"
+              className="w-full h-11 rounded-full bg-[#6366f1] text-white font-mono text-xs font-bold"
             >
-              Cerrar Ficha
+              Cerrar
             </button>
           </div>
         </div>
