@@ -20,6 +20,9 @@ import { runStage } from '@/lib/api';
 interface PipelineRunnerProps {
   onSuccess: () => void;
   isDark?: boolean;
+  isExternalRunning?: boolean;
+  externalLogs?: LogEntry[];
+  onTriggerPipeline?: (stage: 'extract' | 'transform' | 'gold' | 'full', sym: string, hrs: number) => Promise<void>;
 }
 
 interface LogEntry {
@@ -30,12 +33,18 @@ interface LogEntry {
   stage?: string;
 }
 
-export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDark = true }) => {
+export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
+  onSuccess,
+  isDark = true,
+  isExternalRunning,
+  externalLogs,
+  onTriggerPipeline,
+}) => {
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [hours, setHours] = useState(24);
-  const [isRunning, setIsRunning] = useState(false);
+  const [localRunning, setLocalRunning] = useState(false);
   const [activeStage, setActiveStage] = useState<string | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([
+  const [localLogs, setLocalLogs] = useState<LogEntry[]>([
     {
       id: '1',
       timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -45,12 +54,15 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
   ]);
   const logEndRef = useRef<HTMLDivElement>(null);
 
+  const isRunning = isExternalRunning !== undefined ? isExternalRunning : localRunning;
+  const logs = externalLogs && externalLogs.length > 0 ? externalLogs : localLogs;
+
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
   const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', stage?: string) => {
-    setLogs((prev) => [
+    setLocalLogs((prev) => [
       ...prev,
       {
         id: Math.random().toString(),
@@ -63,7 +75,17 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
   };
 
   const handleRunStage = async (stage: 'extract' | 'transform' | 'gold' | 'full') => {
-    setIsRunning(true);
+    if (onTriggerPipeline) {
+      setActiveStage(stage);
+      try {
+        await onTriggerPipeline(stage, symbol, hours);
+      } finally {
+        setActiveStage(null);
+      }
+      return;
+    }
+
+    setLocalRunning(true);
     setActiveStage(stage);
     
     if (stage === 'extract') {
@@ -107,7 +129,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({ onSuccess, isDar
     } catch (err: any) {
       addLog(`[ERROR] Fallo durante la ejecución de la fase [${stage.toUpperCase()}]: ${err.message || err}. Comprueba la conectividad de red o la disponibilidad del almacén DuckDB.`, 'error', stage);
     } finally {
-      setIsRunning(false);
+      setLocalRunning(false);
       setActiveStage(null);
     }
   };

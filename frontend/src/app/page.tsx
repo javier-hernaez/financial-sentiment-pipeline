@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/Sidebar';
 import { TopNav } from '@/components/TopNav';
 import { MobileHeader } from '@/components/MobileHeader';
@@ -19,15 +18,8 @@ import { MobileMedallionExplorer } from '@/components/MobileMedallionExplorer';
 import { MobilePipelineRunner } from '@/components/MobilePipelineRunner';
 import { MobileObservabilityView } from '@/components/MobileObservabilityView';
 
-const ProfitAndSourcesChart = dynamic(
-  () => import('@/components/ProfitAndSourcesChart').then((m) => m.ProfitAndSourcesChart),
-  { ssr: false }
-);
-
-const MarketTerminal = dynamic(
-  () => import('@/components/MarketTerminal').then((m) => m.MarketTerminal),
-  { ssr: false }
-);
+import { ProfitAndSourcesChart } from '@/components/ProfitAndSourcesChart';
+import { MarketTerminal } from '@/components/MarketTerminal';
 import { MedallionExplorer } from '@/components/MedallionExplorer';
 import { FinbertLab } from '@/components/FinbertLab';
 import { ObservabilityView } from '@/components/ObservabilityView';
@@ -65,23 +57,54 @@ export default function Home() {
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
-  const [systemAlert, setSystemAlert] = useState<CentralAlert | null>(null);
+  const [pipelineLogs, setPipelineLogs] = useState<Array<{
+    id: string;
+    timestamp: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    message: string;
+    stage?: string;
+  }>>([
+    {
+      id: 'init-1',
+      timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      type: 'info',
+      message: 'Sistema inicializado. DuckDB OLAP listo para procesar lotes.',
+    },
+  ]);
 
-  const handleDirectRunPipeline = async () => {
+  const addPipelineLog = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', stage?: string) => {
+    setPipelineLogs((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        type,
+        message,
+        stage,
+      },
+    ]);
+  };
+
+  const handleDirectRunPipeline = async (
+    stage: 'extract' | 'transform' | 'gold' | 'full' = 'full',
+    sym: string = selectedSymbol,
+    hrs: number = 24
+  ) => {
     if (isPipelineRunning) return;
     setIsPipelineRunning(true);
-    handleSystemAlert('Iniciando ejecución del pipeline ELT (Extracción -> FinBERT -> DuckDB)...', 'info');
+    addPipelineLog(`[${stage.toUpperCase()}] Iniciando ejecución del pipeline para ${sym} (${hrs}h)...`, 'info', stage);
+    handleSystemAlert(`Ejecutando pipeline ELT (${stage.toUpperCase()}) en segundo plano...`, 'info');
     try {
-      const result = await runStage('full', selectedSymbol, 24);
+      const result = await runStage(stage, sym, hrs);
       await loadAll();
       const totalProcessed = (result?.candles_processed || 0) + (result?.posts_processed || 0) + (result?.macro_records || 0);
-      handleSystemAlert(
-        `Pipeline completado exitosamente en ${(result?.elapsed_seconds || 0).toFixed(1)}s (${totalProcessed} registros procesados).`,
-        'success'
-      );
+      const successMsg = `Pipeline (${stage.toUpperCase()}) finalizado en ${(result?.elapsed_seconds || 0).toFixed(1)}s (${totalProcessed} registros procesados).`;
+      addPipelineLog(`[${stage.toUpperCase()}] ${successMsg}`, 'success', stage);
+      handleSystemAlert(successMsg, 'success');
     } catch (err: any) {
       console.error('Error running pipeline directly:', err);
       const errMsg = err?.message || String(err);
+      addPipelineLog(`[ERROR] Fallo al ejecutar ${stage}: ${errMsg}`, 'error', stage);
       handleSystemAlert(`Fallo al ejecutar el pipeline: ${errMsg}`, 'error');
     } finally {
       setIsPipelineRunning(false);
@@ -305,6 +328,26 @@ export default function Home() {
         {/* Dashboard Content Container */}
         <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 space-y-6 max-w-full w-full mx-auto pb-32 md:pb-8 overflow-x-hidden">
           
+          {/* Persistent Global Background Pipeline Sync Banner */}
+          {isPipelineRunning && (
+            <div
+              className={`w-full px-4 py-2.5 rounded-xl border flex items-center justify-between text-xs font-mono transition-all ${
+                isDark
+                  ? 'bg-indigo-950/70 border-indigo-500/30 text-indigo-200'
+                  : 'bg-indigo-50 border-indigo-200 text-indigo-900 shadow-xs'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <IconRefresh className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
+                <span className="font-bold">Sincronización en segundo plano activa:</span>
+                <span className="opacity-90 hidden sm:inline">Binance REST ➔ FinBERT NLP ➔ DuckDB Feature Store</span>
+              </div>
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">
+                Procesando...
+              </span>
+            </div>
+          )}
+
           {/* Main Dashboard View */}
           {activeView === 'dashboard' && (
             <>
@@ -315,8 +358,9 @@ export default function Home() {
                   diagnostics={diagnostics}
                   selectedSymbol={selectedSymbol}
                   isDark={isDark}
-                  onTriggerPipeline={handleDirectRunPipeline}
+                  onTriggerPipeline={() => handleDirectRunPipeline('full', selectedSymbol, 24)}
                   isPipelineRunning={isPipelineRunning}
+                  pipelineLogs={pipelineLogs}
                   onRefresh={loadAll}
                   isRefreshing={isRefreshing}
                   onNavigate={(v) => setActiveView(v)}
@@ -352,7 +396,7 @@ export default function Home() {
 
                     {/* Trigger Pipeline Button */}
                     <button
-                      onClick={handleDirectRunPipeline}
+                      onClick={() => handleDirectRunPipeline('full', selectedSymbol, 24)}
                       disabled={isPipelineRunning}
                       className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-mono font-bold transition active:scale-95 ${
                         isPipelineRunning ? 'opacity-60 cursor-not-allowed' : ''
@@ -412,10 +456,22 @@ export default function Home() {
                 isDark={isDark}
               />
               <div className="block md:hidden">
-                <MobilePipelineRunner onSuccess={loadAll} isDark={isDark} />
+                <MobilePipelineRunner
+                  onSuccess={loadAll}
+                  isDark={isDark}
+                  isExternalRunning={isPipelineRunning}
+                  externalLogs={pipelineLogs}
+                  onTriggerPipeline={handleDirectRunPipeline}
+                />
               </div>
               <div className="hidden md:block">
-                <PipelineRunner onSuccess={loadAll} isDark={isDark} />
+                <PipelineRunner
+                  onSuccess={loadAll}
+                  isDark={isDark}
+                  isExternalRunning={isPipelineRunning}
+                  externalLogs={pipelineLogs}
+                  onTriggerPipeline={handleDirectRunPipeline}
+                />
               </div>
             </div>
           )}
@@ -533,7 +589,7 @@ export default function Home() {
           isDark={isDark}
         />
 
-        {activeView === 'dashboard' && systemAlert && (
+        {systemAlert && (
           <div
             role="status"
             className={`

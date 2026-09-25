@@ -11,6 +11,9 @@ import { runStage } from '@/lib/api';
 interface MobilePipelineRunnerProps {
   onSuccess: () => void;
   isDark?: boolean;
+  isExternalRunning?: boolean;
+  externalLogs?: LogEntry[];
+  onTriggerPipeline?: (stage: 'extract' | 'transform' | 'gold' | 'full', sym: string, hrs: number) => Promise<void>;
 }
 
 interface LogEntry {
@@ -20,13 +23,19 @@ interface LogEntry {
   message: string;
 }
 
-export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({ onSuccess, isDark = true }) => {
+export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
+  onSuccess,
+  isDark = true,
+  isExternalRunning,
+  externalLogs,
+  onTriggerPipeline,
+}) => {
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [hours, setHours] = useState(24);
   const [stage, setStage] = useState<'full' | 'extract' | 'transform' | 'gold'>('full');
-  const [isRunning, setIsRunning] = useState(false);
+  const [localRunning, setLocalRunning] = useState(false);
   const [activeStep, setActiveStep] = useState<number>(0);
-  const [logs, setLogs] = useState<LogEntry[]>([
+  const [localLogs, setLocalLogs] = useState<LogEntry[]>([
     {
       id: '1',
       timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -36,12 +45,15 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({ onSu
   ]);
   const logEndRef = useRef<HTMLDivElement>(null);
 
+  const isRunning = isExternalRunning !== undefined ? isExternalRunning : localRunning;
+  const logs = externalLogs && externalLogs.length > 0 ? externalLogs : localLogs;
+
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
   const addLog = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
-    setLogs((prev) => [
+    setLocalLogs((prev) => [
       ...prev,
       {
         id: Math.random().toString(),
@@ -54,7 +66,18 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({ onSu
 
   const handleRun = async () => {
     if (isRunning) return;
-    setIsRunning(true);
+    if (onTriggerPipeline) {
+      setActiveStep(1);
+      try {
+        await onTriggerPipeline(stage, symbol, hours);
+        setActiveStep(4);
+      } catch {
+        setActiveStep(0);
+      }
+      return;
+    }
+
+    setLocalRunning(true);
     setActiveStep(1);
     addLog(`Iniciando [${stage.toUpperCase()}] · ${symbol}...`, 'info');
 
@@ -72,14 +95,14 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({ onSu
 
       const result = await runStage(stage, symbol, hours);
       const total = (result?.candles_processed || 0) + (result?.posts_processed || 0) + (result?.macro_records || 0);
-      addLog(`Lote finalizado en ${(result?.elapsed_seconds || 0).toFixed(1)}s (${total} reg).`, 'success');
+      addLog(`Pipeline completado en ${(result?.elapsed_seconds || 0).toFixed(1)}s (${total} registros).`, 'success');
       setActiveStep(4);
       onSuccess();
     } catch (err: any) {
       addLog(`Error: ${err?.message || err}`, 'error');
       setActiveStep(0);
     } finally {
-      setIsRunning(false);
+      setLocalRunning(false);
     }
   };
 
@@ -88,36 +111,44 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({ onSu
       {/* 1. Selectores en 1 sola fila limpia */}
       <div className="flex items-center justify-between gap-3 text-xs font-mono">
         <div className="flex-1">
-          <label className="text-[10px] uppercase text-[#64748b] block mb-1">Activo</label>
+          <label className={`text-[10px] uppercase block mb-1 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>Activo</label>
           <select
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
             disabled={isRunning}
-            className="w-full py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-100 font-medium outline-none cursor-pointer"
+            className={`w-full py-1.5 px-2.5 rounded-xl font-medium outline-none cursor-pointer border ${
+              isDark
+                ? 'bg-white/[0.04] border-white/[0.08] text-slate-100'
+                : 'bg-white border-slate-300 text-slate-900 shadow-xs'
+            }`}
           >
-            <option value="BTCUSDT">BTC · Bitcoin</option>
-            <option value="ETHUSDT">ETH · Ethereum</option>
-            <option value="SOLUSDT">SOL · Solana</option>
+            <option value="BTCUSDT" className={isDark ? 'bg-[#0e1424] text-white' : ''}>BTC · Bitcoin</option>
+            <option value="ETHUSDT" className={isDark ? 'bg-[#0e1424] text-white' : ''}>ETH · Ethereum</option>
+            <option value="SOLUSDT" className={isDark ? 'bg-[#0e1424] text-white' : ''}>SOL · Solana</option>
           </select>
         </div>
 
         <div className="flex-1">
-          <label className="text-[10px] uppercase text-[#64748b] block mb-1">Ventana</label>
+          <label className={`text-[10px] uppercase block mb-1 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>Ventana</label>
           <select
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
             disabled={isRunning}
-            className="w-full py-1.5 px-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-100 font-medium outline-none cursor-pointer"
+            className={`w-full py-1.5 px-2.5 rounded-xl font-medium outline-none cursor-pointer border ${
+              isDark
+                ? 'bg-white/[0.04] border-white/[0.08] text-slate-100'
+                : 'bg-white border-slate-300 text-slate-900 shadow-xs'
+            }`}
           >
-            <option value={12}>12 Horas</option>
-            <option value={24}>24 Horas</option>
-            <option value={48}>48 Horas</option>
+            <option value={12} className={isDark ? 'bg-[#0e1424] text-white' : ''}>12 Horas</option>
+            <option value={24} className={isDark ? 'bg-[#0e1424] text-white' : ''}>24 Horas</option>
+            <option value={48} className={isDark ? 'bg-[#0e1424] text-white' : ''}>48 Horas</option>
           </select>
         </div>
       </div>
 
       {/* 2. Pestañas de Etapa Minimalistas */}
-      <div className="flex items-center justify-around text-xs font-mono pb-2 border-b border-white/[0.06]">
+      <div className={`flex items-center justify-around text-xs font-mono pb-2 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
         {(['full', 'extract', 'transform', 'gold'] as const).map((s) => (
           <button
             key={s}
@@ -126,8 +157,8 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({ onSu
             disabled={isRunning}
             className={`pb-1 transition-colors ${
               stage === s
-                ? 'text-white border-b-2 border-[#6366f1] font-bold'
-                : 'text-[#64748b] hover:text-slate-300'
+                ? `${isDark ? 'text-white' : 'text-slate-900'} border-b-2 border-[#6366f1] font-bold`
+                : `${isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-800'}`
             }`}
           >
             {s === 'full' ? 'Full ELT' : s}
@@ -177,11 +208,11 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({ onSu
 
       {/* 5. Consola Flotante */}
       <div className="space-y-2 pt-2">
-        <div className="flex items-center justify-between text-xs font-mono text-[#64748b] pb-1 border-b border-white/[0.04]">
+        <div className={`flex items-center justify-between text-xs font-mono pb-1 border-b ${isDark ? 'border-white/[0.04] text-[#64748b]' : 'border-slate-200 text-slate-500'}`}>
           <span>Consola de eventos</span>
           <button
-            onClick={() => setLogs([])}
-            className="hover:text-slate-300 flex items-center gap-1"
+            onClick={() => setLocalLogs([])}
+            className={`flex items-center gap-1 transition ${isDark ? 'hover:text-slate-300' : 'hover:text-slate-900'}`}
           >
             <IconTrash className="w-3 h-3" /> Limpiar
           </button>
@@ -190,19 +221,19 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({ onSu
         <div className="h-32 overflow-y-auto space-y-1.5 font-mono text-[11px] pt-1">
           {logs.map((log) => (
             <div key={log.id} className="leading-relaxed flex gap-2">
-              <span className="text-[#64748b] shrink-0">[{log.timestamp}]</span>
+              <span className={`shrink-0 ${isDark ? 'text-[#64748b]' : 'text-slate-400'}`}>[{log.timestamp}]</span>
               <span
                 className={`font-bold shrink-0 ${
                   log.type === 'success'
-                    ? 'text-emerald-400'
+                    ? 'text-emerald-500'
                     : log.type === 'error'
-                    ? 'text-rose-400'
-                    : 'text-sky-400'
+                    ? 'text-rose-500'
+                    : 'text-sky-500'
                 }`}
               >
                 {log.type.toUpperCase()}:
               </span>
-              <span className="text-slate-300 break-words">{log.message}</span>
+              <span className={`break-words ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>{log.message}</span>
             </div>
           ))}
           <div ref={logEndRef} />

@@ -133,7 +133,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             </span>
             <span className="font-sans font-medium text-[11px] leading-none">Javier H.</span>
             {/* Online indicator */}
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-status-blink shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
           </button>
 
           {/* Dropdown */}

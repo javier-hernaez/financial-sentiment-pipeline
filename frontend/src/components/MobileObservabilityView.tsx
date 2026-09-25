@@ -65,22 +65,22 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
       </div>
 
       {/* 2. Storage Telemetry (Floating Lines with Hairline Dividers) */}
-      <div className="divide-y divide-white/[0.05] text-xs font-mono">
+      <div className={`divide-y text-xs font-mono ${isDark ? 'divide-white/[0.05]' : 'divide-slate-200'}`}>
         <div className="flex justify-between items-center py-2.5">
-          <span className="text-[#8b95b0]">Almacenamiento en Disco</span>
-          <span className="font-bold text-slate-100">{duckDbMb} MB</span>
+          <span className={isDark ? 'text-[#8b95b0]' : 'text-slate-600'}>Almacenamiento en Disco</span>
+          <span className={`font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{duckDbMb} MB</span>
         </div>
         <div className="flex justify-between items-center py-2.5">
-          <span className="text-[#8b95b0]">Horas Consolidadas (Gold)</span>
-          <span className="font-bold text-emerald-400">{metrics?.gold.total_rows ?? 0}</span>
+          <span className={isDark ? 'text-[#8b95b0]' : 'text-slate-600'}>Horas Consolidadas (Gold)</span>
+          <span className="font-bold text-emerald-500">{metrics?.gold.total_rows ?? 0}</span>
         </div>
         <div className="flex justify-between items-center py-2.5">
-          <span className="text-[#8b95b0]">Particiones Bronze</span>
-          <span className="font-bold text-amber-400">{metrics?.bronze.total_files ?? 0} archivos</span>
+          <span className={isDark ? 'text-[#8b95b0]' : 'text-slate-600'}>Particiones Bronze</span>
+          <span className="font-bold text-amber-500">{metrics?.bronze.total_files ?? 0} archivos</span>
         </div>
         <div className="flex justify-between items-center py-2.5">
-          <span className="text-[#8b95b0]">Registros Limpios Silver</span>
-          <span className="font-bold text-purple-400">
+          <span className={isDark ? 'text-[#8b95b0]' : 'text-slate-600'}>Registros Limpios Silver</span>
+          <span className="font-bold text-purple-500">
             {((metrics?.silver.social_rows ?? 0) + (metrics?.silver.market_rows ?? 0)).toLocaleString()} filas
           </span>
         </div>
@@ -88,7 +88,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
 
       {/* 3. Operaciones de Mantenimiento (3 Clean Pills) */}
       <div className="pt-4 space-y-3">
-        <div className="text-[11px] font-mono uppercase text-[#64748b] tracking-wider text-center">
+        <div className={`text-[11px] font-mono uppercase tracking-wider text-center ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
           Operaciones DuckDB
         </div>
 
@@ -96,7 +96,11 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
           <button
             onClick={() => handleOp('checkpoint')}
             disabled={runningOp !== null}
-            className="flex-1 h-10 px-3 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8] font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40"
+            className={`flex-1 h-10 px-3 rounded-full font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40 cursor-pointer ${
+              isDark
+                ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8]'
+                : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
+            }`}
           >
             {runningOp === 'checkpoint' ? 'Guardando...' : '⚡ Checkpoint'}
           </button>
@@ -104,7 +108,11 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
           <button
             onClick={() => handleOp('vacuum')}
             disabled={runningOp !== null}
-            className="flex-1 h-10 px-3 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8] font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40"
+            className={`flex-1 h-10 px-3 rounded-full font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40 cursor-pointer ${
+              isDark
+                ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8]'
+                : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
+            }`}
           >
             {runningOp === 'vacuum' ? 'Limpiando...' : '🧹 Vacuum'}
           </button>
@@ -112,7 +120,11 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
           <button
             onClick={() => handleOp('refresh_views')}
             disabled={runningOp !== null}
-            className="flex-1 h-10 px-3 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8] font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40"
+            className={`flex-1 h-10 px-3 rounded-full font-mono text-xs font-medium active:scale-95 transition disabled:opacity-40 cursor-pointer ${
+              isDark
+                ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[#818cf8]'
+                : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
+            }`}
           >
             {runningOp === 'refresh_views' ? 'Refrescando...' : '⟳ Vistas'}
           </button>
@@ -121,7 +133,9 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
         <div className="text-center pt-2">
           <button
             onClick={onRefresh}
-            className="text-xs font-mono text-[#64748b] hover:text-slate-300 inline-flex items-center gap-1.5 transition-colors"
+            className={`text-xs font-mono inline-flex items-center gap-1.5 transition-colors ${
+              isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-900'
+            }`}
           >
             <IconRefresh className="w-3 h-3" />
             <span>Refrescar diagnósticos</span>

@@ -48,7 +48,7 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
               ? isDark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
               : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
           }`}>
-            <span className={`${dot} ${isDuckDbOk ? (isDark ? 'bg-emerald-400 animate-status-blink' : 'bg-emerald-500') : 'bg-rose-500'}`} />
+            <span className={`${dot} ${isDuckDbOk ? 'bg-emerald-400' : 'bg-rose-500'}`} />
             {isDuckDbOk ? 'ACID' : 'ERR'}
           </span>
         </div>

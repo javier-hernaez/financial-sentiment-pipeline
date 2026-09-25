@@ -79,7 +79,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         </div>
 
         {/* Center: Clean Ticker switcher */}
-        <div className="flex items-center gap-1 p-0.5 rounded-full bg-white/[0.04] border border-white/[0.06]">
+        <div className={`flex items-center gap-1 p-0.5 rounded-full border ${
+          isDark ? 'bg-white/[0.04] border-white/[0.06]' : 'bg-slate-100 border-slate-200'
+        }`}>
           {SYMBOLS.map((sym) => {
             const isSelected = currentSymbol === sym;
             return (

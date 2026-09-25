@@ -243,10 +243,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     DuckDB Lakehouse
                   </span>
                 </div>
-                {/* Live indicator — blink técnico, sin dot-ping */}
+                {/* Live indicator — solid crisp status dot */}
                 <span className="flex items-center gap-1">
                   <span className={`
-                    w-1.5 h-1.5 rounded-full animate-status-blink
+                    w-1.5 h-1.5 rounded-full
                     ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}
                   `} />
                   <span className={`text-[9px] font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>

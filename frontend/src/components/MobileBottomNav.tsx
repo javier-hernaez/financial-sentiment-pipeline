@@ -84,7 +84,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 )}
               </div>
 
-              <span className={`text-[10px] font-mono mt-1 tracking-wider ${isTabActive ? 'font-bold text-slate-100' : 'text-[#64748b]'}`}>
+              <span
+                className={`text-[10px] font-mono mt-1 tracking-wider ${
+                  isTabActive
+                    ? isDark
+                      ? 'font-bold text-slate-100'
+                      : 'font-bold text-[#4f46e5]'
+                    : isDark
+                    ? 'text-[#64748b]'
+                    : 'text-slate-500'
+                }`}
+              >
                 {tab.label}
               </span>
             </button>

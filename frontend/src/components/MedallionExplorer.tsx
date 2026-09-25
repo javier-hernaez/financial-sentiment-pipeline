@@ -31,19 +31,29 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
     if (selectedTable === '__bronze_lake__') {
       loadBronze();
     } else {
-      loadTable();
+      loadTable(search);
     }
     setExpandedRows({});
   }, [selectedTable, offset, limit]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setOffset(0);
+      if (selectedTable !== '__bronze_lake__') {
+        loadTable(search);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const toggleRow = (rIdx: number) => {
     setExpandedRows((prev) => ({ ...prev, [rIdx]: !prev[rIdx] }));
   };
 
-  const loadTable = async () => {
+  const loadTable = async (query: string = search) => {
     setIsLoading(true);
     try {
-      const data = await fetchTableData(selectedTable, limit, offset, search);
+      const data = await fetchTableData(selectedTable, limit, offset, query);
       setTableData(data);
     } catch (err) {
       console.error('Error loading table data:', err);
@@ -67,11 +77,21 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setOffset(0);
-    loadTable();
+    loadTable(search);
   };
 
   const totalPages = tableData ? Math.max(1, Math.ceil(tableData.total_count / limit)) : 1;
   const currentPage = Math.floor(offset / limit) + 1;
+
+  const displayedBronzeFiles = bronzeFiles.filter((f) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      f.filename.toLowerCase().includes(q) ||
+      f.source.toLowerCase().includes(q) ||
+      f.partition.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="space-y-6 min-w-0 max-w-full overflow-hidden">
@@ -113,30 +133,31 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
           </select>
         </div>
 
-        {selectedTable !== '__bronze_lake__' && (
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full md:w-auto">
-            <div className="relative flex-1 md:w-64">
-              <input
-                type="text"
-                placeholder="Filtrar registros..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className={`text-xs rounded-full pl-8 pr-3 py-1.5 outline-none w-full font-mono transition border ${
-                  isDark
-                    ? 'bg-white/[0.03] border-white/[0.08] text-white focus:border-indigo-500'
-                    : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500'
-                }`}
-              />
-              <IconSearch className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2" />
-            </div>
+        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full md:w-auto">
+          <div className="relative flex-1 md:w-72">
+            <input
+              type="text"
+              placeholder={selectedTable === '__bronze_lake__' ? 'Buscar archivo o partición...' : 'Buscar en tiempo real...'}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={`text-xs rounded-full pl-8 pr-4 py-2 outline-none w-full font-mono transition border ${
+                isDark
+                  ? 'bg-white/[0.04] border-white/[0.08] text-white placeholder-slate-500 focus:border-indigo-500 focus:bg-white/[0.06]'
+                  : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500'
+              }`}
+            />
+            <IconSearch className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+          </div>
+          {search && (
             <button
-              type="submit"
-              className="px-4 py-1.5 bg-[#6366f1] hover:bg-[#4f46e5] active:scale-95 text-white text-xs font-bold rounded-full transition shadow-xs shrink-0"
+              type="button"
+              onClick={() => setSearch('')}
+              className="text-xs font-mono text-slate-400 hover:text-white px-2 py-1 transition cursor-pointer"
             >
-              Buscar
+              Limpiar
             </button>
-          </form>
-        )}
+          )}
+        </form>
       </div>
 
       {/* Relational SQL Table */}
@@ -266,13 +287,13 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
 
                     {/* Expandable Accordion for remaining columns */}
                     {isExpanded && (
-                      <div className="pt-2 border-t border-slate-700/30 space-y-1.5 text-[10px] font-mono">
+                      <div className={`pt-2 border-t space-y-1.5 text-[10px] font-mono ${isDark ? 'border-slate-700/30' : 'border-slate-200'}`}>
                         {tableData.columns.map((col) => {
                           const val = row[col];
                           return (
-                            <div key={col} className="flex justify-between items-center py-0.5 border-b border-slate-800/30">
-                              <span className="text-slate-400">{col}:</span>
-                              <span className="font-bold font-tabular text-right max-w-[180px] truncate">
+                            <div key={col} className={`flex justify-between items-center py-0.5 border-b ${isDark ? 'border-slate-800/30' : 'border-slate-100'}`}>
+                              <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{col}:</span>
+                              <span className={`font-bold font-tabular text-right max-w-[180px] truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
                                 {val !== null && val !== undefined ? String(val) : '-'}
                               </span>
                             </div>
@@ -284,7 +305,9 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                     {/* Toggle Button */}
                     <button
                       onClick={() => toggleRow(rIdx)}
-                      className="w-full py-2 text-[11px] font-mono font-semibold text-slate-400 hover:text-white flex items-center justify-center gap-1 border-t border-slate-800/30"
+                      className={`w-full py-2 text-[11px] font-mono font-semibold flex items-center justify-center gap-1 border-t transition cursor-pointer ${
+                        isDark ? 'text-slate-400 hover:text-white border-slate-800/30' : 'text-slate-600 hover:text-slate-900 border-slate-200'
+                      }`}
                     >
                       {isExpanded ? (
                         <>
@@ -378,18 +401,18 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               Particiones Parquet en Disco
             </span>
             <span className="text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full text-[11px]">
-              {bronzeFiles.length} ficheros
+              {displayedBronzeFiles.length} ficheros {search ? '(filtrados)' : ''}
             </span>
           </div>
 
           {/* Mobile Bronze Card View */}
           <div className="md:hidden divide-y divide-white/[0.04] p-3 space-y-2.5">
-            {bronzeFiles.length === 0 ? (
+            {displayedBronzeFiles.length === 0 ? (
               <div className="p-8 text-center text-[#64748b] font-mono text-xs">
-                No hay archivos Parquet en el lago Bronze.
+                {search ? `No se encontraron particiones que coincidan con "${search}".` : 'No hay archivos Parquet en el lago Bronze.'}
               </div>
             ) : (
-              bronzeFiles.map((f, i) => (
+              displayedBronzeFiles.map((f, i) => (
                 <div
                   key={i}
                   className={`p-3 rounded-xl border space-y-1.5 text-xs font-mono ${
@@ -397,11 +420,13 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-400 text-[11px]">{f.source}</span>
-                    <span className="text-emerald-400 font-bold font-tabular text-[11px]">{f.size_kb} KB</span>
+                    <span className="font-bold text-amber-500 text-[11px]">{f.source}</span>
+                    <span className="text-emerald-500 font-bold font-tabular text-[11px]">{f.size_kb} KB</span>
                   </div>
-                  <div className="text-[11px] font-medium break-all text-slate-200">{f.filename}</div>
-                  <div className="flex items-center justify-between text-[10px] text-[#64748b] pt-1 border-t border-white/[0.04]">
+                  <div className={`text-[11px] font-medium break-all ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{f.filename}</div>
+                  <div className={`flex items-center justify-between text-[10px] pt-1 border-t ${
+                    isDark ? 'text-[#64748b] border-white/[0.04]' : 'text-slate-500 border-slate-200'
+                  }`}>
                     <span>Partición: {f.partition}</span>
                     <span>{f.modified_utc}</span>
                   </div>
@@ -423,14 +448,14 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? 'divide-white/[0.04] text-slate-300' : 'divide-slate-100 text-slate-700'}`}>
-                {bronzeFiles.length === 0 ? (
+                {displayedBronzeFiles.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-[#64748b] font-mono">
-                      No hay archivos Parquet en el lago Bronze.
+                      {search ? `No se encontraron particiones que coincidan con "${search}".` : 'No hay archivos Parquet en el lago Bronze.'}
                     </td>
                   </tr>
                 ) : (
-                  bronzeFiles.map((f, i) => (
+                  displayedBronzeFiles.map((f, i) => (
                     <tr key={i} className={`transition ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'}`}>
                       <td className="py-2.5 px-4 font-bold text-amber-400 font-mono text-xs">{f.source}</td>
                       <td className="py-2.5 px-4 font-mono text-xs">{f.partition}</td>
