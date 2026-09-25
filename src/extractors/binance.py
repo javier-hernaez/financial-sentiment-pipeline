@@ -52,7 +52,21 @@ class BinanceKlinesExtractor(BaseAsyncExtractor):
         if end_time:
             params["endTime"] = end_time
 
-        raw_klines = await self.fetch_json(endpoint="/api/v3/klines", params=params)
+        try:
+            raw_klines = await self.fetch_json(endpoint="/api/v3/klines", params=params)
+        except Exception as exc:
+            # Attempt fallback public market data API if primary is geo-blocked (HTTP 451) or unreachable
+            if hasattr(settings, "binance_fallback_url") and self.base_url != settings.binance_fallback_url:
+                original_url = self.base_url
+                try:
+                    self.base_url = settings.binance_fallback_url
+                    raw_klines = await self.fetch_json(endpoint="/api/v3/klines", params=params)
+                except Exception:
+                    raise exc
+                finally:
+                    self.base_url = original_url
+            else:
+                raise exc
 
         normalized: List[Dict[str, Any]] = []
         for kline in raw_klines:

@@ -1,18 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Database, Layers, Radio } from 'lucide-react';
+import { IconDatabase, IconObservability } from './CustomIcons';
 import { Diagnostics, SystemMetrics } from '@/types';
 import { fetchMetrics, fetchGoldData } from '@/lib/api';
 
 interface IngestionBarAndGaugeProps {
   diagnostics?: Diagnostics | null;
   isDark?: boolean;
+  symbol?: string;
 }
 
 export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   diagnostics,
   isDark = true,
+  symbol = 'BTCUSDT',
 }) => {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [consensoScore, setConsensoScore] = useState<number | null>(null);
@@ -21,24 +23,21 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   useEffect(() => {
     fetchMetrics().then(setMetrics).catch(() => null);
     loadConsensus();
-  }, []);
+  }, [symbol]);
 
   const loadConsensus = async () => {
     try {
-      const goldData = await fetchGoldData('BTCUSDT', 24);
+      const goldData = await fetchGoldData(symbol, 24);
       if (goldData && goldData.length > 0) {
-        // Compute composite consensus: Fear & Greed (0–100) combined with avg FinBERT score (-1 to +1)
+        // Compute composite consensus directly from FinBERT Fear & Greed index (0-100)
         const withFG = goldData.filter(r => r.fear_and_greed_score !== null);
         const avgFG = withFG.length > 0
           ? withFG.reduce((acc, r) => acc + Number(r.fear_and_greed_score), 0) / withFG.length
           : 50;
-        const avgSentiment = goldData.reduce((acc, r) => acc + Number(r.avg_hourly_sentiment), 0) / goldData.length;
-        // Normalize FinBERT [-1,1] → [0,100] and blend 70% F&G + 30% NLP
-        const nlpNorm = ((avgSentiment + 1) / 2) * 100;
-        const composite = Math.round(0.7 * avgFG + 0.3 * nlpNorm);
+        const composite = Math.round(avgFG);
         setConsensoScore(composite);
         if (composite >= 75) setConsensoLabel('Codicia Extrema');
-        else if (composite >= 55) setConsensoLabel('Confianza / Bullish');
+        else if (composite >= 55) setConsensoLabel('Codicia / Bullish');
         else if (composite >= 45) setConsensoLabel('Neutral');
         else if (composite >= 25) setConsensoLabel('Miedo / Bearish');
         else setConsensoLabel('Miedo Extremo');
@@ -55,27 +54,20 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   // Compute real source distributions
   const marketRows = metrics?.silver.market_rows ?? 0;
   const socialRows = metrics?.silver.social_rows ?? 0;
-  const macroRows = metrics?.silver.fear_greed_rows ?? 0;
-  const totalRaw = marketRows + socialRows + macroRows;
+  const totalRaw = marketRows + socialRows;
 
   const sources = [
     {
-      name: 'Velas Binance',
+      name: 'Velas de Mercado (Binance)',
       count: marketRows,
       pct: totalRaw > 0 ? Math.round((marketRows / totalRaw) * 100) : 0,
       color: 'bg-blue-500',
     },
     {
-      name: 'Feeds RSS & NLP',
+      name: 'Noticias & Titulares (NLP)',
       count: socialRows,
       pct: totalRaw > 0 ? Math.round((socialRows / totalRaw) * 100) : 0,
       color: 'bg-purple-500',
-    },
-    {
-      name: 'Macro F&G',
-      count: macroRows,
-      pct: totalRaw > 0 ? Math.round((macroRows / totalRaw) * 100) : 0,
-      color: 'bg-emerald-500',
     },
   ];
 
@@ -89,42 +81,42 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   // Gauge color: red < 30, amber 30-50, green > 50
   const gaugeColor = score >= 55 ? '#10b981' : score >= 35 ? '#f59e0b' : '#f43f5e';
 
+  const cardBase = isDark
+    ? 'bg-white/[0.02] border-white/[0.06] backdrop-blur-sm'
+    : 'bg-white border-slate-200/80 shadow-xs';
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="h-full flex flex-col gap-6">
       
       {/* 1. Real Pipeline Ingestion Breakdown */}
       <div
-        className={`p-5 rounded-lg border transition-all duration-200 ${
-          isDark
-            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
-            : 'bg-white border-slate-200 text-slate-800 shadow-sm'
-        }`}
+        className={`p-6 rounded-2xl border transition-all duration-200 flex-1 flex flex-col justify-between ${cardBase}`}
       >
         <div className="flex items-center justify-between">
           <div>
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            <h3 className={`text-xs font-mono uppercase tracking-wider font-semibold ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
               Volumen de Ingesta por Fuente
             </h3>
-            <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Registros limpios en DuckDB Silver ({totalRaw.toLocaleString()} totales)
+            <span className={`text-xs font-mono mt-0.5 block ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
+              DuckDB Silver ({totalRaw.toLocaleString()} totales)
             </span>
           </div>
-          <Database className="w-4 h-4 text-slate-400" />
+          <IconDatabase className="w-4 h-4 text-[#818cf8]" />
         </div>
 
         {/* Source Bars */}
-        <div className="mt-5 space-y-3.5 text-xs font-mono">
+        <div className="mt-5 space-y-4 text-xs font-mono">
           {sources.map((src, idx) => (
             <div key={idx} className="space-y-1.5">
-              <div className="flex justify-between items-center text-[11px]">
+              <div className="flex justify-between items-center text-xs">
                 <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{src.name}</span>
-                <span className="font-bold">
+                <span className="font-bold tabular-nums">
                   {src.count.toLocaleString()} ({src.pct}%)
                 </span>
               </div>
-              <div className={`w-full rounded-full h-2 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+              <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
                 <div
-                  className={`${src.color} h-2 rounded-full transition-all duration-500`}
+                  className={`${src.color} h-1.5 rounded-full transition-all duration-500`}
                   style={{ width: `${src.pct}%` }}
                 />
               </div>
@@ -135,26 +127,22 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
 
       {/* 2. Sentiment Consensus Speedometer */}
       <div
-        className={`p-5 rounded-lg border transition-all duration-200 ${
-          isDark
-            ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-md'
-            : 'bg-white border-slate-200 text-slate-800 shadow-sm'
-        }`}
+        className={`p-6 rounded-2xl border transition-all duration-200 flex-1 flex flex-col justify-between ${cardBase}`}
       >
         <div className="flex items-center justify-between">
           <div>
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              Consenso de Mercado (Macro + NLP)
+            <h3 className={`text-xs font-mono uppercase tracking-wider font-semibold ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+              Termómetro de Sentimiento
             </h3>
-            <span className={`text-[11px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              70% Fear & Greed + 30% FinBERT · DuckDB Gold (24h)
+            <span className={`text-xs font-mono mt-0.5 block ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
+              DuckDB Gold (0–100)
             </span>
           </div>
-          <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+          <IconObservability className="w-4 h-4 text-emerald-400" />
         </div>
 
         {/* Semi-circular Speedometer SVG Gauge */}
-        <div className="mt-4 flex flex-col items-center">
+        <div className="mt-2 flex-1 flex flex-col items-center justify-center">
           {consensoScore === null ? (
             <div className="py-6 text-xs font-mono text-slate-500 text-center">
               Sin datos Gold. Ejecuta el pipeline ELT para calcular el consenso.
@@ -166,15 +154,13 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
                   {Array.from({ length: totalTicks }).map((_, i) => {
                     const angle = 180 + (i / (totalTicks - 1)) * 180;
                     const rad = (angle * Math.PI) / 180;
-                    const r1 = 70;
-                    const r2 = 90;
-                    const cx = 100;
-                    const cy = 100;
-                    const x1 = cx + r1 * Math.cos(rad);
-                    const y1 = cy + r1 * Math.sin(rad);
-                    const x2 = cx + r2 * Math.cos(rad);
-                    const y2 = cy + r2 * Math.sin(rad);
-                    const isTickActive = i <= activeTicks;
+                    const rInner = 68;
+                    const rOuter = 88;
+                    const x1 = 100 + rInner * Math.cos(rad);
+                    const y1 = 100 + rInner * Math.sin(rad);
+                    const x2 = 100 + rOuter * Math.cos(rad);
+                    const y2 = 100 + rOuter * Math.sin(rad);
+                    const isActive = i < activeTicks;
 
                     return (
                       <line
@@ -183,32 +169,42 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
                         y1={y1}
                         x2={x2}
                         y2={y2}
-                        stroke={
-                          isTickActive
-                            ? gaugeColor
-                            : isDark
-                            ? '#1e293b'
-                            : '#e2e8f0'
-                        }
-                        strokeWidth={4.5}
+                        stroke={isActive ? gaugeColor : isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}
+                        strokeWidth={isActive ? 3.5 : 2}
                         strokeLinecap="round"
-                        className="transition-colors duration-200"
+                        className="transition-colors duration-300"
                       />
                     );
                   })}
                 </svg>
 
-                {/* Inner Center Value */}
-                <div className="absolute bottom-0 flex flex-col items-center">
-                  <span className="text-3xl font-extrabold font-mono tracking-tight" style={{ color: gaugeColor }}>
-                    {score}%
+                {/* Central score display */}
+                <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-center">
+                  <span
+                    className="text-3xl sm:text-4xl font-extrabold font-mono tabular-nums tracking-tight transition-colors duration-300"
+                    style={{ color: gaugeColor }}
+                  >
+                    {score}
+                  </span>
+                  <span className={`text-xs font-mono font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    / 100
                   </span>
                 </div>
               </div>
 
-              <p className={`text-xs mt-3 font-medium text-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Estado: {consensoLabel}
-              </p>
+              {/* Text label underneath */}
+              <div className="mt-3 text-center">
+                <span
+                  className="font-bold text-xs px-3 py-1 rounded-full border inline-block transition-colors font-mono"
+                  style={{
+                    color: gaugeColor,
+                    borderColor: `${gaugeColor}40`,
+                    backgroundColor: `${gaugeColor}10`,
+                  }}
+                >
+                  {consensoLabel}
+                </span>
+              </div>
             </>
           )}
         </div>
@@ -217,3 +213,4 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
     </div>
   );
 };
+

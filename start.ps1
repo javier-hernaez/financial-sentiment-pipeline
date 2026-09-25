@@ -13,6 +13,8 @@ $ErrorActionPreference = "Stop"
 $Host.UI.RawUI.WindowTitle = "Market Intelligence Platform • Launcher"
 $env:NEXT_TELEMETRY_DISABLED = "1"
 $env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "   MARKET INTELLIGENCE PLATFORM • INICIO DE SERVICIOS    " -ForegroundColor Cyan
@@ -38,9 +40,12 @@ function Liberar-Puerto([int]$port) {
         if ($conn) {
             $pidToKill = $conn.OwningProcess
             if ($pidToKill -gt 0) {
-                Write-Host "[INFO] Liberando puerto $port (PID: $pidToKill)..." -ForegroundColor Yellow
-                Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
-                Start-Sleep -Milliseconds 500
+                $proc = Get-Process -Id $pidToKill -ErrorAction SilentlyContinue
+                if ($proc -and ($proc.ProcessName -match "python|node")) {
+                    Write-Host "[INFO] Liberando puerto $port ocupado por $($proc.ProcessName) (PID: $pidToKill)..." -ForegroundColor Yellow
+                    Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
+                    Start-Sleep -Milliseconds 500
+                }
             }
         }
     } catch {}
@@ -62,8 +67,12 @@ $retries = 30
 $backendReady = $false
 
 while ($retries -gt 0) {
+    if ($backendProcess.HasExited) {
+        Write-Host " [ERROR: El backend finalizo con codigo $($backendProcess.ExitCode)]" -ForegroundColor Red
+        exit 1
+    }
     try {
-        $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/admin/diagnostics" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+        $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($resp.StatusCode -eq 200) {
             $backendReady = $true
             break
@@ -82,32 +91,71 @@ if ($backendReady) {
 
 # 5. Iniciar el Frontend (Next.js 3000)
 Write-Host "`n[3/3] Iniciando Frontend Next.js (Dashboard en puerto 3000)..." -ForegroundColor Green
-$startCmd = if (Test-Path (Join-Path $FRONTEND_DIR ".next")) { "npm run start" } else { "npm run dev" }
+$hasBuild = Test-Path (Join-Path $FRONTEND_DIR ".next\BUILD_ID")
+if ($hasBuild) {
+    Write-Host "[INFO] Build de produccion detectado. Usando modo desarrollo (npm run dev)." -ForegroundColor Cyan
+} else {
+    Write-Host "[INFO] Sin build previo. Iniciando en modo desarrollo (npm run dev)." -ForegroundColor Cyan
+}
+
+# Always use 'dev' mode for local development — avoids Next.js 14 production
+# mode conflicts with App Router and Windows path resolution of _document.js
+$startCmd = "npm run dev"
 
 $frontendProcess = Start-Process -FilePath "cmd.exe" `
     -ArgumentList "/c", $startCmd `
     -WorkingDirectory $FRONTEND_DIR `
     -PassThru
 
-Start-Sleep -Seconds 2
+# 6. Esperar a que el Frontend responda
+Write-Host "Verificando conexion con el Frontend en puerto 3000..." -NoNewline -ForegroundColor Cyan
+$retriesFront = 35
+$frontendReady = $false
 
-# 6. Abrir en el navegador
+while ($retriesFront -gt 0) {
+    if ($frontendProcess.HasExited) {
+        Write-Host " [ERROR: El proceso frontend finalizo inesperadamente]" -ForegroundColor Red
+        break
+    }
+    try {
+        $resp = Invoke-WebRequest -Uri "http://localhost:3000" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+        if ($resp.StatusCode -eq 200) {
+            $frontendReady = $true
+            break
+        }
+    } catch {}
+    Write-Host "." -NoNewline -ForegroundColor Cyan
+    Start-Sleep -Seconds 1
+    $retriesFront--
+}
+
+if ($frontendReady) {
+    Write-Host " [LISTO]" -ForegroundColor Green
+} else {
+    Write-Host " [AVISO: El frontend esta iniciando]" -ForegroundColor Yellow
+}
+
+# 7. Abrir en el navegador
 Write-Host "`n==========================================================" -ForegroundColor Green
 Write-Host "   SISTEMA ACTIVO Y OPERATIVO                             " -ForegroundColor Green
-Write-Host "   - Terminal / Dashboard: http://localhost:3000         " -ForegroundColor White
-Write-Host "   - API Cuantitativa:     http://localhost:8080         " -ForegroundColor White
+Write-Host "   - Terminal / Dashboard: http://127.0.0.1:3000 (o http://localhost:3000)" -ForegroundColor White
+Write-Host "   - API Cuantitativa:     http://127.0.0.1:8080         " -ForegroundColor White
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host "`nPresiona [Ctrl+C] en esta ventana para cerrar ambos servicios.`n" -ForegroundColor DarkGray
 
 try {
-    Start-Process "http://localhost:3000"
+    Start-Process "http://127.0.0.1:3000"
 } catch {}
 
 # Manejo de cierre al pulsar Ctrl+C
 try {
     while ($true) {
         if ($backendProcess.HasExited) {
-            Write-Host "[ALERTA] El proceso Backend ha finalizado." -ForegroundColor Red
+            Write-Host "`n[ALERTA] El proceso Backend (Python) ha finalizado." -ForegroundColor Red
+            break
+        }
+        if ($frontendProcess.HasExited) {
+            Write-Host "`n[ALERTA] El proceso Frontend (Next.js) ha finalizado." -ForegroundColor Red
             break
         }
         Start-Sleep -Seconds 1

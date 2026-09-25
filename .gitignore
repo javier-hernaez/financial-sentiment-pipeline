@@ -73,3 +73,6 @@ yarn-error.log*
 # Scratch scripts & temporary tests
 scratch/
 
+# Internal documentation & specifications
+internal/
+

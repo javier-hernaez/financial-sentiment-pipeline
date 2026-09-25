@@ -1,241 +1,324 @@
 'use client';
 
-import React from 'react';
-import { BookOpen, Terminal, Database, Cpu, Layers, CheckCircle2, Shield, Zap, Award, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  IconDocumentation,
+  IconPipeline,
+  IconFinbertLab,
+  IconDuckDB,
+  IconShield,
+  IconPlay,
+  IconTerminal,
+  IconMarket,
+  IconObservability,
+} from './CustomIcons';
 
 interface DocumentationGuideProps {
   isDark?: boolean;
 }
 
+/* ── helpers ──────────────────────────────────────────────────────────────── */
+const CodeBlock: React.FC<{ comment: string; code: string; isDark: boolean }> = ({ comment, code, isDark }) => (
+  <div className={`rounded-md border overflow-hidden font-mono text-sm ${isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-900 border-slate-800'}`}>
+    <div className={`flex items-center gap-2 px-4 py-2 border-b ${isDark ? 'border-[#1a2035]' : 'border-slate-800'}`}>
+      <span className="w-2.5 h-2.5 rounded-full bg-rose-500/70" />
+      <span className="w-2.5 h-2.5 rounded-full bg-amber-400/70" />
+      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
+      <span className="ml-2 text-[10px] text-slate-500">{comment}</span>
+    </div>
+    <pre className="px-4 py-3 text-emerald-400 overflow-x-auto whitespace-pre-wrap break-words">{code}</pre>
+  </div>
+);
+
+const SectionTitle: React.FC<{
+  step: string;
+  title: string;
+  icon: React.FC<{ className?: string }>;
+  iconClass?: string;
+  isDark: boolean;
+}> = ({ step, title, icon: Icon, iconClass = 'text-[#818cf8]', isDark }) => (
+  <div className="flex items-center gap-3 mb-5">
+    <div className={`
+      w-7 h-7 rounded-sm flex items-center justify-center shrink-0 font-mono text-[10px] font-black
+      ${isDark ? 'bg-[#6366f1]/15 text-[#818cf8]' : 'bg-[#6366f1]/10 text-[#6366f1]'}
+    `}>
+      {step}
+    </div>
+    <Icon className={`w-4 h-4 shrink-0 ${iconClass}`} />
+    <h2 className={`text-base font-black tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+      {title}
+    </h2>
+  </div>
+);
+
+const Principle: React.FC<{
+  title: string;
+  body: string;
+  accent: string;
+  isDark: boolean;
+}> = ({ title, body, accent, isDark }) => (
+  <div className={`p-4 rounded-md border border-l-2 space-y-1.5 ${isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-50 border-slate-200'} ${accent}`}>
+    <div className={`text-sm font-bold ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>{title}</div>
+    <p className={`text-sm leading-relaxed ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>{body}</p>
+  </div>
+);
+
+/* ── main component ───────────────────────────────────────────────────────── */
 export const DocumentationGuide: React.FC<DocumentationGuideProps> = ({ isDark = true }) => {
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  const card = isDark ? 'bg-[#0c101a] border-[#1a2035]' : 'bg-white border-slate-200';
+  const label = isDark ? 'text-[#4e5d7a]' : 'text-slate-400';
+  const sub = isDark ? 'text-[#8b95b0]' : 'text-slate-600';
+  const val = isDark ? 'text-[#eef0f6]' : 'text-slate-900';
+  const inner = isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-50 border-slate-200';
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-16">
-      
-      {/* Header / Executive Briefing */}
-      <div className="border-b pb-6 border-slate-800/40">
-        <div className="flex items-center gap-2 text-xs font-mono text-blue-400 mb-2 font-bold tracking-wider">
-          <BookOpen className="w-4 h-4" />
-          <span>DOSSIER DE INGENIERÍA · MARKET INTELLIGENCE PLATFORM</span>
+
+      {/* ── Page header ──────────────────────────────────────────────────── */}
+      <div className={`pb-6 border-b ${isDark ? 'border-[#1a2035]' : 'border-slate-200'}`}>
+        <div className={`flex items-center gap-2 text-[10px] font-mono font-bold tracking-widest mb-3 ${isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'}`}>
+          <IconDocumentation className="w-3.5 h-3.5" />
+          <span>DOSSIER DE INGENIERÍA · Q ELT PLATFORM</span>
         </div>
-        <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          Plataforma de Ingeniería de Datos &amp; NLP Financiero
+        <h1 className={`text-2xl sm:text-3xl font-black tracking-tight leading-tight ${val}`}>
+          Plataforma de Ingeniería de Datos<br className="hidden sm:block" />
+          <span className={isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'}> & NLP Financiero</span>
         </h1>
-        <p className={`text-xs sm:text-sm mt-2 leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-          Infraestructura analítica end-to-end diseñada para transformar flujos de noticias no estructuradas y series temporales de mercado en variables cuantitativas listas para modelos econométricos y toma de decisiones.
+        <p className={`text-sm sm:text-base mt-3 leading-relaxed max-w-2xl ${sub}`}>
+          Infraestructura analítica end-to-end diseñada para transformar flujos de noticias no estructuradas
+          y series temporales de mercado en variables cuantitativas listas para modelos econométricos.
         </p>
       </div>
 
-      {/* 1. Resumen Ejecutivo y Valor de Negocio */}
-      <section className={`p-6 rounded-xl border space-y-4 ${
-        isDark ? 'bg-[#101726] border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center gap-2">
-          <Award className="w-4 h-4 text-amber-400" />
-          <h2 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            1. Propuesta de Valor &amp; Problema Resuelto
-          </h2>
+      {/* ── Tech stack grid ──────────────────────────────────────────────── */}
+      <div className={`rounded-lg border p-5 sm:p-6 ${card}`}>
+        <div className={`text-[10px] font-mono font-bold tracking-widest uppercase mb-4 ${label}`}>
+          Stack Tecnológico
         </div>
-        <p className={`text-xs sm:text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-          En los mercados de capitales modernos, más del <strong>80% de la información</strong> se origina en formato no estructurado (noticias de última hora, comunicados de bancos centrales y comentarios sociales). Los sistemas tradicionales de trading o análisis se enfrentan a un cuello de botella crítico: la incapacidad de cuantificar el impacto semántico con baja latencia y sin sesgos manuales.
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {[
+            { name: 'DuckDB', role: 'OLAP Columnar', color: isDark ? 'text-[#d97706]' : 'text-amber-600', border: 'border-t-[#d97706]/50', icon: IconDuckDB },
+            { name: 'FinBERT', role: 'NLP · 768-dim', color: isDark ? 'text-[#a78bfa]' : 'text-purple-600', border: 'border-t-[#a78bfa]/50', icon: IconFinbertLab },
+            { name: 'Polars', role: 'Procesamiento', color: isDark ? 'text-[#38bdf8]' : 'text-sky-600', border: 'border-t-[#38bdf8]/50', icon: IconMarket },
+            { name: 'Next.js 14', role: 'App Router', color: isDark ? 'text-[#818cf8]' : 'text-indigo-600', border: 'border-t-[#818cf8]/50', icon: IconObservability },
+            { name: 'Apache Parquet', role: 'Data Lake', color: isDark ? 'text-[#d97706]' : 'text-amber-600', border: 'border-t-[#d97706]/50', icon: IconPipeline },
+            { name: 'HuggingFace', role: 'Transformers', color: isDark ? 'text-[#a78bfa]' : 'text-purple-600', border: 'border-t-[#a78bfa]/50', icon: IconFinbertLab },
+            { name: 'Python 3.12', role: 'asyncio · httpx', color: isDark ? 'text-[#10b981]' : 'text-emerald-600', border: 'border-t-[#10b981]/50', icon: IconTerminal },
+            { name: 'Binance REST', role: 'Market Data', color: isDark ? 'text-[#38bdf8]' : 'text-sky-600', border: 'border-t-[#38bdf8]/50', icon: IconMarket },
+          ].map(({ name, role, color, border, icon: Icon }) => (
+            <div key={name} className={`rounded-md border border-t-2 p-3 ${inner} ${border}`}>
+              <Icon className={`w-4 h-4 mb-2 ${color}`} />
+              <div className={`text-sm font-bold ${val}`}>{name}</div>
+              <div className={`text-[10px] font-mono mt-0.5 ${label}`}>{role}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 1. Propuesta de valor ─────────────────────────────────────────── */}
+      <section className={`rounded-lg border p-5 sm:p-6 space-y-4 ${card}`}>
+        <SectionTitle step="01" title="Propuesta de Valor & Problema Resuelto" icon={IconShield} isDark={isDark} />
+
+        <p className={`text-sm sm:text-base leading-relaxed ${sub}`}>
+          En los mercados de capitales modernos, más del{' '}
+          <strong className={val}>80% de la información</strong> se origina en formato no estructurado —
+          noticias de última hora, comunicados de bancos centrales y comentarios sociales. Los sistemas
+          tradicionales de trading no pueden cuantificar el impacto semántico con baja latencia.
         </p>
-        <div className={`p-4 rounded-lg border text-xs leading-relaxed space-y-2 font-mono ${
-          isDark ? 'bg-[#0b0f19] border-[#1e293b] text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-800'
-        }`}>
-          <div className="flex items-center gap-2 font-bold text-blue-400">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Solución Implementada:</span>
+
+        <div className={`rounded-md border p-4 space-y-2 ${inner}`}>
+          <div className={`flex items-center gap-2 text-sm font-bold ${isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'}`}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" className="w-4 h-4">
+              <rect x="2" y="2" width="12" height="12" rx="0.5" />
+              <polyline points="5,8 7,10 11,6" />
+            </svg>
+            <span>Solución Implementada</span>
           </div>
-          <p className="font-sans text-xs">
-            Un pipeline <strong>ELT reactivo y columnar</strong> que ingesta cientos de titulares por minuto en un Data Lake inmutable (Parquet), ejecuta inferencia paralela con el modelo especializado <strong>FinBERT</strong> y consolida matrices analíticas instantáneas en <strong>DuckDB</strong>, logrando consultas sub-milisegundo sin infraestructura pesada ni dependencias en la nube.
+          <p className={`text-sm leading-relaxed ${sub}`}>
+            Un pipeline <strong className={val}>ELT reactivo y columnar</strong> que ingesta cientos de titulares
+            por minuto en un Data Lake inmutable (Parquet), ejecuta inferencia paralela con{' '}
+            <strong className={val}>FinBERT</strong> y consolida matrices analíticas en{' '}
+            <strong className={val}>DuckDB</strong> con consultas sub-milisegundo — sin infraestructura cloud.
           </p>
         </div>
       </section>
 
-      {/* 2. Arquitectura de Datos Medallion */}
-      <section className={`p-6 rounded-xl border space-y-4 ${
-        isDark ? 'bg-[#101726] border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-blue-400" />
-          <h2 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            2. Arquitectura Técnica Medallion
-          </h2>
-        </div>
+      {/* ── 2. Arquitectura Medallion ─────────────────────────────────────── */}
+      <section className={`rounded-lg border p-5 sm:p-6 space-y-4 ${card}`}>
+        <SectionTitle step="02" title="Arquitectura Técnica Medallion" icon={IconPipeline} iconClass={isDark ? 'text-[#d97706]' : 'text-amber-600'} isDark={isDark} />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          {/* Bronze */}
-          <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0b0f19] border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <div className="flex items-center justify-between">
-              <span className="font-mono font-bold text-blue-400">Capa Bronze (Lake)</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">Crudo</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {[
+            {
+              layer: 'BRONZE',
+              subtitle: 'Data Lake · Raw',
+              schema: 'data/bronze/year=…/*.parquet',
+              desc: 'Payload bruto e inmutable de Binance REST, feeds RSS y feeds sociales. Particionado por fecha, compresión Snappy.',
+              color: isDark ? 'text-[#d97706]' : 'text-amber-600',
+              border: 'border-t-[#d97706]/60',
+              tagClass: isDark ? 'bg-[#d97706]/10 text-[#d97706] border-[#d97706]/25' : 'bg-amber-50 text-amber-700 border-amber-200',
+            },
+            {
+              layer: 'SILVER',
+              subtitle: 'DuckDB · NLP',
+              schema: 'silver_social_sentiment',
+              desc: 'Deduplicación criptográfica SHA-256, sanitización y scoring batch de FinBERT. Trazabilidad completa por post.',
+              color: isDark ? 'text-[#a78bfa]' : 'text-purple-600',
+              border: 'border-t-[#a78bfa]/60',
+              tagClass: isDark ? 'bg-[#a78bfa]/10 text-[#a78bfa] border-[#a78bfa]/25' : 'bg-purple-50 text-purple-700 border-purple-200',
+            },
+            {
+              layer: 'GOLD',
+              subtitle: 'Feature Store',
+              schema: 'gold_hourly_market_sentiment',
+              desc: 'Vista analítica horaria que une precio de cierre, volumen, polaridad media ponderada y clasificación macro.',
+              color: isDark ? 'text-[#10b981]' : 'text-emerald-600',
+              border: 'border-t-[#10b981]/60',
+              tagClass: isDark ? 'bg-[#10b981]/10 text-[#10b981] border-[#10b981]/25' : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            },
+          ].map(({ layer, subtitle, schema, desc, color, border, tagClass }) => (
+            <div key={layer} className={`rounded-md border border-t-2 p-4 space-y-3 ${inner} ${border}`}>
+              <div className="flex items-center justify-between">
+                <span className={`text-sm font-black font-mono ${color}`}>{layer}</span>
+                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-xs border ${tagClass}`}>{subtitle}</span>
+              </div>
+              <code className={`block text-[10px] font-mono break-all ${label}`}>{schema}</code>
+              <p className={`text-sm leading-relaxed ${sub}`}>{desc}</p>
             </div>
-            <div className="text-[11px] font-mono text-slate-500">data/bronze/year=.../ (*.parquet)</div>
-            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Almacena el payload bruto e inmutable de Binance REST (velas OHLCV), feeds RSS (CoinTelegraph, CoinDesk, Decrypt) e índices macro. Particionado por fecha con compresión Snappy.
-            </p>
-          </div>
-
-          {/* Silver */}
-          <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0b0f19] border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <div className="flex items-center justify-between">
-              <span className="font-mono font-bold text-purple-400">Capa Silver (DuckDB)</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">Limpio + NLP</span>
-            </div>
-            <div className="text-[11px] font-mono text-slate-500">silver_social_sentiment</div>
-            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Deduplicación criptográfica, sanitización de caracteres y scoring batch de inferencia NLP con FinBERT. Mantiene la granularidad por post con trazabilidad completa.
-            </p>
-          </div>
-
-          {/* Gold */}
-          <div className={`p-4 rounded-lg border space-y-2 ${isDark ? 'bg-[#0b0f19] border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <div className="flex items-center justify-between">
-              <span className="font-mono font-bold text-emerald-400">Capa Gold (Feature Store)</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">Analítico</span>
-            </div>
-            <div className="text-[11px] font-mono text-slate-500">gold_hourly_market_sentiment</div>
-            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Vista materializada analítica que une en ventanas horarias el precio de cierre, volumen de mercado, polaridad media ponderada y clasificación macro para consumo directo.
-            </p>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* 3. Modelo NLP y Formulación Matemática */}
-      <section className={`p-6 rounded-xl border space-y-4 ${
-        isDark ? 'bg-[#101726] border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-purple-400" />
-          <h2 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            3. Motor NLP FinBERT &amp; Cuantificación
-          </h2>
-        </div>
-        <p className={`text-xs sm:text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-          Se utiliza el modelo Transformer <strong>ProsusAI/finbert</strong>, basado en una arquitectura BERT pre-entrenada con Financial PhraseBank y calibrada para la jerga financiera. Para cada texto de entrada se genera un vector triclase de probabilidades mediante la función Softmax:
+      {/* ── 3. Motor NLP ─────────────────────────────────────────────────── */}
+      <section className={`rounded-lg border p-5 sm:p-6 space-y-4 ${card}`}>
+        <SectionTitle step="03" title="Motor NLP FinBERT & Cuantificación" icon={IconFinbertLab} iconClass={isDark ? 'text-[#a78bfa]' : 'text-purple-600'} isDark={isDark} />
+
+        <p className={`text-sm sm:text-base leading-relaxed ${sub}`}>
+          Se utiliza el modelo Transformer <strong className={val}>ProsusAI/finbert</strong>, basado en BERT
+          pre-entrenado con Financial PhraseBank y calibrado para jerga financiera. Para cada texto se
+          genera un vector triclase de probabilidades mediante la función Softmax:
         </p>
 
-        <div className={`p-4 rounded-lg font-mono text-xs border space-y-2 ${
-          isDark ? 'bg-[#0b0f19] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-800'
-        }`}>
-          <div className="text-blue-400 font-bold">Fórmula de Polaridad Normalizada:</div>
-          <div className="text-sm text-emerald-400">
-            Score = P(Bullish) - P(Bearish) &nbsp;∈ [-1.00, +1.00]
+        <div className={`rounded-md border p-5 space-y-3 ${inner}`}>
+          <div className={`text-[10px] font-mono font-bold tracking-widest uppercase ${label}`}>
+            Fórmula de Polaridad Normalizada
           </div>
-          <div className="text-[11px] text-slate-400 pt-1">
-            Donde <strong>+1.00</strong> denota certeza absoluta alcista, <strong>-1.00</strong> certeza bajista extrema y <strong>0.00</strong> neutralidad o equilibrio estricto.
+          <div className={`text-xl font-black font-mono ${isDark ? 'text-[#10b981]' : 'text-emerald-600'}`}>
+            Score = P(Bullish) − P(Bearish) ∈ [−1.00, +1.00]
           </div>
-        </div>
-      </section>
-
-      {/* 4. Rigor de Ingeniería y Principios Clave */}
-      <section className={`p-6 rounded-xl border space-y-4 ${
-        isDark ? 'bg-[#101726] border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-emerald-400" />
-          <h2 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            4. Rigor de Ingeniería &amp; Principios de Diseño
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs leading-relaxed">
-          <div className={`p-3.5 rounded-lg border ${isDark ? 'bg-[#0b0f19] border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <strong className="text-blue-400 block mb-1">Cero Datos Mockeados (Zero Mocks)</strong>
-            <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
-              Toda la información visible proviene exclusivamente de transacciones reales en DuckDB y llamadas activas a APIs y feeds RSS. Si una fuente falla, el sistema lo informa honestamente mediante telemetría unificada.
-            </p>
-          </div>
-
-          <div className={`p-3.5 rounded-lg border ${isDark ? 'bg-[#0b0f19] border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <strong className="text-purple-400 block mb-1">Idempotencia y ACID en DuckDB</strong>
-            <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
-              Claves primarias compuestas (`asset_ticker, timestamp_open_ms` y `post_id`) garantizan que múltiples ejecuciones del pipeline no generen duplicados ni corrompan el estado histórico.
-            </p>
-          </div>
-
-          <div className={`p-3.5 rounded-lg border ${isDark ? 'bg-[#0b0f19] border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <strong className="text-emerald-400 block mb-1">Observabilidad Centralizada</strong>
-            <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
-              Métricas de latencia en milisegundos, operaciones de disco (VACUUM, CHECKPOINT) y verificación continua de la salud de las conexiones integradas en una sola pestaña.
-            </p>
-          </div>
-
-          <div className={`p-3.5 rounded-lg border ${isDark ? 'bg-[#0b0f19] border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-            <strong className="text-amber-400 block mb-1">Procesamiento Vectorizado (Polars)</strong>
-            <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
-              Aceleración sobre Apache Arrow mediante Polars para la sanitización y unión de datasets, alcanzando latencias de transformación de ~40ms por lote.
-            </p>
+          <div className="grid grid-cols-3 gap-2 pt-2">
+            {[
+              { val: '+1.00', label: 'Máxima certeza alcista', color: isDark ? 'text-[#10b981]' : 'text-emerald-600' },
+              { val: '0.00', label: 'Neutralidad o equilibrio', color: isDark ? 'text-[#f59e0b]' : 'text-amber-600' },
+              { val: '−1.00', label: 'Certeza bajista extrema', color: isDark ? 'text-[#f43f5e]' : 'text-rose-600' },
+            ].map(({ val: v, label: l, color }) => (
+              <div key={v} className="text-center">
+                <div className={`text-lg font-black font-mono ${color}`}>{v}</div>
+                <div className={`text-[10px] font-mono mt-0.5 ${label}`}>{l}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* 5. Competencias Demostradas (Para Recursos Humanos y Líderes Técnicos) */}
-      <section className={`p-6 rounded-xl border space-y-4 ${
-        isDark ? 'bg-[#101726] border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-amber-400" />
-          <h2 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            5. Competencias Técnicas Demostradas en el Proyecto
-          </h2>
-        </div>
-
-        <div className="space-y-3 text-xs">
-          <div className="flex items-start gap-2">
-            <span className="text-blue-400 font-bold">•</span>
-            <div>
-              <strong className={isDark ? 'text-white' : 'text-slate-900'}>Data Engineering &amp; Lakehouse:</strong> Modelado Medallion, formato Apache Parquet particionado, almacenamiento columnar OLAP con DuckDB, operaciones de mantenimiento y persistencia transaccional.
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-purple-400 font-bold">•</span>
-            <div>
-              <strong className={isDark ? 'text-white' : 'text-slate-900'}>Machine Learning &amp; NLP:</strong> Despliegue e inferencia por lotes con HuggingFace Transformers (FinBERT), cálculo de distribuciones Softmax, heurísticas de calibración y tokenización financiera.
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-emerald-400 font-bold">•</span>
-            <div>
-              <strong className={isDark ? 'text-white' : 'text-slate-900'}>Backend &amp; Sistemas Distribuidos:</strong> Arquitectura asíncrona con `asyncio` y `httpx`, orquestación por etapas ELT, resiliencia ante bloqueos y APIs de alta disponibilidad.
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-amber-400 font-bold">•</span>
-            <div>
-              <strong className={isDark ? 'text-white' : 'text-slate-900'}>Full-Stack &amp; Observabilidad:</strong> Next.js 14, React, TypeScript, TailwindCSS, diseño accesible y responsivo para escritorio y móvil, telemetría de red en vivo y componentes visuales Recharts.
-            </div>
-          </div>
+      {/* ── 4. Principios ────────────────────────────────────────────────── */}
+      <section className={`rounded-lg border p-5 sm:p-6 space-y-4 ${card}`}>
+        <SectionTitle step="04" title="Rigor de Ingeniería & Principios de Diseño" icon={IconShield} iconClass={isDark ? 'text-[#10b981]' : 'text-emerald-600'} isDark={isDark} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Principle
+            title="Cero Datos Mockeados"
+            body="Toda la información visible proviene de transacciones reales en DuckDB y llamadas activas a APIs. Si una fuente falla, el sistema lo informa mediante telemetría unificada."
+            accent={isDark ? 'border-l-[#818cf8]' : 'border-l-indigo-400'}
+            isDark={isDark}
+          />
+          <Principle
+            title="Idempotencia y ACID"
+            body="Claves primarias compuestas (asset_ticker, timestamp_open_ms y post_id) garantizan que múltiples ejecuciones del pipeline no generen duplicados ni corrompan el histórico."
+            accent={isDark ? 'border-l-[#a78bfa]' : 'border-l-purple-400'}
+            isDark={isDark}
+          />
+          <Principle
+            title="Observabilidad Centralizada"
+            body="Métricas de latencia en ms, operaciones de disco VACUUM/CHECKPOINT y verificación continua de la salud de conexiones en una única vista de telemetría."
+            accent={isDark ? 'border-l-[#10b981]' : 'border-l-emerald-400'}
+            isDark={isDark}
+          />
+          <Principle
+            title="Procesamiento Vectorizado"
+            body="Aceleración sobre Apache Arrow mediante Polars para sanitización y unión de datasets, alcanzando latencias de transformación de ~40 ms por lote sobre CPU."
+            accent={isDark ? 'border-l-[#d97706]' : 'border-l-amber-400'}
+            isDark={isDark}
+          />
         </div>
       </section>
 
-      {/* 6. Guía Rápida de Comandos */}
-      <section className={`p-6 rounded-xl border space-y-3 ${
-        isDark ? 'bg-[#101726] border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-slate-400" />
-          <h2 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            6. Comandos Operativos de Terminal
-          </h2>
+      {/* ── 5. Competencias ──────────────────────────────────────────────── */}
+      <section className={`rounded-lg border p-5 sm:p-6 space-y-4 ${card}`}>
+        <SectionTitle step="05" title="Competencias Técnicas Demostradas" icon={IconObservability} isDark={isDark} />
+
+        <div className="space-y-3">
+          {[
+            {
+              area: 'Data Engineering & Lakehouse',
+              desc: 'Modelado Medallion, Apache Parquet particionado, OLAP con DuckDB, operaciones VACUUM/CHECKPOINT y persistencia transaccional.',
+              color: isDark ? 'text-[#818cf8]' : 'text-indigo-500',
+            },
+            {
+              area: 'Machine Learning & NLP',
+              desc: 'Despliegue e inferencia batch con HuggingFace Transformers (FinBERT), distribuciones Softmax, calibración y tokenización financiera.',
+              color: isDark ? 'text-[#a78bfa]' : 'text-purple-600',
+            },
+            {
+              area: 'Backend & Sistemas Distribuidos',
+              desc: 'Arquitectura asíncrona con asyncio y httpx, orquestación por etapas ELT, resiliencia ante bloqueos y APIs de alta disponibilidad.',
+              color: isDark ? 'text-[#10b981]' : 'text-emerald-600',
+            },
+            {
+              area: 'Full-Stack & Observabilidad',
+              desc: 'Next.js 14 App Router, React 18, TypeScript, Tailwind CSS, diseño responsive, telemetría de red en vivo y visualización con Recharts.',
+              color: isDark ? 'text-[#d97706]' : 'text-amber-600',
+            },
+          ].map(({ area, desc, color }) => (
+            <div key={area} className={`flex gap-3 p-4 rounded-md border ${inner}`}>
+              <span className={`text-base font-black leading-none pt-0.5 ${color}`}>›</span>
+              <div>
+                <div className={`text-sm font-bold ${val}`}>{area}</div>
+                <p className={`text-sm mt-1 leading-relaxed ${sub}`}>{desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="space-y-2 text-xs font-mono">
-          <div className={`p-2.5 rounded-md border ${isDark ? 'bg-[#0b0f19] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
-            <div className="text-[10px] text-slate-500 mb-1"># Inicializar Backend Python + Dashboard Next.js simultáneamente</div>
-            .\start.ps1
-          </div>
-          <div className={`p-2.5 rounded-md border ${isDark ? 'bg-[#0b0f19] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
-            <div className="text-[10px] text-slate-500 mb-1"># Ejecutar pipeline ELT manual desde CLI para Bitcoin (24h)</div>
-            python -m src.main --symbol BTCUSDT --hours 24
-          </div>
-          <div className={`p-2.5 rounded-md border ${isDark ? 'bg-[#0b0f19] border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
-            <div className="text-[10px] text-slate-500 mb-1"># Consulta directa SQL a la feature store DuckDB</div>
-            duckdb data/gold/market_intelligence.duckdb "SELECT * FROM gold_hourly_market_sentiment LIMIT 5;"
-          </div>
+      </section>
+
+      {/* ── 6. Comandos de terminal ───────────────────────────────────────── */}
+      <section className={`rounded-lg border p-5 sm:p-6 space-y-4 ${card}`}>
+        <SectionTitle step="06" title="Comandos Operativos de Terminal" icon={IconTerminal} iconClass={isDark ? 'text-[#8b95b0]' : 'text-slate-500'} isDark={isDark} />
+
+        <div className="space-y-3">
+          <CodeBlock
+            comment="# Inicializar Backend Python + Dashboard Next.js simultáneamente"
+            code=".\\start.ps1"
+            isDark={isDark}
+          />
+          <CodeBlock
+            comment="# Ejecutar pipeline ELT manual desde CLI para Bitcoin (24h)"
+            code="python -m src.main --symbol BTCUSDT --hours 24"
+            isDark={isDark}
+          />
+          <CodeBlock
+            comment="# Consulta directa SQL a la feature store DuckDB"
+            code={`duckdb data/gold/market_intelligence.duckdb \\\n  "SELECT * FROM gold_hourly_market_sentiment LIMIT 5;"`}
+            isDark={isDark}
+          />
+        </div>
+
+        <div className={`mt-2 p-3 rounded-sm border-l-2 border-l-[#818cf8] text-xs font-mono ${isDark ? 'bg-[#080b12] text-[#4e5d7a]' : 'bg-slate-50 text-slate-400'}`}>
+          Atajo: abre la Paleta de Comandos con <kbd className={`px-1 py-0.5 rounded-xs border text-[10px] mx-1 ${isDark ? 'bg-[#111622] border-[#232d44] text-[#818cf8]' : 'bg-white border-slate-300 text-indigo-600'}`}>⌘K</kbd> para navegar sin ratón.
         </div>
       </section>
 
     </div>
   );
 };
-

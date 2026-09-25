@@ -31,6 +31,31 @@ class BaseAsyncExtractor(ABC):
         self.max_backoff = max_backoff
         self.timeout = timeout
         self.headers = headers or {"User-Agent": "MarketIntelligenceEngine/1.0"}
+        self._client: Optional[httpx.AsyncClient] = None
+
+    async def get_client(self) -> httpx.AsyncClient:
+        """Returns or creates a persistent httpx.AsyncClient with connection pooling."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=self.timeout,
+                follow_redirects=True,
+                headers=self.headers,
+                limits=httpx.Limits(max_keepalive_connections=20, max_connections=40),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Closes the underlying HTTP client session cleanly."""
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
+
+    async def __aenter__(self):
+        await self.get_client()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
 
     async def fetch_json(
         self,
@@ -45,55 +70,55 @@ class BaseAsyncExtractor(ABC):
             url = f"{self.base_url}/" if not self.base_url.endswith("/") else self.base_url
 
         combined_headers = {**self.headers, **(headers or {})}
+        client = await self.get_client()
 
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-            for attempt in range(1, self.max_retries + 1):
-                try:
-                    response = await client.get(url, params=params, headers=combined_headers)
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = await client.get(url, params=params, headers=combined_headers)
 
-                    # If 403, 401, or 451 (geo-blocked/legal), don't waste retries on permissions/blocking
-                    if response.status_code in (401, 403, 451):
-                        response.raise_for_status()
-
-                    # Handle rate limits (429) or transient server errors (5xx)
-                    if response.status_code in (429, 500, 502, 503, 504):
-                        retry_after = response.headers.get("Retry-After")
-                        if retry_after:
-                            sleep_time = float(retry_after)
-                        else:
-                            jitter = random.uniform(0.1, 0.5)
-                            sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter
-
-                        console.print(
-                            f"[yellow][{self.name}] Rate limit / Server code {response.status_code}. "
-                            f"Retrying in {sleep_time:.2f}s (Attempt {attempt}/{self.max_retries})...[/yellow]"
-                        )
-                        await asyncio.sleep(sleep_time)
-                        continue
-
+                # If 403, 401, or 451 (geo-blocked/legal), don't waste retries on permissions/blocking
+                if response.status_code in (401, 403, 451):
                     response.raise_for_status()
-                    return response.json()
 
-                except httpx.HTTPStatusError as exc:
-                    if exc.response.status_code in (401, 403, 451) or attempt == self.max_retries:
-                        raise
-                    jitter = random.uniform(0.1, 0.5)
-                    sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter
+                # Handle rate limits (429) or transient server errors (5xx)
+                if response.status_code in (429, 500, 502, 503, 504):
+                    retry_after = response.headers.get("Retry-After")
+                    if retry_after:
+                        sleep_time = float(retry_after)
+                    else:
+                        jitter = random.uniform(0.1, 0.5)
+                        sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter
+
                     console.print(
-                        f"[yellow][{self.name}] HTTP {exc.response.status_code}. Retrying in {sleep_time:.2f}s...[/yellow]"
+                        f"[yellow][{self.name}] Rate limit / Server code {response.status_code}. "
+                        f"Retrying in {sleep_time:.2f}s (Attempt {attempt}/{self.max_retries})...[/yellow]"
                     )
                     await asyncio.sleep(sleep_time)
+                    continue
 
-                except httpx.RequestError as exc:
-                    if attempt == self.max_retries:
-                        console.print(f"[bold red][{self.name}] Fatal extraction error: {exc}[/bold red]")
-                        raise
-                    jitter = random.uniform(0.1, 0.5)
-                    sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter
-                    console.print(
-                        f"[yellow][{self.name}] Network error: {exc}. Retrying in {sleep_time:.2f}s...[/yellow]"
-                    )
-                    await asyncio.sleep(sleep_time)
+                response.raise_for_status()
+                return response.json()
+
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in (401, 403, 451) or attempt == self.max_retries:
+                    raise
+                jitter = random.uniform(0.1, 0.5)
+                sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter
+                console.print(
+                    f"[yellow][{self.name}] HTTP {exc.response.status_code}. Retrying in {sleep_time:.2f}s...[/yellow]"
+                )
+                await asyncio.sleep(sleep_time)
+
+            except httpx.RequestError as exc:
+                if attempt == self.max_retries:
+                    console.print(f"[bold red][{self.name}] Fatal extraction error: {exc}[/bold red]")
+                    raise
+                jitter = random.uniform(0.1, 0.5)
+                sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter
+                console.print(
+                    f"[yellow][{self.name}] Network error: {exc}. Retrying in {sleep_time:.2f}s...[/yellow]"
+                )
+                await asyncio.sleep(sleep_time)
 
     @abstractmethod
     async def extract(self, **kwargs) -> List[Dict[str, Any]]:

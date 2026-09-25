@@ -3,7 +3,7 @@
 import httpx
 import pytest
 
-from src.extractors import BinanceKlinesExtractor, FearGreedExtractor, SocialRedditExtractor
+from src.extractors import BinanceKlinesExtractor, SocialRedditExtractor
 from src.nlp.cleaner import TextCleaner
 
 
@@ -14,6 +14,14 @@ def test_text_cleaner():
     assert "r/CryptoCurrency" not in cleaned
     assert "BTC" in cleaned
     assert "surging" in cleaned
+
+
+def test_social_detect_asset_ticker():
+    extractor = SocialRedditExtractor()
+    assert extractor.detect_asset_ticker("Huge Bitcoin breakout incoming!") == "BTCUSDT"
+    assert extractor.detect_asset_ticker("Ethereum ETF approved today") == "ETHUSDT"
+    assert extractor.detect_asset_ticker("Solana TPS hits new all time high") == "SOLUSDT"
+    assert extractor.detect_asset_ticker("General crypto market overview today") == "ALL"
 
 
 @pytest.mark.asyncio
@@ -75,53 +83,11 @@ async def test_binance_extractor_mocked(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_fear_greed_extractor_live():
-    extractor = FearGreedExtractor()
-    try:
-        records = await extractor.extract(limit=3)
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code in (401, 403, 429, 451, 503):
-            pytest.skip(f"Alternative.me API unavailable in test environment (HTTP {exc.response.status_code})")
-        raise
-    except httpx.RequestError as exc:
-        pytest.skip(f"Alternative.me API unreachable: {exc}")
-
-    assert len(records) >= 1
-    assert "fear_and_greed_score" in records[0]
-    assert 0 <= records[0]["fear_and_greed_score"] <= 100
-
-
-@pytest.mark.asyncio
-async def test_fear_greed_extractor_mocked(monkeypatch):
-    mock_payload = {
-        "data": [
-            {
-                "value": "72",
-                "value_classification": "Greed",
-                "timestamp": "1710000000",
-            }
-        ]
-    }
-    extractor = FearGreedExtractor()
-
-    async def mock_fetch_json(endpoint="", params=None, headers=None):
-        return mock_payload
-
-    monkeypatch.setattr(extractor, "fetch_json", mock_fetch_json)
-    records = await extractor.extract(limit=1)
-
-    assert len(records) == 1
-    rec = records[0]
-    assert rec["source"] == "alternative_me"
-    assert rec["fear_and_greed_score"] == 72
-    assert rec["fear_and_greed_classification"] == "greed"
-    assert rec["timestamp_epoch"] == 1710000000
-
-
-@pytest.mark.asyncio
 async def test_social_fallback_resilience():
     extractor = SocialRedditExtractor()
     posts = await extractor.extract(limit_per_sub=5)
     assert len(posts) > 0
     assert "title" in posts[0]
     assert "timestamp_hour" in posts[0]
+    assert "asset_ticker" in posts[0]
+

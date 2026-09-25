@@ -31,7 +31,7 @@ export interface SystemMetrics {
   silver: {
     market_rows: number;
     social_rows: number;
-    fear_greed_rows: number;
+    fear_greed_rows?: number;
   };
   gold: {
     total_rows: number;

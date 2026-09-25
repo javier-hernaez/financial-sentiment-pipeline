@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Cpu, Zap, Activity } from 'lucide-react';
+import { IconCpu, IconZap, IconActivity } from './CustomIcons';
 import { NlpPrediction } from '@/types';
 import { analyzeText } from '@/lib/api';
 
@@ -55,13 +55,13 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
         <div
           className={`p-6 rounded-2xl border transition-all duration-200 space-y-5 ${
             isDark
-              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+              ? 'bg-white/[0.02] border-white/[0.06] text-white backdrop-blur-sm shadow-xl shadow-black/20'
+              : 'bg-white border-slate-200 text-slate-800 shadow-sm'
           }`}
         >
           <div>
             <h3 className={`text-base font-bold tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              <Cpu className="w-4 h-4 text-blue-500" />
+              <IconCpu className="w-4 h-4 text-indigo-400" />
               Evaluador de Sentimiento FinBERT
             </h3>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -69,36 +69,57 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
             </p>
           </div>
 
+          {/* User Invitation Banner & Action */}
+          <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs font-mono ${
+            isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+          }`}>
+            <span className="flex items-center gap-2 font-medium">
+              <span>✍️</span>
+              <span>¡Escribe o pega cualquier titular, rumor de mercado o tweet financiero!</span>
+            </span>
+            {text && (
+              <button
+                type="button"
+                onClick={() => { setText(''); setResult(null); }}
+                className={`text-[11px] font-bold underline cursor-pointer shrink-0 transition ${
+                  isDark ? 'text-indigo-300 hover:text-white' : 'text-indigo-700 hover:text-indigo-950'
+                }`}
+              >
+                Limpiar campo
+              </button>
+            )}
+          </div>
+
           {/* Quick Preset Buttons */}
           <div className="space-y-2">
-            <span className={`text-xs font-mono uppercase tracking-wider block font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Muestras Financieras de Prueba:
+            <span className={`text-[11px] font-mono uppercase tracking-wider block font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              O prueba un ejemplo de mercado en 1 click:
             </span>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setPreset('bullish')}
-                className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/25 transition"
+                className="text-xs font-mono font-medium px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition shadow-sm cursor-pointer"
               >
-                Alcista / ETF Inflows
+                + Alcista (Inflows ETF récord)
               </button>
               <button
                 type="button"
                 onClick={() => setPreset('bearish')}
-                className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-rose-500/15 text-rose-500 border border-rose-500/30 hover:bg-rose-500/25 transition"
+                className="text-xs font-mono font-medium px-3.5 py-1.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition shadow-sm cursor-pointer"
               >
-                Bajista / Liquidaciones
+                + Bajista (Liquidaciones masivas)
               </button>
               <button
                 type="button"
                 onClick={() => setPreset('neutral')}
-                className={`text-xs font-mono font-bold px-3 py-1 rounded-full border transition ${
+                className={`text-xs font-mono font-medium px-3.5 py-1.5 rounded-full border transition shadow-sm cursor-pointer ${
                   isDark
-                    ? 'bg-[#162137] text-slate-300 border-[#233352] hover:bg-[#1f2d4a]'
+                    ? 'bg-white/[0.04] text-slate-300 border-white/[0.08] hover:bg-white/[0.08]'
                     : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                 }`}
               >
-                Neutral / Consolidación
+                + Neutral (Consolidación pre-tasas)
               </button>
             </div>
           </div>
@@ -108,11 +129,11 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
               rows={4}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Introduce texto financiero para inferir polaridad..."
+              placeholder="✍️ Escribe o pega aquí un titular de noticias, rumor de mercado o tweet financiero... Ej: 'BlackRock compra 10,000 BTC tras aprobación de nuevo ETF spot'"
               className={`w-full text-xs sm:text-sm font-mono rounded-xl p-3.5 outline-none transition resize-none leading-relaxed border ${
                 isDark
-                  ? 'bg-[#0e1628] border-[#1f2d48] text-white focus:border-blue-500'
-                  : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-500'
+                  ? 'bg-white/[0.03] border-white/[0.08] text-white placeholder-slate-500 focus:border-indigo-500/60 focus:bg-white/[0.05]'
+                  : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500'
               }`}
             />
           </div>
@@ -120,10 +141,16 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
           <button
             onClick={() => handleAnalyze()}
             disabled={isAnalyzing || !text.trim()}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-40 text-white text-xs sm:text-sm font-semibold rounded-full shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
           >
-            <Zap className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
-            <span>{isAnalyzing ? 'Procesando con FinBERT...' : 'Ejecutar Inferencia FinBERT'}</span>
+            <IconZap className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            <span>
+              {isAnalyzing
+                ? 'Procesando inferencia con FinBERT...'
+                : text.trim()
+                ? 'Ejecutar Inferencia FinBERT'
+                : 'Escribe un titular o selecciona un ejemplo para inferir'}
+            </span>
           </button>
         </div>
 
@@ -131,13 +158,13 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
         <div
           className={`p-6 rounded-2xl border transition-all duration-200 space-y-5 ${
             isDark
-              ? 'bg-[#131b2e] border-[#1f2d48] text-white shadow-lg shadow-black/20'
-              : 'bg-white border-slate-100 text-slate-800 shadow-sm'
+              ? 'bg-white/[0.02] border-white/[0.06] text-white backdrop-blur-sm shadow-xl shadow-black/20'
+              : 'bg-white border-slate-200 text-slate-800 shadow-sm'
           }`}
         >
-          <div className={`flex justify-between items-center pb-3 border-b ${isDark ? 'border-[#1f2d48]' : 'border-slate-100'}`}>
+          <div className={`flex justify-between items-center pb-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
             <h3 className={`text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              <Activity className="w-4 h-4 text-blue-500" />
+              <IconActivity className="w-4 h-4 text-indigo-400" />
               Métricas de Inferencia
             </h3>
             <span className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -149,21 +176,21 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
             {/* Primary Classification */}
             <div
               className={`flex items-center justify-between p-4 rounded-xl border ${
-                isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200/80'
+                isDark ? 'bg-white/[0.03] border-white/[0.06]' : 'bg-slate-50 border-slate-200'
               }`}
             >
               <div>
-                <span className={`text-xs font-mono block uppercase font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <span className={`text-[11px] font-mono block uppercase font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   Clasificación
                 </span>
                 <span
-                  className={`text-lg font-black font-mono tracking-wide ${
+                  className={`text-base font-bold font-mono tracking-wide ${
                     result?.sentiment_label === 'bullish'
-                      ? 'text-emerald-500'
+                      ? 'text-emerald-500 font-extrabold'
                       : result?.sentiment_label === 'bearish'
-                      ? 'text-rose-500'
+                      ? 'text-rose-500 font-extrabold'
                       : result?.sentiment_label === 'neutral'
-                      ? 'text-amber-500'
+                      ? 'text-amber-500 font-extrabold'
                       : isDark
                       ? 'text-slate-500'
                       : 'text-slate-400'
@@ -173,10 +200,10 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
                 </span>
               </div>
               <div className="text-right">
-                <span className={`text-xs font-mono block uppercase font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <span className={`text-[11px] font-mono block uppercase font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   Polaridad Ponderada
                 </span>
-                <span className={`text-lg font-black font-mono ${
+                <span className={`text-base font-bold font-mono ${
                   result && result.sentiment_score >= 0 ? 'text-emerald-500' : 'text-rose-500'
                 }`}>
                   {result ? (result.sentiment_score > 0 ? `+${result.sentiment_score.toFixed(3)}` : result.sentiment_score.toFixed(3)) : '0.000'}
@@ -187,13 +214,13 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
             {/* Softmax Probability Distribution */}
             <div className="space-y-3 text-xs font-mono">
               <div>
-                <div className="flex justify-between mb-1">
+                <div className="flex justify-between mb-1.5">
                   <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Probabilidad Bullish (Alcista)</span>
-                  <span className="font-bold text-emerald-500">
+                  <span className="font-semibold text-emerald-500">
                     {result ? (result.prob_positive * 100).toFixed(1) : 0}%
                   </span>
                 </div>
-                <div className={`w-full rounded-full h-2 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+                <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-white/[0.05]' : 'bg-slate-200'}`}>
                   <div
                     className="bg-emerald-500 h-full rounded-full transition-all duration-300"
                     style={{ width: `${result ? (result.prob_positive * 100).toFixed(1) : 0}%` }}
@@ -202,28 +229,28 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
               </div>
 
               <div>
-                <div className="flex justify-between mb-1">
+                <div className="flex justify-between mb-1.5">
                   <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Probabilidad Neutral</span>
-                  <span className="font-bold text-amber-500">
+                  <span className="font-semibold text-amber-500">
                     {result ? (result.prob_neutral * 100).toFixed(1) : 0}%
                   </span>
                 </div>
-                <div className={`w-full rounded-full h-2 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+                <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-white/[0.05]' : 'bg-slate-200'}`}>
                   <div
-                    className="bg-amber-500 h-full rounded-full transition-all duration-300"
+                    className="bg-amber-400 h-full rounded-full transition-all duration-300"
                     style={{ width: `${result ? (result.prob_neutral * 100).toFixed(1) : 0}%` }}
                   ></div>
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between mb-1">
+                <div className="flex justify-between mb-1.5">
                   <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Probabilidad Bearish (Bajista)</span>
-                  <span className="font-bold text-rose-500">
+                  <span className="font-semibold text-rose-500">
                     {result ? (result.prob_negative * 100).toFixed(1) : 0}%
                   </span>
                 </div>
-                <div className={`w-full rounded-full h-2 overflow-hidden ${isDark ? 'bg-[#0e1628]' : 'bg-slate-100'}`}>
+                <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-white/[0.05]' : 'bg-slate-200'}`}>
                   <div
                     className="bg-rose-500 h-full rounded-full transition-all duration-300"
                     style={{ width: `${result ? (result.prob_negative * 100).toFixed(1) : 0}%` }}
@@ -232,7 +259,7 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
               </div>
             </div>
 
-            <div className={`text-xs font-mono pt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <div className={`text-[11px] font-mono pt-1 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
               * Score normalizado en [-1.0, +1.0] con distribución Softmax.
             </div>
           </div>

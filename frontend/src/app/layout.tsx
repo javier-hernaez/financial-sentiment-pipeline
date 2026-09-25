@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Market Intelligence Lakehouse • Terminal Cuantitativo y Control ELT',
-  description: 'Consola de control operacional de datos, scoring FinBERT y terminal cuantitativo DuckDB.',
+  title: 'Market ELT • Terminal de Datos, NLP y Almacén DuckDB',
+  description: 'Consola operacional de datos, scoring FinBERT y analítica en DuckDB.',
 };
 
 export default function RootLayout({
