@@ -94,36 +94,39 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
   ];
 
   const container = isDark
-    ? 'bg-[#0c101a] border-[#1a2035]'
-    : 'bg-white border-slate-200 shadow-sm';
+    ? 'bg-white/[0.02] border-white/[0.06] backdrop-blur-sm'
+    : 'bg-white border-slate-200/80 shadow-xs';
 
-  const divider = isDark ? 'divide-[#1a2035]' : 'divide-slate-200';
-  const schemaColor = isDark ? 'text-[#818cf8]' : 'text-indigo-600';
-  const labelColor  = isDark ? 'text-[#8b95b0]' : 'text-slate-500';
+  const divider = isDark ? 'divide-white/[0.04]' : 'divide-slate-100';
+  const labelColor  = isDark ? 'text-[#64748b]' : 'text-slate-500';
   const subColor    = isDark ? 'text-slate-300' : 'text-slate-700';
 
   return (
-    <div className={`rounded-lg border overflow-hidden transition-all ${container}`}>
+    <div className={`rounded-2xl border overflow-hidden transition-all ${container}`}>
 
-      {/* ── Banner ─────────────────────────────────────────────────────────── */}
+      {/* ── Banner / Header ─────────────────────────────────────────────────── */}
       <div className={`
-        px-5 py-2.5 border-b flex items-center justify-between gap-2 text-xs sm:text-sm font-mono
-        ${isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-50 border-slate-100'}
+        px-5 py-3 border-b flex items-center justify-between gap-3 text-xs font-mono
+        ${isDark ? 'border-white/[0.04] bg-white/[0.01]' : 'bg-slate-50/70 border-slate-100'}
       `}>
         <div className="flex items-center gap-2.5">
-          <span className={`font-bold tracking-wider uppercase ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
+          <span className={`font-bold tracking-wider uppercase text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
             Arquitectura Medallion
           </span>
-          <span className={labelColor}>·</span>
-          <span className={labelColor}>Flujo de telemetría End-to-End</span>
+          <span className="text-white/[0.1]">·</span>
+          <span className={labelColor}>Pipeline de Datos End-to-End</span>
         </div>
-        <div className="flex items-center gap-1.5 font-bold">
-          <IconShield className={`w-4 h-4 ${isDark ? 'text-[#818cf8]' : 'text-indigo-600'}`} />
-          <span className={isDark ? 'text-[#818cf8]' : 'text-indigo-600'}>ACID · DuckDB</span>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+            isDark ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+          }`}>
+            <IconShield className="w-3.5 h-3.5 text-indigo-400" />
+            ACID DuckDB
+          </span>
         </div>
       </div>
 
-      {/* ── 4 stages ───────────────────────────────────────────────────────── */}
+      {/* ── 4 Continuous Stages ─────────────────────────────────────────────── */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x ${divider}`}>
         {stages.map((stage, idx) => {
           const Icon = stage.icon;
@@ -134,62 +137,53 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
               key={idx}
               className={`
                 relative p-5 flex flex-col justify-between transition-colors
-                border-t-2 ${stage.borderTop}
-                ${isDark ? 'hover:bg-[#111622]/60' : 'hover:bg-slate-50/80'}
+                ${isDark ? 'hover:bg-white/[0.015]' : 'hover:bg-slate-50/80'}
               `}
             >
-              {/* Arrow connector (desktop, between cells, not on last) */}
+              {/* Connector arrow between stages on desktop */}
               {!isLast && (
-                <div className={`
-                  hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-[13px] z-10
-                  w-6 h-6 items-center justify-center
-                  ${isDark ? 'text-[#232d44]' : 'text-slate-300'}
-                `}>
-                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
-                    strokeLinecap="square" className="w-3.5 h-3.5">
-                    <line x1="0" y1="6" x2="10" y2="6" />
-                    <polyline points="7,3 10,6 7,9" />
-                  </svg>
+                <div className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-5 h-5 items-center justify-center text-white/[0.15]">
+                  <span className="text-xs">➔</span>
                 </div>
               )}
 
-              {/* Top: step + layer + icon */}
+              {/* Top: Step, Title and Icon */}
               <div>
-                <div className="flex items-center justify-between gap-2 mb-2.5">
-                  <div className="flex items-baseline gap-2">
-                    <span className={`text-xs font-mono font-bold ${labelColor}`}>{stage.step}</span>
-                    <span className={`text-sm font-mono font-black tracking-wider ${stage.layerColor}`}>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-mono font-bold ${labelColor}`}>{stage.step}</span>
+                    <span className={`text-[11px] font-mono font-bold tracking-wider ${stage.layerColor}`}>
                       {stage.layer}
                     </span>
                   </div>
-                  <Icon className={`w-5 h-5 ${stage.layerColor}`} />
+                  <Icon className={`w-4 h-4 ${stage.layerColor} opacity-80`} />
                 </div>
 
                 {/* Sublabel + badge */}
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`text-xs ${labelColor}`}>{stage.sublabel}</span>
-                  <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-sm border ${stage.badgeClass}`}>
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${stage.badgeClass}`}>
                     {stage.badge}
                   </span>
                 </div>
 
                 {/* Main value */}
                 <div className="flex items-baseline gap-2">
-                  <span className={`text-2xl sm:text-3xl font-black font-mono tabular-nums tracking-tight ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+                  <span className={`text-2xl sm:text-3xl font-extrabold font-mono tabular-nums tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                     {stage.mainValue}
                   </span>
-                  <span className={`text-sm font-mono font-medium ${labelColor}`}>{stage.mainUnit}</span>
+                  <span className={`text-xs font-mono font-medium ${labelColor}`}>{stage.mainUnit}</span>
                 </div>
               </div>
 
-              {/* Bottom: technical spec */}
-              <div className={`mt-4 pt-3 border-t text-xs font-mono space-y-1.5 ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
+              {/* Bottom: Technical specification */}
+              <div className={`mt-4 pt-3 border-t text-[11px] font-mono space-y-1.5 ${isDark ? 'border-white/[0.04]' : 'border-slate-100'}`}>
                 <div className="flex justify-between items-center">
-                  <span className={labelColor}>Esquema:</span>
-                  <span className={`${schemaColor} font-bold truncate max-w-[150px]`}>{stage.schema}</span>
+                  <span className={labelColor}>Esquema</span>
+                  <span className="text-indigo-400 font-medium truncate max-w-[140px]">{stage.schema}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className={labelColor}>Detalle:</span>
+                  <span className={labelColor}>Detalle</span>
                   <span className={subColor}>{stage.subText}</span>
                 </div>
               </div>

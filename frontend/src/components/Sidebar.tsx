@@ -65,8 +65,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   /* ─── Clases reutilizables ─────────────────────────────────────────────── */
   const surface = isDark
-    ? 'bg-[#0c101a] border-[#1a2035]'
-    : 'bg-[#fafafa] border-slate-200';
+    ? 'bg-[#080b11]/95 border-white/[0.06] backdrop-blur-md'
+    : 'bg-white/95 border-slate-200 backdrop-blur-md';
 
   const navItemBase = `
     relative w-full flex items-center gap-3 px-3 py-2 min-h-[40px] text-xs font-medium
@@ -74,11 +74,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   `;
 
   const navItemActive = isDark
-    ? 'nav-item-active text-[#818cf8] bg-[#6366f1]/6'
-    : 'nav-item-active text-[#4f46e5] bg-[#6366f1]/5';
+    ? 'nav-item-active text-[#818cf8] bg-white/[0.05] font-semibold'
+    : 'nav-item-active text-[#4f46e5] bg-indigo-50 font-semibold';
 
   const navItemIdle = isDark
-    ? 'text-[#8b95b0] hover:text-[#eef0f6] hover:bg-[#111622]'
+    ? 'text-[#8b95b0] hover:text-[#eef0f6] hover:bg-white/[0.025]'
     : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100';
 
   return (
@@ -103,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className={`
           flex items-center h-12 px-3 border-b shrink-0
-          ${isDark ? 'border-[#1a2035]' : 'border-slate-200'}
+          ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}
         `}>
           {(!isCollapsed || isMobileOpen) ? (
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -198,11 +198,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
 
           {/* Separator */}
-          <div className={`my-2 mx-3 border-t ${isDark ? 'border-[#1a2035]' : 'border-slate-200'}`} />
+          <div className={`my-2 mx-3 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`} />
 
           {/* Section label */}
           {(!isCollapsed || isMobileOpen) && (
-            <div className={`px-3 pt-1 pb-1 text-[9px] font-mono font-bold tracking-widest uppercase ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+            <div className={`px-3 pt-1 pb-1 text-[9px] font-mono font-bold tracking-widest uppercase ${isDark ? 'text-[#64748b]' : 'text-slate-400'}`}>
               Sistema
             </div>
           )}
@@ -215,7 +215,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => handleSelect(item.id)}
-                  className={`${navItemBase} ${active ? navItemActive : navItemIdle} rounded-md`}
+                  className={`${navItemBase} ${active ? navItemActive : navItemIdle} rounded-lg`}
                   title={isCollapsed && !isMobileOpen ? item.label : undefined}
                 >
                   <Icon className={`w-4 h-4 shrink-0 ${active ? (isDark ? 'text-[#818cf8]' : 'text-[#6366f1]') : ''}`} />
@@ -230,10 +230,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* ── Footer DuckDB panel ─────────────────────────────────────────── */}
         {(!isCollapsed || isMobileOpen) && (
-          <div className={`p-3 border-t shrink-0 ${isDark ? 'border-[#1a2035]' : 'border-slate-200'}`}>
+          <div className={`p-3 border-t shrink-0 ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
             <div className={`
-              p-3 rounded-md border
-              ${isDark ? 'bg-[#080b12] border-[#1a2035]' : 'bg-slate-50 border-slate-200'}
+              p-3 rounded-xl border
+              ${isDark ? 'bg-white/[0.02] border-white/[0.06]' : 'bg-slate-50 border-slate-200'}
             `}>
               {/* Status row */}
               <div className="flex items-center justify-between mb-2">

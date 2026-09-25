@@ -26,15 +26,15 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
   const nowUtc         = new Date().toISOString().slice(11, 19) + ' UTC';
 
   const ribbon = isDark
-    ? 'bg-[#080b12] border-[#1a2035] text-[#4e5d7a]'
+    ? 'bg-[#080b11]/80 border-white/[0.06] text-[#64748b] backdrop-blur-md'
     : 'bg-slate-100 border-slate-200 text-slate-500';
 
   const val = isDark ? 'text-[#8b95b0]' : 'text-slate-700';
-  const dot = 'w-1 h-1 rounded-full shrink-0';
-  const sep = <span className={`mx-2 ${isDark ? 'text-[#232d44]' : 'text-slate-300'}`}>·</span>;
+  const dot = 'w-1.5 h-1.5 rounded-full shrink-0';
+  const sep = <span className={`mx-2.5 ${isDark ? 'text-white/[0.1]' : 'text-slate-300'}`}>·</span>;
 
   return (
-    <div className={`hidden md:flex items-center justify-between px-6 py-1 border-b text-[10px] font-mono tracking-wide transition-colors ${ribbon}`}>
+    <div className={`hidden md:flex items-center justify-between px-6 py-1.5 border-b text-[10px] font-mono tracking-wide transition-colors ${ribbon}`}>
 
       {/* Left: System status fields */}
       <div className="flex items-center gap-0 flex-wrap">
@@ -43,7 +43,7 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
         <div className="flex items-center gap-1.5">
           <IconDuckDB className={`w-3 h-3 ${isDark ? 'text-[#d97706]' : 'text-amber-500'}`} />
           <span className={val}>DuckDB OLAP</span>
-          <span className={`inline-flex items-center gap-1 px-1.5 py-px rounded-xs font-bold text-[9px] ${
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[9px] ${
             isDuckDbOk
               ? isDark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
               : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
@@ -57,7 +57,7 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
 
         {/* Bronze Lake */}
         <div className="flex items-center gap-1.5">
-          <span className={isDark ? 'text-[#d97706]' : 'text-amber-500'}>BRONZE</span>
+          <span className={isDark ? 'text-amber-400/90' : 'text-amber-500'}>BRONZE</span>
           <span className={val}>{bronzeFiles} particiones</span>
         </div>
 
@@ -100,8 +100,8 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
         </div>
 
         {/* UTC Clock */}
-        <span className={isDark ? 'text-[#232d44]' : 'text-slate-300'}>·</span>
-        <span className={`font-mono tabular-nums ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
+        <span className={isDark ? 'text-white/[0.1]' : 'text-slate-300'}>·</span>
+        <span className={`font-mono tabular-nums ${isDark ? 'text-[#64748b]' : 'text-slate-400'}`}>
           {nowUtc}
         </span>
 
@@ -109,16 +109,16 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
         <button
           onClick={onOpenCommandPalette}
           className={`
-            flex items-center gap-1.5 px-2 py-0.5 rounded-xs border transition
+            flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border transition
             ${isDark
-              ? 'border-[#232d44] hover:border-[#6366f1]/30 bg-[#0c101a] text-[#818cf8] hover:text-[#eef0f6]'
+              ? 'border-white/[0.08] hover:border-white/[0.16] bg-white/[0.03] text-[#818cf8] hover:text-[#eef0f6]'
               : 'border-slate-200 hover:border-indigo-300 bg-white text-indigo-500'}
           `}
           title="Abrir Command Palette (Ctrl+K)"
         >
           <IconTerminal className="w-2.5 h-2.5" />
           <span>CMD</span>
-          <span className="text-[9px] font-bold opacity-50 px-0.5">⌘K</span>
+          <span className="text-[9px] font-bold opacity-60 px-0.5">⌘K</span>
         </button>
       </div>
     </div>

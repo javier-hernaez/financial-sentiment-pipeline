@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const backendHost = process.env.INTERNAL_API_HOST || '127.0.0.1';
 const backendPort = process.env.INTERNAL_API_PORT || '8080';
 const secretKey = process.env.API_SECRET_KEY || 'dev-insecure-secret-key';

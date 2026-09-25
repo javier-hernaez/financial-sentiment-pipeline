@@ -235,7 +235,7 @@ export default function Home() {
   return (
     <div
       className={`min-h-screen flex flex-col md:flex-row transition-colors duration-200 ${
-        isDark ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f4f5f7] text-slate-800'
+        isDark ? 'bg-[#080b11] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
       }`}
     >
       {/* Institutional Command Palette (⌘K / Ctrl+K) */}
@@ -329,10 +329,10 @@ export default function Home() {
                 {/* Header Bar: Title + Date Range + Run Pipeline + Export CSV */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div>
-                    <h1 className={`text-2xl sm:text-3xl font-black tracking-tight font-sans ${isDark ? 'text-[#eef0f6]' : 'text-slate-900'}`}>
+                    <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight font-sans ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                       Dashboard de Sentimiento &amp; Pipeline ELT
                     </h1>
-                    <p className={`text-xs sm:text-sm mt-1.5 font-mono tracking-wide ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+                    <p className={`text-xs sm:text-sm mt-1 font-mono tracking-wide ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
                       Medallion Lakehouse · FinBERT NLP · DuckDB OLAP
                     </p>
                   </div>
@@ -340,13 +340,13 @@ export default function Home() {
                   <div className="flex flex-wrap items-center gap-2.5">
                     {/* Date Range Pill */}
                     <div
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono cursor-pointer transition ${
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-mono cursor-pointer transition ${
                         isDark
-                          ? 'bg-[#111622] border-[#232d44] text-[#8b95b0] hover:border-[#2e3d5c]'
+                          ? 'bg-white/[0.03] border-white/[0.08] text-[#8b95b0] hover:border-white/[0.16]'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      <IconCalendar className="w-4 h-4 text-[#818cf8]" />
+                      <IconCalendar className="w-3.5 h-3.5 text-[#818cf8]" />
                       <span>Lote Activo · Tiempo Real</span>
                     </div>
 
@@ -354,25 +354,25 @@ export default function Home() {
                     <button
                       onClick={handleDirectRunPipeline}
                       disabled={isPipelineRunning}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-sm border text-xs sm:text-sm font-mono font-bold transition active:scale-95 ${
+                      className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-mono font-bold transition active:scale-95 ${
                         isPipelineRunning ? 'opacity-60 cursor-not-allowed' : ''
                       } ${
                         isDark
-                          ? 'bg-[#111622] border-[#232d44] text-[#818cf8] hover:text-[#eef0f6] hover:border-[#6366f1]/50'
+                          ? 'bg-white/[0.04] border-white/[0.1] text-[#818cf8] hover:text-white hover:bg-white/[0.08] hover:border-indigo-500/40'
                           : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50'
                       }`}
                       title="Ejecuta extracción, FinBERT y actualización DuckDB sin salir de esta vista"
                     >
-                      <IconRefresh className={`w-4 h-4 ${isPipelineRunning ? 'animate-spin' : ''}`} />
+                      <IconRefresh className={`w-3.5 h-3.5 ${isPipelineRunning ? 'animate-spin' : ''}`} />
                       <span>{isPipelineRunning ? 'Ejecutando...' : 'Ejecutar Pipeline'}</span>
                     </button>
 
                     {/* Export Button — indigo */}
                     <a
                       href={`/api/export-csv?symbol=${selectedSymbol}`}
-                      className="flex items-center gap-2 px-3.5 py-2 rounded-sm bg-[#6366f1] hover:bg-[#818cf8] active:bg-[#4f46e5] text-white text-xs sm:text-sm font-mono font-bold transition active:scale-95"
+                      className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6366f1] hover:bg-[#4f46e5] active:scale-95 text-white text-xs font-mono font-bold transition shadow-sm"
                     >
-                      <IconDownload className="w-4 h-4" />
+                      <IconDownload className="w-3.5 h-3.5" />
                       <span>Exportar Gold CSV</span>
                     </a>
                   </div>

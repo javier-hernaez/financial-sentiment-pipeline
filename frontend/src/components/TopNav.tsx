@@ -51,12 +51,12 @@ export const TopNav: React.FC<TopNavProps> = ({
 
   /* ─── Shared styles ──────────────────────────────────────────────────── */
   const header = isDark
-    ? 'bg-[#0c101a]/95 border-[#1a2035] backdrop-blur-md'
+    ? 'bg-[#080b11]/90 border-white/[0.06] backdrop-blur-md'
     : 'bg-white/95 border-slate-200 backdrop-blur-md';
 
   const iconBtn = isDark
-    ? 'text-[#4e5d7a] hover:text-[#eef0f6] hover:bg-[#111622]'
-    : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100';
+    ? 'text-[#8b95b0] hover:text-[#eef0f6] hover:bg-white/[0.05]'
+    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100';
 
   return (
     <header className={`h-12 flex items-center justify-between px-4 sm:px-6 border-b sticky top-0 z-30 transition-colors ${header}`}>
@@ -65,7 +65,7 @@ export const TopNav: React.FC<TopNavProps> = ({
       <div className="flex items-center gap-2.5 flex-1 max-w-sm">
         <button
           onClick={onToggleMobileMenu}
-          className={`w-8 h-8 flex items-center justify-center rounded-md md:hidden transition ${iconBtn}`}
+          className={`w-8 h-8 flex items-center justify-center rounded-lg md:hidden transition ${iconBtn}`}
           aria-label="Abrir menú"
         >
           <IconMenu className="w-4 h-4" />
@@ -75,10 +75,10 @@ export const TopNav: React.FC<TopNavProps> = ({
         <button
           onClick={onOpenCommandPalette}
           className={`
-            group flex items-center gap-2.5 px-3 h-8 rounded-md border transition-all flex-1
+            group flex items-center gap-2.5 px-3.5 h-8 rounded-full border transition-all flex-1
             active:scale-[0.99]
             ${isDark
-              ? 'bg-[#080b12] border-[#1a2035] hover:border-[#6366f1]/30 text-[#4e5d7a]'
+              ? 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.16] text-[#8b95b0]'
               : 'bg-slate-50 border-slate-200 hover:border-[#6366f1]/40 text-slate-400'}
           `}
           aria-label="Abrir paleta de comandos"
@@ -88,8 +88,8 @@ export const TopNav: React.FC<TopNavProps> = ({
             Buscar vistas, tablas o comandos...
           </span>
           <span className={`
-            text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-xs shrink-0
-            ${isDark ? 'bg-[#111622] text-[#4e5d7a] border border-[#232d44]' : 'bg-white text-slate-400 border border-slate-200'}
+            text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0
+            ${isDark ? 'bg-white/[0.06] text-[#8b95b0] border border-white/[0.08]' : 'bg-white text-slate-400 border border-slate-200'}
           `}>
             ⌘K
           </span>
@@ -97,12 +97,12 @@ export const TopNav: React.FC<TopNavProps> = ({
       </div>
 
       {/* Right: Theme + Profile */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
 
         {/* Theme toggle */}
         <button
           onClick={onToggleTheme}
-          className={`w-8 h-8 flex items-center justify-center rounded-md transition ${iconBtn}`}
+          className={`w-8 h-8 flex items-center justify-center rounded-full transition ${iconBtn}`}
           title={isDark ? 'Modo Claro' : 'Modo Oscuro'}
         >
           {isDark
@@ -115,10 +115,10 @@ export const TopNav: React.FC<TopNavProps> = ({
           <button
             onClick={() => setIsOpMenuOpen(!isOpMenuOpen)}
             className={`
-              flex items-center gap-2 h-8 pl-1.5 pr-2.5 rounded-md border text-xs
+              flex items-center gap-2 h-8 pl-1 pr-3 rounded-full border text-xs
               font-mono transition focus:outline-none
               ${isDark
-                ? 'border-[#232d44] bg-[#111622] text-[#8b95b0] hover:text-[#eef0f6] hover:border-[#2e3d5c]'
+                ? 'border-white/[0.08] bg-white/[0.03] text-[#8b95b0] hover:text-[#eef0f6] hover:bg-white/[0.06]'
                 : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'}
             `}
             aria-expanded={isOpMenuOpen}
@@ -126,7 +126,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           >
             {/* Avatar initial */}
             <span className={`
-              w-5 h-5 rounded-xs flex items-center justify-center text-[10px] font-bold shrink-0
+              w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0
               ${isDark ? 'bg-[#6366f1]/20 text-[#818cf8]' : 'bg-[#6366f1]/10 text-[#6366f1]'}
             `}>
               J
@@ -139,14 +139,14 @@ export const TopNav: React.FC<TopNavProps> = ({
           {/* Dropdown */}
           {isOpMenuOpen && (
             <div className={`
-              absolute right-0 mt-1.5 w-64 rounded-md border shadow-lg p-0 z-50 overflow-hidden
-              animate-data-in
+              absolute right-0 mt-2 w-64 rounded-2xl border shadow-2xl p-0 z-50 overflow-hidden
+              animate-data-in backdrop-blur-xl
               ${isDark
-                ? 'bg-[#0c101a] border-[#232d44] shadow-black/60'
+                ? 'bg-[#0a0d14]/98 border-white/[0.1] shadow-black/80'
                 : 'bg-white border-slate-200 shadow-slate-200'}
             `}>
               {/* Identity header */}
-              <div className={`px-4 py-3 border-b ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
+              <div className={`px-4 py-3 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
                 <div className="flex items-center gap-2.5">
                   <div className={`
                     w-8 h-8 rounded-sm flex items-center justify-center text-sm font-bold shrink-0

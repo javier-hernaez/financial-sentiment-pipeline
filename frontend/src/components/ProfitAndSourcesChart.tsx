@@ -123,37 +123,37 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
 
   return (
     <div
-      className={`p-5 rounded-lg border transition-all duration-200 h-full flex flex-col justify-between ${
+      className={`p-6 rounded-2xl border transition-all duration-200 h-full flex flex-col justify-between ${
         isDark
-          ? 'bg-[#0c101a] border-[#1a2035] text-white shadow-md'
-          : 'bg-white border-slate-200 text-slate-800 shadow-sm'
+          ? 'bg-white/[0.02] border-white/[0.06] backdrop-blur-sm'
+          : 'bg-white border-slate-200/80 shadow-xs'
       }`}
     >
       {/* Top Header: Sentiment Index & Quantitative Divergence */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <span className={`text-sm sm:text-base font-bold flex items-center gap-2 ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+          <span className={`text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-2 ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
             <IconCpu className="w-4 h-4 text-[#818cf8]" />
             Polaridad FinBERT Agregada &amp; Detección de Divergencias
           </span>
-          <div className="mt-1.5 flex items-baseline gap-3 flex-wrap">
+          <div className="mt-2 flex items-baseline gap-3 flex-wrap">
             <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-mono tabular-nums ${
               avgSentiment >= 0 ? 'text-emerald-400' : 'text-rose-400'
             }`}>
               {avgSentiment > 0 ? `+${avgSentiment.toFixed(2)}` : avgSentiment.toFixed(2)}
             </span>
-            <span className={`text-sm font-mono font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            <span className={`text-xs font-mono font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               ({sentimentLabel})
             </span>
             {latest && (
               <span
-                className={`inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-1 rounded-sm ${
+                className={`inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full ${
                   latest.avg_hourly_sentiment >= 0
                     ? isDark
-                      ? 'bg-emerald-500/15 text-[#34d399] border border-emerald-500/30'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                       : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     : isDark
-                    ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                     : 'bg-rose-50 text-rose-700 border border-rose-200'
                 }`}
               >
@@ -162,7 +162,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
               </span>
             )}
             {divergenceBadge && (
-              <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-sm border ${divergenceBadge.color}`}>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full border ${divergenceBadge.color}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                 {divergenceBadge.label}
               </span>
@@ -172,14 +172,14 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
 
         <button
           onClick={loadRealData}
-          className={`p-2.5 rounded-sm border transition active:scale-95 ${
+          className={`w-8 h-8 rounded-full border transition active:scale-95 flex items-center justify-center ${
             isDark
-              ? 'border-[#232d44] text-slate-400 hover:text-white hover:bg-[#111622]'
+              ? 'border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.05]'
               : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
           title="Recargar datos de sentimiento"
         >
-          <IconRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#818cf8]' : ''}`} />
+          <IconRefresh className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#818cf8]' : ''}`} />
         </button>
       </div>
 
@@ -207,7 +207,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke={isDark ? '#1e293b' : '#f1f5f9'}
+                stroke={isDark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'}
               />
               <XAxis
                 dataKey="day"
@@ -229,9 +229,9 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
                     const item = payload[0].payload;
                     return (
                       <div
-                        className={`p-3 rounded-md border shadow-xl text-xs font-mono space-y-1.5 ${
+                        className={`p-3.5 rounded-2xl border shadow-2xl text-xs font-mono space-y-1.5 backdrop-blur-xl ${
                           isDark
-                            ? 'bg-[#0e1628] border-[#223354] text-white'
+                            ? 'bg-[#0a0d14]/95 border-white/[0.1] text-white'
                             : 'bg-white border-slate-200 text-slate-800'
                         }`}
                       >
@@ -256,13 +256,13 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
                 type="monotone"
                 dataKey="score"
                 stroke="#10b981"
-                strokeWidth={2.5}
+                strokeWidth={2}
                 fill="url(#sentimentGrad)"
               />
               <Line
                 type="monotone"
                 dataKey="articles"
-                stroke={isDark ? '#3b82f6' : '#2563eb'}
+                stroke={isDark ? '#818cf8' : '#6366f1'}
                 strokeWidth={1.5}
                 strokeDasharray="4 4"
                 dot={false}
@@ -273,12 +273,12 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
       </div>
 
       {/* Bottom Segment: Sentiment Distribution from Real DuckDB records */}
-      <div className={`mt-auto pt-5 border-t ${isDark ? 'border-[#1a2035]' : 'border-slate-100'}`}>
+      <div className={`mt-auto pt-5 border-t ${isDark ? 'border-white/[0.04]' : 'border-slate-100'}`}>
         <div className="flex items-center justify-between mb-4">
-          <span className={`text-xs sm:text-sm font-bold uppercase tracking-wider font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+          <span className={`text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
             Distribución Real de Polaridad FinBERT
           </span>
-          <span className={`text-xs sm:text-sm font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <span className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             {totalMentions} menciones analizadas en DuckDB
           </span>
         </div>
@@ -287,19 +287,19 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
           {/* Segment 1: Bullish */}
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-sm flex items-center justify-center bg-emerald-500/15 text-emerald-400">
-                <IconTrendingUp className="w-4 h-4" />
+              <div className="w-6 h-6 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-400">
+                <IconTrendingUp className="w-3.5 h-3.5" />
               </div>
               <div>
-                <div className="text-lg font-bold font-mono text-emerald-400">
+                <div className="text-base font-bold font-mono text-emerald-400">
                   {bullPct}%
                 </div>
-                <div className={`text-xs sm:text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Bullish ({totalBull} menciones)
+                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Bullish ({totalBull})
                 </div>
               </div>
             </div>
-            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-[#111622]' : 'bg-slate-100'}`}>
+            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
               <div
                 className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${bullPct}%` }}
@@ -310,19 +310,19 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
           {/* Segment 2: Neutral */}
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-sm flex items-center justify-center bg-amber-500/15 text-amber-400">
-                <IconMinus className="w-4 h-4" />
+              <div className="w-6 h-6 rounded-full flex items-center justify-center bg-amber-500/10 text-amber-400">
+                <IconMinus className="w-3.5 h-3.5" />
               </div>
               <div>
-                <div className="text-lg font-bold font-mono text-amber-400">
+                <div className="text-base font-bold font-mono text-amber-400">
                   {neutralPct}%
                 </div>
-                <div className={`text-xs sm:text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Neutral ({totalNeutral} menciones)
+                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Neutral ({totalNeutral})
                 </div>
               </div>
             </div>
-            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-[#111622]' : 'bg-slate-100'}`}>
+            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
               <div
                 className="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${neutralPct}%` }}
@@ -333,19 +333,19 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
           {/* Segment 3: Bearish */}
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-sm flex items-center justify-center bg-rose-500/15 text-rose-400">
-                <IconTrendingDown className="w-4 h-4" />
+              <div className="w-6 h-6 rounded-full flex items-center justify-center bg-rose-500/10 text-rose-400">
+                <IconTrendingDown className="w-3.5 h-3.5" />
               </div>
               <div>
-                <div className="text-lg font-bold font-mono text-rose-400">
+                <div className="text-base font-bold font-mono text-rose-400">
                   {bearPct}%
                 </div>
-                <div className={`text-xs sm:text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Bearish ({totalBear} menciones)
+                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Bearish ({totalBear})
                 </div>
               </div>
             </div>
-            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-[#111622]' : 'bg-slate-100'}`}>
+            <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDark ? 'bg-white/[0.04]' : 'bg-slate-100'}`}>
               <div
                 className="bg-rose-500 h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${bearPct}%` }}
