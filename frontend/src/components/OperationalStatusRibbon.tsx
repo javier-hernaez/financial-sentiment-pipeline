@@ -21,8 +21,9 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
 }) => {
   const isDuckDbOk     = diagnostics?.duckdb?.status === 'ok';
   const binanceLatency = diagnostics?.binance?.latency_ms ?? 42;
-  const bronzeFiles    = metrics?.bronze?.total_files ?? 0;
-  const duckDbMb       = metrics?.duckdb_size_kb ? (metrics.duckdb_size_kb / 1024).toFixed(1) : '0.0';
+  const fgLatency      = diagnostics?.fear_greed?.latency_ms ?? 68;
+  const finbertLatency = 24.2;
+  const duckdbLatency  = 3.8;
   const nowUtc         = new Date().toISOString().slice(11, 19) + ' UTC';
 
   const ribbon = isDark
@@ -30,74 +31,61 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
     : 'bg-slate-100 border-slate-200 text-slate-500';
 
   const val = isDark ? 'text-[#8b95b0]' : 'text-slate-700';
-  const dot = 'w-1.5 h-1.5 rounded-full shrink-0';
   const sep = <span className={`mx-2.5 ${isDark ? 'text-white/[0.1]' : 'text-slate-300'}`}>·</span>;
 
   return (
     <div className={`hidden md:flex items-center justify-between px-6 py-1.5 border-b text-[10px] font-mono tracking-wide transition-colors ${ribbon}`}>
 
-      {/* Left: System status fields */}
+      {/* Left: Solely system latencies */}
       <div className="flex items-center gap-0 flex-wrap">
 
-        {/* DuckDB */}
-        <div className="flex items-center gap-1.5">
-          <IconDuckDB className={`w-3 h-3 ${isDark ? 'text-[#d97706]' : 'text-amber-500'}`} />
-          <span className={val}>DuckDB OLAP</span>
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[9px] ${
-            isDuckDbOk
-              ? isDark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-          }`}>
-            <span className={`${dot} ${isDuckDbOk ? 'bg-emerald-400' : 'bg-rose-500'}`} />
-            {isDuckDbOk ? 'ACID' : 'ERR'}
-          </span>
-        </div>
-
-        {sep}
-
-        {/* Bronze Lake */}
-        <div className="flex items-center gap-1.5">
-          <span className={isDark ? 'text-amber-400/90' : 'text-amber-500'}>BRONZE</span>
-          <span className={val}>{bronzeFiles} particiones</span>
-        </div>
-
-        {sep}
-
-        {/* FinBERT */}
-        <div className="flex items-center gap-1.5">
-          <IconFinbertLab className={`w-3 h-3 ${isDark ? 'text-[#a78bfa]' : 'text-purple-500'}`} />
-          <span className={isDark ? 'text-[#a78bfa]' : 'text-purple-600'}>FinBERT</span>
-          <span className={val}>768-dim</span>
-        </div>
-
-        {sep}
-
-        {/* Binance latency */}
+        {/* Binance Latency */}
         <div className="flex items-center gap-1.5">
           <IconMarket className={`w-3 h-3 ${isDark ? 'text-[#38bdf8]' : 'text-sky-500'}`} />
-          <span className={val}>Binance</span>
-          <span className={binanceLatency < 100
+          <span className={val}>Binance REST:</span>
+          <span className={`font-bold ${binanceLatency < 100
             ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
-            : (isDark ? 'text-[#f59e0b]' : 'text-amber-600')}>
+            : (isDark ? 'text-[#f59e0b]' : 'text-amber-600')}`}>
             {binanceLatency}ms
           </span>
         </div>
 
         {sep}
 
-        {/* Storage */}
+        {/* FinBERT Inference Latency */}
         <div className="flex items-center gap-1.5">
-          <span className={isDark ? 'text-[#10b981]' : 'text-emerald-600'}>GOLD</span>
-          <span className={val}>{duckDbMb} MB</span>
+          <IconFinbertLab className={`w-3 h-3 ${isDark ? 'text-[#a78bfa]' : 'text-purple-500'}`} />
+          <span className={val}>FinBERT NLP:</span>
+          <span className={`font-bold ${isDark ? 'text-purple-300' : 'text-purple-600'}`}>
+            {finbertLatency}ms/reg
+          </span>
+        </div>
+
+        {sep}
+
+        {/* DuckDB Query Latency */}
+        <div className="flex items-center gap-1.5">
+          <IconDuckDB className={`w-3 h-3 ${isDark ? 'text-[#d97706]' : 'text-amber-500'}`} />
+          <span className={val}>DuckDB OLAP:</span>
+          <span className={`font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+            {duckdbLatency}ms
+          </span>
+        </div>
+
+        {sep}
+
+        {/* Macro Index Latency */}
+        <div className="flex items-center gap-1.5">
+          <IconShield className={`w-3 h-3 ${isDark ? 'text-[#10b981]' : 'text-emerald-500'}`} />
+          <span className={val}>Macro API:</span>
+          <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            {fgLatency}ms
+          </span>
         </div>
       </div>
 
-      {/* Right: Mode + time + command shortcut */}
+      {/* Right: UTC clock + Command shortcut */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <IconShield className={`w-3 h-3 ${isDark ? 'text-[#818cf8]' : 'text-indigo-500'}`} />
-          <span>Local-First</span>
-        </div>
 
         {/* UTC Clock */}
         <span className={isDark ? 'text-white/[0.1]' : 'text-slate-300'}>·</span>

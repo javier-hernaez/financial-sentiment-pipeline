@@ -15,35 +15,36 @@ interface MobileBottomNavProps {
   isDark: boolean;
   onOpenQuickRun?: () => void;
   isRunningPipeline?: boolean;
+  locale?: 'es' | 'en';
 }
-
-const tabs = [
-  {
-    id: 'dashboard',
-    label: 'Pipeline ELT',
-    icon: IconPipeline,
-    match: (v: string) => ['dashboard', 'orchestration', 'pipeline'].includes(v),
-  },
-  {
-    id: 'nlp',
-    label: 'FinBERT Lab',
-    icon: IconFinbertLab,
-    match: (v: string) => ['nlp', 'finbert'].includes(v),
-  },
-  {
-    id: 'warehouse',
-    label: 'DuckDB Lake',
-    icon: IconDuckDB,
-    match: (v: string) => ['warehouse', 'medallion', 'silver', 'gold', 'observability'].includes(v),
-  },
-];
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   activeView,
   setActiveView,
   isDark,
   isRunningPipeline = false,
+  locale = 'es',
 }) => {
+  const tabs = [
+    {
+      id: 'dashboard',
+      label: locale === 'es' ? 'Pipeline ELT' : 'ELT Pipeline',
+      icon: IconPipeline,
+      match: (v: string) => ['dashboard', 'orchestration', 'pipeline'].includes(v),
+    },
+    {
+      id: 'nlp',
+      label: 'FinBERT Lab',
+      icon: IconFinbertLab,
+      match: (v: string) => ['nlp', 'finbert'].includes(v),
+    },
+    {
+      id: 'warehouse',
+      label: 'DuckDB Lake',
+      icon: IconDuckDB,
+      match: (v: string) => ['warehouse', 'medallion', 'silver', 'gold', 'observability'].includes(v),
+    },
+  ];
   const nav = isDark
     ? 'bg-[#07090e]/90 border-white/[0.06] backdrop-blur-md'
     : 'bg-white/95 border-slate-200 backdrop-blur-md';

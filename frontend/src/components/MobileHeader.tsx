@@ -4,8 +4,10 @@ import React from 'react';
 import { IconRefresh, IconSun, IconMoon, IconMenu, IconBrand } from './CustomIcons';
 
 interface MobileHeaderProps {
-  currentSymbol: string;
-  onSelectSymbol: (symbol: string) => void;
+  currentSymbol?: string;
+  onSelectSymbol?: (symbol: string) => void;
+  locale?: 'es' | 'en';
+  onSelectLocale?: (locale: 'es' | 'en') => void;
   isDark: boolean;
   onToggleTheme: () => void;
   onRefresh: () => void;
@@ -15,12 +17,11 @@ interface MobileHeaderProps {
   onToggleMenu?: () => void;
 }
 
-const SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
-const getClean = (sym: string) => sym.replace('USDT', '');
-
 export const MobileHeader: React.FC<MobileHeaderProps> = ({
-  currentSymbol,
+  currentSymbol = 'BTCUSDT',
   onSelectSymbol,
+  locale = 'es',
+  onSelectLocale,
   isDark,
   onToggleTheme,
   onRefresh,
@@ -70,38 +71,48 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                   w-1.5 h-1.5 rounded-full shrink-0
                   ${isOnline ? 'bg-emerald-400' : 'bg-rose-500'}
                 `} />
-                <span className={`text-[9px] font-mono font-semibold ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
-                  {isOnline ? 'ONLINE' : 'OFFLINE'}
+                <span className={`text-[9px] font-mono font-semibold ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+                  {isOnline ? (locale === 'es' ? 'ACTIVO' : 'ONLINE') : (locale === 'es' ? 'OFFLINE' : 'OFFLINE')}
                 </span>
               </span>
             </div>
           </div>
         </div>
 
-        {/* Center: Clean Ticker switcher */}
+        {/* Center: Language Switcher (Español / Inglés) */}
         <div className={`flex items-center gap-1 p-0.5 rounded-full border ${
-          isDark ? 'bg-white/[0.04] border-white/[0.06]' : 'bg-slate-100 border-slate-200'
+          isDark ? 'bg-white/[0.04] border-white/[0.08]' : 'bg-slate-100 border-slate-200'
         }`}>
-          {SYMBOLS.map((sym) => {
-            const isSelected = currentSymbol === sym;
-            return (
-              <button
-                key={sym}
-                onClick={() => onSelectSymbol(sym)}
-                className={`
-                  min-w-[40px] h-7 px-2 rounded-full text-[11px] font-mono font-bold
-                  transition-all flex items-center justify-center
-                  ${isSelected
-                    ? 'bg-[#6366f1] text-white shadow-xs'
-                    : isDark
-                    ? 'text-[#8b95b0] hover:text-white'
-                    : 'text-slate-500 hover:text-slate-900'}
-                `}
-              >
-                {getClean(sym)}
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => onSelectLocale?.('es')}
+            className={`
+              h-7 px-3 rounded-full text-xs font-mono font-bold transition-all flex items-center justify-center gap-1
+              ${locale === 'es'
+                ? 'bg-[#6366f1] text-white shadow-xs'
+                : isDark
+                ? 'text-[#8b95b0] hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'}
+            `}
+            title="Cambiar idioma a Español"
+          >
+            ES
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectLocale?.('en')}
+            className={`
+              h-7 px-3 rounded-full text-xs font-mono font-bold transition-all flex items-center justify-center gap-1
+              ${locale === 'en'
+                ? 'bg-[#6366f1] text-white shadow-xs'
+                : isDark
+                ? 'text-[#8b95b0] hover:text-white'
+                : 'text-slate-500 hover:text-slate-900'}
+            `}
+            title="Switch language to English"
+          >
+            EN
+          </button>
         </div>
 
         {/* Right: Refresh + Theme */}

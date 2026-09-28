@@ -265,7 +265,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             <span>↵ ejecutar</span>
             <span>ESC cerrar</span>
           </div>
-          <span className={isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'}>Q ELT · Workstation</span>
+          <span className={isDark ? 'text-[#818cf8]' : 'text-[#6366f1]'}>ELT project · Workstation</span>
         </div>
       </div>
     </div>

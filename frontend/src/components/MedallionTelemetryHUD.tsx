@@ -35,10 +35,11 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       badgeClass: isDark
         ? 'bg-[#d97706]/10 text-[#d97706] border-[#d97706]/20'
         : 'bg-amber-50 text-amber-700 border-amber-200',
-      layerColor: isDark ? 'text-[#d97706]' : 'text-amber-600',
+      layerColor: isDark ? 'text-amber-400' : 'text-amber-600',
       borderTop: isDark ? 'border-t-[#d97706]/40' : 'border-t-amber-400',
       mainValue: `${bronzeFiles}`,
-      mainUnit: 'lotes',
+      mainUnit: 'particiones',
+      contextDesc: 'Particiones Parquet sin procesar en disco',
       subText: `${bronzeKb} KB · Snappy`,
       schema: 'bronze/year=YYYY/...',
       icon: IconPipeline,
@@ -51,11 +52,12 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       badgeClass: isDark
         ? 'bg-[#a78bfa]/10 text-[#a78bfa] border-[#a78bfa]/20'
         : 'bg-purple-50 text-purple-700 border-purple-200',
-      layerColor: isDark ? 'text-[#a78bfa]' : 'text-purple-600',
+      layerColor: isDark ? 'text-purple-300' : 'text-purple-600',
       borderTop: isDark ? 'border-t-[#a78bfa]/40' : 'border-t-purple-400',
       mainValue: `${socialRows.toLocaleString()}`,
       mainUnit: 'titulares',
-      subText: 'ProsusAI/finbert',
+      contextDesc: 'Titulares clasificados con FinBERT',
+      subText: 'ProsusAI/finbert (768-dim)',
       schema: 'silver_social_sentiment',
       icon: IconFinbertLab,
     },
@@ -67,11 +69,12 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       badgeClass: isDark
         ? 'bg-[#38bdf8]/10 text-[#38bdf8] border-[#38bdf8]/20'
         : 'bg-sky-50 text-sky-700 border-sky-200',
-      layerColor: isDark ? 'text-[#38bdf8]' : 'text-sky-600',
+      layerColor: isDark ? 'text-sky-400' : 'text-sky-600',
       borderTop: isDark ? 'border-t-[#38bdf8]/40' : 'border-t-sky-400',
       mainValue: `${marketRows.toLocaleString()}`,
       mainUnit: 'velas',
-      subText: 'Normalización Polars',
+      contextDesc: 'Velas horarias OHLCV validadas',
+      subText: 'Normalización Polars UTC',
       schema: 'silver_market_prices',
       icon: IconMarket,
     },
@@ -83,10 +86,11 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       badgeClass: isDark
         ? 'bg-[#10b981]/10 text-[#10b981] border-[#10b981]/20'
         : 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      layerColor: isDark ? 'text-[#10b981]' : 'text-emerald-600',
+      layerColor: isDark ? 'text-emerald-400' : 'text-emerald-600',
       borderTop: isDark ? 'border-t-[#10b981]/40' : 'border-t-emerald-400',
       mainValue: `${goldRows.toLocaleString()}`,
       mainUnit: 'horas',
+      contextDesc: 'Ventanas consolidadas con señal Alpha',
       subText: `${duckDbMb} MB columnar`,
       schema: 'gold_hourly_market_sentiment',
       icon: IconDuckDB,
@@ -152,11 +156,11 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-mono font-bold ${labelColor}`}>{stage.step}</span>
-                    <span className={`text-[11px] font-mono font-bold tracking-wider ${stage.layerColor}`}>
+                    <span className={`text-sm font-black font-mono tracking-wide ${stage.layerColor}`}>
                       {stage.layer}
                     </span>
                   </div>
-                  <Icon className={`w-4 h-4 ${stage.layerColor} opacity-80`} />
+                  <Icon className={`w-4 h-4 ${stage.layerColor} opacity-90`} />
                 </div>
 
                 {/* Sublabel + badge */}
@@ -173,6 +177,9 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
                     {stage.mainValue}
                   </span>
                   <span className={`text-xs font-mono font-medium ${labelColor}`}>{stage.mainUnit}</span>
+                </div>
+                <div className={`text-[10px] font-mono mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  {stage.contextDesc}
                 </div>
               </div>
 

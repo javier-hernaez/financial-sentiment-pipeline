@@ -74,7 +74,6 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
             isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-900'
           }`}>
             <span className="flex items-center gap-2 font-medium">
-              <span>✍️</span>
               <span>¡Escribe o pega cualquier titular, rumor de mercado o tweet financiero!</span>
             </span>
             {text && (
@@ -129,7 +128,7 @@ export const FinbertLab: React.FC<FinbertLabProps> = ({ isDark = true }) => {
               rows={4}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="✍️ Escribe o pega aquí un titular de noticias, rumor de mercado o tweet financiero... Ej: 'BlackRock compra 10,000 BTC tras aprobación de nuevo ETF spot'"
+              placeholder="Escribe o pega aquí un titular de noticias, rumor de mercado o tweet financiero... Ej: 'BlackRock compra 10,000 BTC tras aprobación de nuevo ETF spot'"
               className={`w-full text-xs sm:text-sm font-mono rounded-xl p-3.5 outline-none transition resize-none leading-relaxed border ${
                 isDark
                   ? 'bg-white/[0.03] border-white/[0.08] text-white placeholder-slate-500 focus:border-indigo-500/60 focus:bg-white/[0.05]'

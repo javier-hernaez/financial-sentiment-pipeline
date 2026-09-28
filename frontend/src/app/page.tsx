@@ -51,6 +51,7 @@ export default function Home() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [locale, setLocale] = useState<'es' | 'en'>('es');
 
   const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
@@ -249,7 +250,7 @@ export default function Home() {
             <div className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-[#6366f1] to-transparent animate-scan" />
           </div>
           <span className="text-[10px] font-mono tracking-widest text-[#4e5d7a] uppercase">
-            Iniciando Q&nbsp;ELT Terminal...
+            Iniciando ELT project...
           </span>
         </div>
       </div>
@@ -286,6 +287,7 @@ export default function Home() {
         isDark={isDark}
         onTriggerFullPipeline={handleDirectRunPipeline}
         isPipelineRunning={isPipelineRunning}
+        locale={locale}
       />
 
       {/* Main Content Area */}
@@ -298,6 +300,8 @@ export default function Home() {
         <MobileHeader
           currentSymbol={selectedSymbol}
           onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+          locale={locale}
+          onSelectLocale={setLocale}
           isDark={isDark}
           onToggleTheme={toggleTheme}
           onRefresh={loadAll}
@@ -316,6 +320,8 @@ export default function Home() {
             onNavigate={(v) => setActiveView(v)}
             activeView={activeView}
             onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            locale={locale}
+            onSelectLocale={setLocale}
           />
           <OperationalStatusRibbon
             metrics={metrics}
@@ -327,7 +333,7 @@ export default function Home() {
         </div>
 
         {/* Dashboard Content Container */}
-        <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 space-y-6 max-w-full w-full mx-auto pb-32 md:pb-8 overflow-x-hidden">
+        <main className="flex-1 min-w-0 p-2 sm:p-6 lg:p-8 space-y-3 sm:space-y-6 max-w-full w-full mx-auto pb-16 md:pb-8 overflow-x-hidden">
           
           {/* Persistent Global Background Pipeline Sync Banner */}
           {isPipelineRunning && (
@@ -365,6 +371,7 @@ export default function Home() {
                   onRefresh={loadAll}
                   isRefreshing={isRefreshing}
                   onNavigate={(v) => setActiveView(v)}
+                  locale={locale}
                 />
               </div>
 
@@ -497,15 +504,17 @@ export default function Home() {
 
           {/* Subview: FinBERT Lab */}
           {(activeView === 'nlp' || activeView === 'finbert') && (
-            <div className="space-y-4 sm:space-y-6">
-              <SubviewHeader
-                title="Laboratorio FinBERT (Scoring NLP)"
-                description="Introduce cualquier titular o texto financiero para evaluar la polaridad inferida por el modelo."
-                onBack={() => setActiveView('dashboard')}
-                isDark={isDark}
-              />
+            <div className="space-y-3 sm:space-y-6">
+              <div className="hidden md:block">
+                <SubviewHeader
+                  title={locale === 'es' ? "Laboratorio FinBERT (Scoring NLP)" : "FinBERT Lab (NLP Scoring)"}
+                  description={locale === 'es' ? "Introduce cualquier titular o texto financiero para evaluar la polaridad inferida por el modelo." : "Enter any financial headline or text to evaluate model-inferred polarity."}
+                  onBack={() => setActiveView('dashboard')}
+                  isDark={isDark}
+                />
+              </div>
               <div className="block md:hidden">
-                <MobileFinbertLab isDark={isDark} />
+                <MobileFinbertLab isDark={isDark} locale={locale} />
               </div>
               <div className="hidden md:block">
                 <FinbertLab isDark={isDark} />
@@ -588,6 +597,8 @@ export default function Home() {
           activeView={activeView}
           setActiveView={setActiveView}
           isDark={isDark}
+          isRunningPipeline={isPipelineRunning}
+          locale={locale}
         />
 
         {systemAlert && (

@@ -24,6 +24,7 @@ interface MobileEltConsoleProps {
   onRefresh: () => void;
   isRefreshing: boolean;
   onNavigate: (view: string) => void;
+  locale?: 'es' | 'en';
 }
 
 export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
@@ -37,6 +38,7 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
   onRefresh,
   isRefreshing,
   onNavigate,
+  locale = 'es',
 }) => {
   const [activeTab, setActiveTab] = useState<'metrics' | 'logs' | 'tables'>('metrics');
 
@@ -48,184 +50,178 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
   const isOnline = diagnostics?.duckdb?.status === 'ok';
 
   return (
-    <div className="relative md:hidden flex flex-col max-w-lg mx-auto w-full px-2 py-3 overflow-hidden">
-      {/* ── Ambient Radial Aura Glows ── */}
-      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute top-28 right-0 w-60 h-60 bg-purple-600/10 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-10 left-0 w-60 h-60 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none -z-10" />
-
-      {/* 1. Header Status */}
-      <div className="text-center pt-2 pb-5 space-y-1.5">
-        <div className="inline-flex items-center gap-2.5">
-          <span className={`w-2 h-2 rounded-full ${
-            isPipelineRunning ? 'bg-amber-400' : isOnline ? 'bg-emerald-400' : 'bg-rose-500'
-          }`} />
-          <h2 className={`text-xl sm:text-2xl font-sans font-bold tracking-tight drop-shadow-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {isPipelineRunning
-              ? 'Ejecutando Pipeline ELT...'
-              : isOnline
-              ? 'Consola de Ingesta & Lakehouse'
-              : 'Desconectado'}
-          </h2>
-        </div>
-        <p className={`text-xs font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+    <div className="relative md:hidden flex flex-col max-w-lg mx-auto w-full px-2 py-1 overflow-hidden">
+      {/* 1. Header Status (NO green dot) */}
+      <div className="text-center pt-1 pb-2 space-y-0.5">
+        <h2 className={`text-lg font-sans font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
           {isPipelineRunning
-            ? `Extracción ➔ FinBERT ➔ DuckDB (${selectedSymbol.replace('USDT', '')})`
-            : `${goldRows.toLocaleString()} registros consolidados en DuckDB · ${selectedSymbol.replace('USDT', '')}`}
+            ? (locale === 'es' ? 'Ejecutando Pipeline ELT...' : 'Running ELT Pipeline...')
+            : isOnline
+            ? (locale === 'es' ? 'Consola de Ingesta & Lakehouse' : 'Ingestion & Lakehouse Console')
+            : (locale === 'es' ? 'Desconectado' : 'Disconnected')}
+        </h2>
+        <p className={`text-[11px] font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+          {isPipelineRunning
+            ? `Extracción ➔ FinBERT ➔ DuckDB`
+            : `${goldRows.toLocaleString()} ${locale === 'es' ? 'registros consolidados en DuckDB' : 'consolidated records in DuckDB'}`}
         </p>
       </div>
 
-      {/* 2. Medallion Flow with Frosted Glass Sheen & Connecting Fiber Track */}
-      <div className="relative py-2 my-1">
-        <div className={`text-[10px] font-mono uppercase tracking-widest text-center mb-2.5 font-semibold ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-          Flujo Medallion
-        </div>
-
-        {/* Connecting fiber-optic beam behind cards */}
-        <div className="absolute top-[52px] left-8 right-8 h-[1px] bg-gradient-to-r from-amber-500/30 via-purple-500/40 to-emerald-500/40 pointer-events-none" />
-
-        <div className="relative grid grid-cols-3 gap-2.5 text-center">
+      {/* 2. Medallion Flow with Contextualized Numbers */}
+      <div className="py-1 my-0.5">
+        <div className="grid grid-cols-3 gap-2 text-center">
           {/* Bronze Card */}
           <div
             onClick={() => onNavigate('warehouse')}
-            className={`p-3 rounded-2xl border backdrop-blur-md cursor-pointer active:scale-95 transition shadow-xs ${
+            className={`p-2 rounded-xl border cursor-pointer active:scale-95 transition flex flex-col justify-between ${
               isDark
-                ? 'bg-gradient-to-b from-amber-500/[0.08] to-transparent border-amber-500/20'
-                : 'bg-amber-50/80 border-amber-200'
+                ? 'bg-amber-500/[0.06] border-amber-500/25 hover:border-amber-500/40'
+                : 'bg-amber-50 border-amber-200'
             }`}
           >
-            <div className={`text-2xl sm:text-3xl font-mono font-bold tracking-tight ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>
-              {bronzeFiles}
+            <div>
+              <div className={`text-xl font-mono font-bold tracking-tight ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                {bronzeFiles}
+              </div>
+              <div className={`text-[11px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>
+                Bronze
+              </div>
             </div>
-            <div className={`text-[10px] font-mono tracking-widest uppercase mt-1 font-semibold ${isDark ? 'text-amber-400/80' : 'text-amber-700'}`}>
-              Bronze
+            <div className={`text-[9px] font-mono leading-tight mt-1 ${isDark ? 'text-amber-300/80' : 'text-amber-600'}`}>
+              {locale === 'es' ? 'particiones Parquet' : 'Parquet partitions'}
             </div>
           </div>
 
           {/* Silver Card */}
           <div
             onClick={() => onNavigate('nlp')}
-            className={`p-3 rounded-2xl border backdrop-blur-md cursor-pointer active:scale-95 transition shadow-xs ${
+            className={`p-2 rounded-xl border cursor-pointer active:scale-95 transition flex flex-col justify-between ${
               isDark
-                ? 'bg-gradient-to-b from-purple-500/[0.08] to-transparent border-purple-500/20'
-                : 'bg-purple-50/80 border-purple-200'
+                ? 'bg-purple-500/[0.06] border-purple-500/25 hover:border-purple-500/40'
+                : 'bg-purple-50 border-purple-200'
             }`}
           >
-            <div className={`text-2xl sm:text-3xl font-mono font-bold tracking-tight ${isDark ? 'text-purple-300' : 'text-purple-600'}`}>
-              {socialRows.toLocaleString()}
+            <div>
+              <div className={`text-xl font-mono font-bold tracking-tight ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
+                {socialRows.toLocaleString()}
+              </div>
+              <div className={`text-[11px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-purple-400' : 'text-purple-800'}`}>
+                Silver
+              </div>
             </div>
-            <div className={`text-[10px] font-mono tracking-widest uppercase mt-1 font-semibold ${isDark ? 'text-purple-400/80' : 'text-purple-700'}`}>
-              Silver
+            <div className={`text-[9px] font-mono leading-tight mt-1 ${isDark ? 'text-purple-300/80' : 'text-purple-600'}`}>
+              {locale === 'es' ? 'titulares FinBERT' : 'FinBERT headlines'}
             </div>
           </div>
 
           {/* Gold Card */}
           <div
             onClick={() => onNavigate('warehouse')}
-            className={`p-3 rounded-2xl border backdrop-blur-md cursor-pointer active:scale-95 transition shadow-xs ${
+            className={`p-2 rounded-xl border cursor-pointer active:scale-95 transition flex flex-col justify-between ${
               isDark
-                ? 'bg-gradient-to-b from-emerald-500/[0.08] to-transparent border-emerald-500/20'
-                : 'bg-emerald-50/80 border-emerald-200'
+                ? 'bg-emerald-500/[0.06] border-emerald-500/25 hover:border-emerald-500/40'
+                : 'bg-emerald-50 border-emerald-200'
             }`}
           >
-            <div className={`text-2xl sm:text-3xl font-mono font-bold tracking-tight ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`}>
-              {goldRows.toLocaleString()}
+            <div>
+              <div className={`text-xl font-mono font-bold tracking-tight ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                {goldRows.toLocaleString()}
+              </div>
+              <div className={`text-[11px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-emerald-400' : 'text-emerald-800'}`}>
+                Gold
+              </div>
             </div>
-            <div className={`text-[10px] font-mono tracking-widest uppercase mt-1 font-semibold ${isDark ? 'text-emerald-400/80' : 'text-emerald-700'}`}>
-              Gold
+            <div className={`text-[9px] font-mono leading-tight mt-1 ${isDark ? 'text-emerald-300/80' : 'text-emerald-600'}`}>
+              {locale === 'es' ? `${duckDbMb} MB analíticos` : `${duckDbMb} MB analytics`}
             </div>
           </div>
         </div>
       </div>
 
       {/* 3. Primary Sync Pipeline Button */}
-      <div className="py-4 flex justify-center">
+      <div className="py-2.5 flex justify-center">
         <button
           onClick={onTriggerPipeline}
           disabled={isPipelineRunning}
-          className={`relative group h-12 px-8 rounded-full font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all shadow-lg active:scale-95 cursor-pointer disabled:cursor-not-allowed ${
+          className={`h-10 px-7 rounded-full font-mono text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer disabled:cursor-not-allowed ${
             isPipelineRunning
-              ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/40 shadow-indigo-950/50'
+              ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/40'
               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
           }`}
         >
           {isPipelineRunning ? (
             <>
-              <IconRefresh className="w-4 h-4 animate-spin text-indigo-200" />
-              <span>Sincronizando...</span>
+              <IconRefresh className="w-3.5 h-3.5 animate-spin text-indigo-200" />
+              <span>{locale === 'es' ? 'Sincronizando...' : 'Syncing...'}</span>
             </>
           ) : (
             <>
-              <IconPlay className="w-3.5 h-3.5 fill-white text-white drop-shadow-xs" />
-              <span>Sincronizar Pipeline</span>
+              <IconPlay className="w-3 h-3 fill-white text-white" />
+              <span>{locale === 'es' ? 'Sincronizar Pipeline' : 'Sync Pipeline'}</span>
             </>
           )}
         </button>
       </div>
 
       {/* 5. Minimalist Text Tabs */}
-      <div className="flex items-center justify-center gap-7 pt-4 pb-2 text-xs font-mono">
+      <div className="flex items-center justify-center gap-6 pt-1.5 pb-1 text-xs font-mono">
         <button
           onClick={() => setActiveTab('metrics')}
-          className={`pb-1 transition-all ${
+          className={`pb-0.5 transition-all ${
             activeTab === 'metrics'
               ? `${isDark ? 'text-white' : 'text-slate-900'} border-b-2 border-indigo-500 font-bold`
               : `${isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-800'}`
           }`}
         >
-          Métricas
+          {locale === 'es' ? 'Métricas' : 'Metrics'}
         </button>
         <button
           onClick={() => setActiveTab('logs')}
-          className={`pb-1 transition-all ${
+          className={`pb-0.5 transition-all ${
             activeTab === 'logs'
               ? `${isDark ? 'text-white' : 'text-slate-900'} border-b-2 border-indigo-500 font-bold`
               : `${isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-800'}`
           }`}
         >
-          Logs
+          {locale === 'es' ? 'Logs' : 'Logs'}
         </button>
         <button
           onClick={() => setActiveTab('tables')}
-          className={`pb-1 transition-all ${
+          className={`pb-0.5 transition-all ${
             activeTab === 'tables'
               ? `${isDark ? 'text-white' : 'text-slate-900'} border-b-2 border-indigo-500 font-bold`
               : `${isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-800'}`
           }`}
         >
-          Tablas
+          {locale === 'es' ? 'Tablas' : 'Tables'}
         </button>
       </div>
 
-      {/* 6. Telemetry List with Luminescent Micro-Orbs & Hairline Dividers */}
-      <div className="min-h-[140px] py-1">
+      {/* 6. Telemetry List with Compact Dividers */}
+      <div className="py-0.5">
         {activeTab === 'metrics' && (
           <div className={`divide-y text-xs font-mono ${isDark ? 'divide-white/[0.05]' : 'divide-slate-200'}`}>
-            <div className="flex justify-between items-center py-2.5">
+            <div className="flex justify-between items-center py-1.5">
               <span className={`flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
                 DuckDB OLAP
               </span>
-              <span className="font-bold text-emerald-500">11 ms</span>
+              <span className="font-bold text-emerald-400">3.8 ms</span>
             </div>
-            <div className="flex justify-between items-center py-2.5">
+            <div className="flex justify-between items-center py-1.5">
               <span className={`flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b]" />
                 Binance REST
               </span>
               <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{diagnostics?.binance?.latency_ms ?? 34} ms</span>
             </div>
-            <div className="flex justify-between items-center py-2.5">
+            <div className="flex justify-between items-center py-1.5">
               <span className={`flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]" />
                 FinBERT NLP
               </span>
-              <span className="font-bold text-purple-400">28.4 ms / reg</span>
+              <span className="font-bold text-purple-400">24.2 ms / reg</span>
             </div>
-            <div className="flex justify-between items-center py-2.5">
+            <div className="flex justify-between items-center py-1.5">
               <span className={`flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#38bdf8]" />
-                Almacenamiento
+                {locale === 'es' ? 'Almacenamiento' : 'Storage'}
               </span>
               <span className="font-bold text-cyan-400">{duckDbMb} MB</span>
             </div>
@@ -314,21 +310,21 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
       </div>
 
       {/* 7. Subtle CSV Export link */}
-      <div className="text-center pt-3 pb-1">
+      <div className="text-center pt-2 pb-0.5">
         <a
           href={`/api/export-csv?symbol=${selectedSymbol}`}
-          className={`text-xs font-mono transition-colors ${isDark ? 'text-[#64748b] hover:text-[#818cf8]' : 'text-slate-500 hover:text-indigo-600'}`}
+          className={`text-[11px] font-mono transition-colors ${isDark ? 'text-[#8b95b0] hover:text-[#818cf8]' : 'text-slate-500 hover:text-indigo-600'}`}
         >
-          Descargar dataset Gold (CSV) ↓
+          {locale === 'es' ? 'Descargar dataset Gold (CSV) ↓' : 'Download Gold dataset (CSV) ↓'}
         </a>
       </div>
 
       {/* 8. Mobile Creator Credit */}
-      <div className="text-center pt-4 pb-2">
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono border ${
+      <div className="text-center pt-2 pb-1">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border ${
           isDark ? 'bg-white/[0.03] border-white/[0.08] text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
         }`}>
-          Desarrollado por <strong className={isDark ? 'text-indigo-400' : 'text-indigo-600'}>Javier H.</strong>
+          {locale === 'es' ? 'Desarrollado por' : 'Built by'} <strong className={isDark ? 'text-indigo-400' : 'text-indigo-600'}>Javier H.</strong>
         </span>
       </div>
     </div>

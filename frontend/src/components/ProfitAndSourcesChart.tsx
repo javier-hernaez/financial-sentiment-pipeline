@@ -82,33 +82,6 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
       ? 'Consenso Bajista (Bearish)'
       : 'Consenso Neutral';
 
-  // Divergence Engine: Price Delta vs Sentiment Delta
-  const priceDelta = latest && prevRecord && prevRecord.close_price ? latest.close_price - prevRecord.close_price : 0;
-  const sentDelta = latest && prevRecord ? latest.avg_hourly_sentiment - prevRecord.avg_hourly_sentiment : 0;
-  let divergenceBadge = null;
-
-  if (latest && prevRecord) {
-    if (priceDelta < 0 && sentDelta > 0.08) {
-      divergenceBadge = {
-        label: 'Divergencia Alcista Detectada',
-        sub: 'Precio bajando con acumulación de sentimiento FinBERT',
-        color: isDark ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40' : 'bg-emerald-50 text-emerald-700 border-emerald-300',
-      };
-    } else if (priceDelta > 0 && sentDelta < -0.08) {
-      divergenceBadge = {
-        label: 'Divergencia Bajista Detectada',
-        sub: 'Precio subiendo con deterioro de sentimiento FinBERT',
-        color: isDark ? 'bg-rose-500/15 text-rose-400 border-rose-500/40' : 'bg-rose-50 text-rose-700 border-rose-300',
-      };
-    } else {
-      divergenceBadge = {
-        label: 'Dinámica Convergente',
-        sub: 'Precio y sentimiento horario sincronizados',
-        color: isDark ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-blue-50 text-blue-700 border-blue-200',
-      };
-    }
-  }
-
   const chartData = records.map((d) => {
     const timeLabel = d.timestamp_hour ? d.timestamp_hour.slice(11, 16) : '';
     const scoreScaled = Math.round(((d.avg_hourly_sentiment + 1) / 2) * 100);
@@ -129,12 +102,12 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
           : 'bg-white border-slate-200/80 shadow-xs'
       }`}
     >
-      {/* Top Header: Sentiment Index & Quantitative Divergence */}
+      {/* Top Header: Sentiment Index */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <span className={`text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-2 ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+          <span className={`text-sm sm:text-base font-bold font-mono tracking-tight flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
             <IconCpu className="w-4 h-4 text-[#818cf8]" />
-            Polaridad FinBERT Agregada &amp; Detección de Divergencias
+            Polaridad FinBERT Agregada
           </span>
           <div className="mt-2 flex items-baseline gap-3 flex-wrap">
             <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-mono tabular-nums ${
@@ -159,12 +132,6 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
               >
                 <IconArrowUpRight className="w-3.5 h-3.5" />
                 Última hora: {latest.avg_hourly_sentiment > 0 ? `+${latest.avg_hourly_sentiment.toFixed(2)}` : latest.avg_hourly_sentiment.toFixed(2)}
-              </span>
-            )}
-            {divergenceBadge && (
-              <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full border ${divergenceBadge.color}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                {divergenceBadge.label}
               </span>
             )}
           </div>

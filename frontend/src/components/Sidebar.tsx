@@ -26,21 +26,8 @@ interface SidebarProps {
   isDark?: boolean;
   onTriggerFullPipeline?: () => void;
   isPipelineRunning?: boolean;
+  locale?: 'es' | 'en';
 }
-
-const mainNav = [
-  { id: 'dashboard',    label: 'Dashboard ELT',       icon: IconDashboard },
-  { id: 'orchestration',label: 'Pipeline de Datos',   icon: IconPipeline,  badge: 'LIVE' },
-  { id: 'content',      label: 'Noticias & Sentimiento', icon: IconNews },
-  { id: 'terminal',     label: 'Precios & Mercado',   icon: IconMarket },
-  { id: 'nlp',          label: 'Laboratorio FinBERT', icon: IconFinbertLab },
-  { id: 'warehouse',    label: 'Almacén DuckDB',      icon: IconDuckDB },
-];
-
-const bottomNav = [
-  { id: 'observability', label: 'Observabilidad',     icon: IconObservability },
-  { id: 'documentation', label: 'Ayuda & Guía',       icon: IconDocumentation },
-];
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeView,
@@ -52,7 +39,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isDark = true,
   onTriggerFullPipeline,
   isPipelineRunning = false,
+  locale = 'es',
 }) => {
+  const mainNav = [
+    { id: 'dashboard',    label: locale === 'es' ? 'Dashboard ELT' : 'ELT Dashboard',       icon: IconDashboard },
+    { id: 'orchestration',label: locale === 'es' ? 'Pipeline de Datos' : 'Data Pipeline',   icon: IconPipeline,  badge: 'LIVE' },
+    { id: 'content',      label: locale === 'es' ? 'Noticias & Sentimiento' : 'News & Sentiment', icon: IconNews },
+    { id: 'terminal',     label: locale === 'es' ? 'Precios & Mercado' : 'Prices & Market',   icon: IconMarket },
+    { id: 'nlp',          label: locale === 'es' ? 'Laboratorio FinBERT' : 'FinBERT Lab', icon: IconFinbertLab },
+    { id: 'warehouse',    label: locale === 'es' ? 'Almacén DuckDB' : 'DuckDB Lakehouse',      icon: IconDuckDB },
+  ];
+
+  const bottomNav = [
+    { id: 'observability', label: locale === 'es' ? 'Observabilidad' : 'Observability',     icon: IconObservability },
+    { id: 'documentation', label: locale === 'es' ? 'Ayuda & Guía' : 'Help & Guide',       icon: IconDocumentation },
+  ];
   const handleSelect = (id: string) => {
     setActiveView(id);
     if (setIsMobileOpen) setIsMobileOpen(false);
@@ -115,11 +116,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <IconBrand className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <div className={`text-xs font-bold tracking-widest leading-none uppercase ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
-                  Q&nbsp;ELT
-                </div>
-                <div className="text-[9px] font-mono text-[#4e5d7a] mt-0.5 tracking-wide">
-                  v2.0 · Medallion
+                <div className={`text-xs font-bold tracking-wider leading-none uppercase ${isDark ? 'text-[#eef0f6]' : 'text-slate-800'}`}>
+                  ELT project
                 </div>
               </div>
             </div>
@@ -255,8 +253,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </div>
 
-              <p className={`text-[9px] font-mono mb-2.5 ${isDark ? 'text-[#4e5d7a]' : 'text-slate-400'}`}>
-                Columnar · ACID · Local-first
+              <p className={`text-[9px] font-mono mb-2.5 leading-snug ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+                Motor OLAP vectorizado · Particionado Parquet Snappy
               </p>
 
               {/* Run button */}
@@ -277,12 +275,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <svg className="w-3 h-3 animate-spin" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="10" cy="10" r="7" strokeDasharray="20 24" strokeLinecap="square" />
                     </svg>
-                    <span>Ejecutando...</span>
+                    <span>{locale === 'es' ? 'Ejecutando...' : 'Running...'}</span>
                   </>
                 ) : (
                   <>
                     <IconRefresh className="w-3 h-3" />
-                    <span>Ejecutar Pipeline ELT</span>
+                    <span>{locale === 'es' ? 'Ejecutar Pipeline ELT' : 'Run ELT Pipeline'}</span>
                   </>
                 )}
               </button>
