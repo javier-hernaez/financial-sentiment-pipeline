@@ -32,61 +32,36 @@ const CodeSnippet: React.FC<{ title: string; code: string; isDark: boolean }> = 
 );
 
 export const DocumentationGuide: React.FC<DocumentationGuideProps> = ({ isDark = true }) => {
-  const [activeTab, setActiveTab] = useState<'medallion' | 'nlp' | 'sql' | 'cli'>('medallion');
-
   const card = isDark ? 'bg-white/[0.02] border-white/[0.08]' : 'bg-white border-slate-200 shadow-xs';
   const innerCard = isDark ? 'bg-[#0a0e17] border-white/[0.06]' : 'bg-slate-50 border-slate-200';
   const textHead = isDark ? 'text-white' : 'text-slate-900';
   const textSub = isDark ? 'text-[#8b95b0]' : 'text-slate-600';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 pb-12">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
 
       {/* ── Direct Header ── */}
       <div className={`p-5 rounded-2xl border ${card}`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className={`flex items-center gap-2 text-[11px] font-mono font-bold tracking-wider uppercase mb-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
-              <IconDocumentation className="w-3.5 h-3.5" />
-              <span>Dossier Técnico · ELT project</span>
-            </div>
-            <h1 className={`text-xl sm:text-2xl font-black font-sans tracking-tight ${textHead}`}>
-              Arquitectura de Datos & Inferencia FinBERT
-            </h1>
-            <p className={`text-xs font-mono mt-1 ${textSub}`}>
-              Especificación técnica de capas Medallion, esquemas DDL en DuckDB y comandos operativos.
-            </p>
-          </div>
-
-          {/* Quick Tab Switcher */}
-          <div className={`flex items-center p-1 rounded-xl border shrink-0 text-xs font-mono ${
-            isDark ? 'bg-white/[0.03] border-white/[0.08]' : 'bg-slate-100 border-slate-200'
-          }`}>
-            {[
-              { id: 'medallion', label: '1. Medallion' },
-              { id: 'nlp', label: '2. FinBERT' },
-              { id: 'sql', label: '3. SQL DuckDB' },
-              { id: 'cli', label: '4. CLI & Atajos' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'bg-[#6366f1] text-white shadow-xs'
-                    : isDark ? 'text-[#8b95b0] hover:text-white' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        <div className={`flex items-center gap-2 text-[11px] font-mono font-bold tracking-wider uppercase mb-1 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+          <IconDocumentation className="w-3.5 h-3.5" />
+          <span>Dossier Técnico · ELT project</span>
         </div>
+        <h1 className={`text-xl sm:text-2xl font-black font-sans tracking-tight ${textHead}`}>
+          Arquitectura de Datos & Inferencia FinBERT
+        </h1>
+        <p className={`text-xs font-mono mt-1 ${textSub}`}>
+          Especificación técnica integral: capas Medallion, esquemas DDL en DuckDB, modelo NLP y comandos operativos.
+        </p>
       </div>
 
-      {/* ── Tab 1: Arquitectura Medallion ── */}
-      {activeTab === 'medallion' && (
+      {/* ── Sección 1: Arquitectura Medallion ── */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
+          <IconPipeline className="w-4 h-4 text-amber-400" />
+          <h2 className={`text-sm sm:text-base font-bold font-mono tracking-tight uppercase ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            1. Arquitectura Medallion (Bronze · Silver · Gold)
+          </h2>
+        </div>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Bronze Spec */}
@@ -165,44 +140,56 @@ export const DocumentationGuide: React.FC<DocumentationGuideProps> = ({ isDark =
             </div>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* ── Tab 2: Motor NLP FinBERT ── */}
-      {activeTab === 'nlp' && (
-        <div className="space-y-4">
-          <div className={`p-4 rounded-xl border ${innerCard} space-y-3`}>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold font-mono text-purple-300">Fórmula de Polaridad Continua</span>
-              <span className="text-[11px] font-mono text-slate-400">ProsusAI/finbert (110M params)</span>
-            </div>
-            <div className="p-3 rounded-lg bg-black/40 border border-white/[0.08] text-center">
-              <div className="text-base sm:text-lg font-mono font-bold text-emerald-400">
-                Score = P(Bullish) − P(Bearish) &nbsp;∈&nbsp; [−1.00, +1.00]
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 pt-1 text-center font-mono">
-              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <div className="text-sm font-black text-emerald-400">&gt; +0.15</div>
-                <div className="text-[10px] text-slate-300 mt-0.5">Consenso Alcista</div>
-              </div>
-              <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <div className="text-sm font-black text-amber-400">−0.15 a +0.15</div>
-                <div className="text-[10px] text-slate-300 mt-0.5">Consenso Neutral</div>
-              </div>
-              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20">
-                <div className="text-sm font-black text-rose-400">&lt; −0.15</div>
-                <div className="text-[10px] text-slate-300 mt-0.5">Consenso Bajista</div>
-              </div>
-            </div>
-            <p className="text-xs font-mono text-slate-400 leading-relaxed pt-1">
-              Las probabilidades se normalizan mediante softmax sobre los logits de la capa de clasificación. Inferencia optimizada en lotes sobre CPU vectorizada con latencia media de ~24.2 ms por registro.
-            </p>
-          </div>
+      {/* ── Sección 2: Motor NLP FinBERT ── */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pt-4 border-t border-white/[0.06]">
+          <IconFinbertLab className="w-4 h-4 text-purple-400" />
+          <h2 className={`text-sm sm:text-base font-bold font-mono tracking-tight uppercase ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            2. Motor NLP FinBERT (Scoring de Polaridad Continua)
+          </h2>
         </div>
-      )}
 
-      {/* ── Tab 3: Consultas SQL DuckDB ── */}
-      {activeTab === 'sql' && (
+        <div className={`p-4 rounded-xl border ${innerCard} space-y-3`}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold font-mono text-purple-300">Fórmula de Polaridad Continua</span>
+            <span className="text-[11px] font-mono text-slate-400">ProsusAI/finbert (110M params)</span>
+          </div>
+          <div className="p-3 rounded-lg bg-black/40 border border-white/[0.08] text-center">
+            <div className="text-base sm:text-lg font-mono font-bold text-emerald-400">
+              Score = P(Bullish) − P(Bearish) &nbsp;∈&nbsp; [−1.00, +1.00]
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 pt-1 text-center font-mono">
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+              <div className="text-sm font-black text-emerald-400">&gt; +0.15</div>
+              <div className="text-[10px] text-slate-300 mt-0.5">Consenso Alcista</div>
+            </div>
+            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <div className="text-sm font-black text-amber-400">−0.15 a +0.15</div>
+              <div className="text-[10px] text-slate-300 mt-0.5">Consenso Neutral</div>
+            </div>
+            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20">
+              <div className="text-sm font-black text-rose-400">&lt; −0.15</div>
+              <div className="text-[10px] text-slate-300 mt-0.5">Consenso Bajista</div>
+            </div>
+          </div>
+          <p className="text-xs font-mono text-slate-400 leading-relaxed pt-1">
+            Las probabilidades se normalizan mediante softmax sobre los logits de la capa de clasificación. Inferencia optimizada en lotes sobre CPU vectorizada con latencia media de ~24.2 ms por registro.
+          </p>
+        </div>
+      </section>
+
+      {/* ── Sección 3: Consultas SQL DuckDB ── */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pt-4 border-t border-white/[0.06]">
+          <IconDuckDB className="w-4 h-4 text-emerald-400" />
+          <h2 className={`text-sm sm:text-base font-bold font-mono tracking-tight uppercase ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            3. Consultas Analíticas DuckDB (Feature Store SQL)
+          </h2>
+        </div>
+
         <div className="space-y-3">
           <CodeSnippet
             title="Consulta 1: Inspeccionar últimas 5 horas consolidadas con features de precio y polaridad"
@@ -227,50 +214,55 @@ LIMIT 5;`}
             isDark={isDark}
           />
         </div>
-      )}
+      </section>
 
-      {/* ── Tab 4: CLI & Atajos de Teclado ── */}
-      {activeTab === 'cli' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <CodeSnippet
-              title="Arranque del Sistema Completo"
-              code=".\\start.ps1"
-              isDark={isDark}
-            />
-            <CodeSnippet
-              title="Ejecución de Pipeline desde CLI"
-              code="python -m src.main --symbol BTCUSDT --hours 24"
-              isDark={isDark}
-            />
+      {/* ── Sección 4: CLI & Atajos de Teclado ── */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pt-4 border-t border-white/[0.06]">
+          <IconTerminal className="w-4 h-4 text-sky-400" />
+          <h2 className={`text-sm sm:text-base font-bold font-mono tracking-tight uppercase ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            4. Interfaz de Línea de Comandos (CLI) & Atajos Globales
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <CodeSnippet
+            title="Arranque del Sistema Completo"
+            code=".\\start.ps1"
+            isDark={isDark}
+          />
+          <CodeSnippet
+            title="Ejecución de Pipeline desde CLI"
+            code="python -m src.main --symbol BTCUSDT --hours 24"
+            isDark={isDark}
+          />
+        </div>
+
+        {/* Keyboard shortcuts table */}
+        <div className={`p-4 rounded-xl border ${innerCard}`}>
+          <div className="text-xs font-mono font-bold tracking-wide uppercase mb-3 text-slate-300">
+            Atajos de Teclado Globales (Navegación Institucional)
           </div>
-
-          {/* Keyboard shortcuts table */}
-          <div className={`p-4 rounded-xl border ${innerCard}`}>
-            <div className="text-xs font-mono font-bold tracking-wide uppercase mb-3 text-slate-300">
-              Atajos de Teclado Globales (Navegación Institucional)
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
+              <span className="text-slate-400">Paleta Comandos</span>
+              <kbd className="px-1.5 py-0.5 rounded-sm bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold">⌘K</kbd>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
-                <span className="text-slate-400">Paleta Comandos</span>
-                <kbd className="px-1.5 py-0.5 rounded-sm bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold">⌘K</kbd>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
-                <span className="text-slate-400">Vistas Rápidas</span>
-                <kbd className="px-1.5 py-0.5 rounded-sm bg-white/10 text-slate-200 border border-white/20 font-bold">1 - 7</kbd>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
-                <span className="text-slate-400">Ejecutar Pipeline</span>
-                <kbd className="px-1.5 py-0.5 rounded-sm bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">P</kbd>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
-                <span className="text-slate-400">Refrescar Datos</span>
-                <kbd className="px-1.5 py-0.5 rounded-sm bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">R</kbd>
-              </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
+              <span className="text-slate-400">Vistas Rápidas</span>
+              <kbd className="px-1.5 py-0.5 rounded-sm bg-white/10 text-slate-200 border border-white/20 font-bold">1 - 7</kbd>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
+              <span className="text-slate-400">Ejecutar Pipeline</span>
+              <kbd className="px-1.5 py-0.5 rounded-sm bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">P</kbd>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
+              <span className="text-slate-400">Refrescar Datos</span>
+              <kbd className="px-1.5 py-0.5 rounded-sm bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">R</kbd>
             </div>
           </div>
         </div>
-      )}
+      </section>
 
     </div>
   );

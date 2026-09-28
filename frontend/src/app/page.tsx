@@ -26,7 +26,6 @@ import { ObservabilityView } from '@/components/ObservabilityView';
 import { DocumentationGuide } from '@/components/DocumentationGuide';
 import { SubviewHeader } from '@/components/SubviewHeader';
 import {
-  IconCalendar,
   IconPlay,
   IconDownload,
   IconRefresh,
@@ -259,7 +258,7 @@ export default function Home() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col md:flex-row transition-colors duration-200 ${
+      className={`h-[100dvh] md:min-h-screen flex flex-col md:flex-row transition-colors duration-200 overflow-hidden md:overflow-visible ${
         isDark ? 'bg-[#080b11] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
       }`}
     >
@@ -292,7 +291,7 @@ export default function Home() {
 
       {/* Main Content Area */}
       <div
-        className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ml-0 ${
+        className={`flex-1 min-w-0 flex flex-col h-full md:h-auto overflow-hidden md:overflow-visible transition-all duration-300 ml-0 ${
           isCollapsed ? 'md:ml-[52px]' : 'md:ml-60'
         }`}
       >
@@ -333,7 +332,7 @@ export default function Home() {
         </div>
 
         {/* Dashboard Content Container */}
-        <main className="flex-1 min-w-0 p-2 sm:p-6 lg:p-8 space-y-3 sm:space-y-6 max-w-full w-full mx-auto pb-16 md:pb-8 overflow-x-hidden">
+        <main className="flex-1 min-w-0 flex flex-col p-2 sm:p-6 lg:p-8 space-y-3 sm:space-y-6 max-w-full w-full mx-auto md:pb-8 overflow-y-auto md:overflow-visible">
           
           {/* Persistent Global Background Pipeline Sync Banner */}
           {isPipelineRunning && (
@@ -359,7 +358,7 @@ export default function Home() {
           {activeView === 'dashboard' && (
             <>
               {/* Mobile-Only Streamlined ELT Console (< 768px) */}
-              <div className="block md:hidden">
+              <div className="block md:hidden flex-1 h-full flex flex-col">
                 <MobileEltConsole
                   metrics={metrics}
                   diagnostics={diagnostics}
@@ -390,18 +389,6 @@ export default function Home() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2.5">
-                    {/* Date Range Pill */}
-                    <div
-                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-mono cursor-pointer transition ${
-                        isDark
-                          ? 'bg-white/[0.03] border-white/[0.08] text-[#8b95b0] hover:border-white/[0.16]'
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      <IconCalendar className="w-3.5 h-3.5 text-[#818cf8]" />
-                      <span>Lote Activo · Tiempo Real</span>
-                    </div>
-
                     {/* Trigger Pipeline Button */}
                     <button
                       onClick={() => handleDirectRunPipeline('full', selectedSymbol, 24)}
@@ -504,7 +491,7 @@ export default function Home() {
 
           {/* Subview: FinBERT Lab */}
           {(activeView === 'nlp' || activeView === 'finbert') && (
-            <div className="space-y-3 sm:space-y-6">
+            <div className="flex-1 flex flex-col space-y-3 sm:space-y-6">
               <div className="hidden md:block">
                 <SubviewHeader
                   title={locale === 'es' ? "Laboratorio FinBERT (Scoring NLP)" : "FinBERT Lab (NLP Scoring)"}
@@ -513,7 +500,7 @@ export default function Home() {
                   isDark={isDark}
                 />
               </div>
-              <div className="block md:hidden">
+              <div className="block md:hidden flex-1 h-full flex flex-col">
                 <MobileFinbertLab isDark={isDark} locale={locale} />
               </div>
               <div className="hidden md:block">

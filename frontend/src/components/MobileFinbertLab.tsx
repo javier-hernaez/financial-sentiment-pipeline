@@ -38,7 +38,7 @@ export const MobileFinbertLab: React.FC<MobileFinbertLabProps> = ({ isDark = tru
   };
 
   return (
-    <div className="md:hidden flex flex-col max-w-lg mx-auto w-full px-2 py-1 space-y-2 overflow-hidden">
+    <div className="md:hidden flex flex-col justify-start max-w-lg mx-auto w-full h-full px-2 py-1 space-y-2.5 overflow-hidden">
       {/* 1. Header instruction without ✍️ */}
       <div className={`px-3 py-1.5 rounded-lg border flex items-center justify-between gap-2 text-xs font-mono ${
         isDark ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-900'

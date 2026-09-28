@@ -53,7 +53,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     <nav
       aria-label="Navegación móvil"
       className={`
-        md:hidden fixed bottom-0 left-0 right-0 z-40 border-t
+        md:hidden shrink-0 w-full z-40 border-t
         transition-colors duration-200
         pb-[env(safe-area-inset-bottom,8px)] pt-1 px-1
         ${nav}

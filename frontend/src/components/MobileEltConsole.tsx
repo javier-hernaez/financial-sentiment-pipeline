@@ -50,7 +50,7 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
   const isOnline = diagnostics?.duckdb?.status === 'ok';
 
   return (
-    <div className="relative md:hidden flex flex-col max-w-lg mx-auto w-full px-2 py-1 overflow-hidden">
+    <div className="relative md:hidden flex flex-col justify-between h-full max-w-lg mx-auto w-full px-2 py-1 overflow-hidden">
       {/* 1. Header Status (NO green dot) */}
       <div className="text-center pt-1 pb-2 space-y-0.5">
         <h2 className={`text-lg font-sans font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>

@@ -40,7 +40,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   return (
     <header
       className={`
-        md:hidden sticky top-0 left-0 right-0 z-40 border-b backdrop-blur-md
+        md:hidden shrink-0 sticky top-0 left-0 right-0 z-40 border-b backdrop-blur-md
         transition-colors duration-200
         pt-[env(safe-area-inset-top,0px)]
         ${header}
