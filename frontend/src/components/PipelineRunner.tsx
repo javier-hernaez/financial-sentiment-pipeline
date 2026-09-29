@@ -227,8 +227,8 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                 <IconPlay className={`w-3.5 h-3.5 ${isRunning && activeStage === 'full' ? 'animate-spin' : ''}`} />
                 <span>
                   {isRunning && activeStage === 'full'
-                    ? 'Ejecutando Pipeline Completo...'
-                    : 'Ejecutar Pipeline Completo'}
+                    ? 'Sincronizando Pipeline...'
+                    : 'Sincronizar Pipeline'}
                 </span>
               </button>
             </div>

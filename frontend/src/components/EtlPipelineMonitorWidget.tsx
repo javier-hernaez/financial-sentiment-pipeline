@@ -56,7 +56,7 @@ export const EtlPipelineMonitorWidget: React.FC<EtlPipelineMonitorWidgetProps> =
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs sm:text-sm font-bold transition shadow-md shadow-blue-500/20 shrink-0"
         >
           <IconPlay className="w-4 h-4 fill-current" />
-          <span>Ejecutar Pipeline Completo</span>
+          <span>Sincronizar Pipeline</span>
         </button>
       </div>
 

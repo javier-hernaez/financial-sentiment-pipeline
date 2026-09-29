@@ -65,7 +65,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'nav-observability',  title: 'Observabilidad, Telemetría & Mantenimiento',   category: 'Navegación',        icon: IconObservability,  shortcut: '6', action: () => { onNavigate('observability'); onClose(); } },
     { id: 'nav-docs',           title: 'Manual Técnico & Documentación',               category: 'Navegación',        icon: IconDocumentation,  shortcut: '7', action: () => { onNavigate('documentation'); onClose(); } },
     // Acciones
-    { id: 'act-run-pipeline',   title: 'Ejecutar Pipeline completo (Bronze→Silver→Gold)', category: 'Acciones Rápidas', icon: IconPlay,    shortcut: 'P', badge: 'RUN', action: () => { onTriggerPipeline(); onClose(); } },
+    { id: 'act-run-pipeline',   title: 'Sincronizar Pipeline (BTC, ETH, SOL)', category: 'Acciones Rápidas', icon: IconPlay,    shortcut: 'P', badge: 'RUN', action: () => { onTriggerPipeline(); onClose(); } },
     { id: 'act-refresh',        title: 'Refrescar telemetría & DuckDB en tiempo real', category: 'Acciones Rápidas', icon: IconRefresh,  shortcut: 'R', action: () => { onRefreshData();    onClose(); } },
     { id: 'act-export',         title: `Descargar dataset Gold CSV (${currentSymbol})`, category: 'Acciones Rápidas', icon: IconDownload, shortcut: 'E', action: () => { window.location.href = `/api/export-csv?symbol=${currentSymbol}`; onClose(); } },
     { id: 'act-theme',          title: `Cambiar a ${isDark ? 'Modo Claro' : 'Modo Oscuro'}`, category: 'Acciones Rápidas', icon: isDark ? IconSun : IconMoon, shortcut: 'T', action: () => { onToggleTheme(); onClose(); } },

@@ -275,12 +275,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <svg className="w-3 h-3 animate-spin" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="10" cy="10" r="7" strokeDasharray="20 24" strokeLinecap="square" />
                     </svg>
-                    <span>{locale === 'es' ? 'Ejecutando...' : 'Running...'}</span>
+                    <span>{locale === 'es' ? 'Sincronizar Pipeline' : 'Sync Pipeline'}</span>
                   </>
                 ) : (
                   <>
                     <IconRefresh className="w-3 h-3" />
-                    <span>{locale === 'es' ? 'Ejecutar Pipeline ELT' : 'Run ELT Pipeline'}</span>
+                    <span>{locale === 'es' ? 'Sincronizar Pipeline' : 'Sync Pipeline'}</span>
                   </>
                 )}
               </button>

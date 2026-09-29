@@ -253,7 +253,7 @@ LIMIT 5;`}
               <kbd className="px-1.5 py-0.5 rounded-sm bg-white/10 text-slate-200 border border-white/20 font-bold">1 - 7</kbd>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">
-              <span className="text-slate-400">Ejecutar Pipeline</span>
+              <span className="text-slate-400">Sincronizar Pipeline</span>
               <kbd className="px-1.5 py-0.5 rounded-sm bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">P</kbd>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-white/[0.06]">

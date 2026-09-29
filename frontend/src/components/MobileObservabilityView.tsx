@@ -102,7 +102,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
                 : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
             }`}
           >
-            {runningOp === 'checkpoint' ? 'Guardando...' : '⚡ Checkpoint'}
+            {runningOp === 'checkpoint' ? 'Guardando...' : 'Checkpoint'}
           </button>
 
           <button
@@ -114,7 +114,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
                 : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
             }`}
           >
-            {runningOp === 'vacuum' ? 'Limpiando...' : '🧹 Vacuum'}
+            {runningOp === 'vacuum' ? 'Limpiando...' : 'Vacuum'}
           </button>
 
           <button
@@ -126,7 +126,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
                 : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
             }`}
           >
-            {runningOp === 'refresh_views' ? 'Refrescando...' : '⟳ Vistas'}
+            {runningOp === 'refresh_views' ? 'Refrescando...' : 'Refrescar'}
           </button>
         </div>
 

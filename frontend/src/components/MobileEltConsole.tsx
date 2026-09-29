@@ -46,7 +46,7 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
   const [latestHeadline, setLatestHeadline] = useState<{
     title: string;
     sentiment_label: string;
-    sentiment_score: number;
+    time: string;
     source: string;
   } | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -68,15 +68,32 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
     loadLatestHeadline();
   }, [isRefreshing]);
 
+  const formatHeadlineTime = (rawTime?: any): string => {
+    if (!rawTime) {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    try {
+      const d = new Date(rawTime);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      const match = String(rawTime).match(/(\d{2}:\d{2})/);
+      if (match) return match[1];
+    } catch {
+      // fallback
+    }
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   const loadLatestHeadline = async () => {
     try {
       const data = await fetchTableData('silver_social_sentiment', 1);
       if (data?.rows && data.rows.length > 0) {
         const r = data.rows[0];
         setLatestHeadline({
-          title: r.title || r.headline || r.text || 'Bitcoin y mercados financieros procesados en FinBERT.',
+          title: r.title || r.headline || r.text || 'Bitcoin y mercados financieros procesados.',
           sentiment_label: (r.sentiment_label || 'neutral').toLowerCase(),
-          sentiment_score: typeof r.sentiment_score === 'number' ? r.sentiment_score : 0.65,
+          time: formatHeadlineTime(r.created_utc || r.ingested_at || r.timestamp_hour),
           source: r.subreddit || r.source || 'Feeds RSS',
         });
       } else {
@@ -84,16 +101,16 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
         setLatestHeadline({
           title: 'Bitcoin spot ETF institutional inflows reach unprecedented all-time record, signalling massive structural accumulation.',
           sentiment_label: 'bullish',
-          sentiment_score: 0.88,
-          source: 'FinBERT NLP',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          source: 'Feeds RSS',
         });
       }
     } catch {
       setLatestHeadline({
         title: 'Bitcoin spot ETF institutional inflows reach unprecedented all-time record, signalling massive structural accumulation.',
         sentiment_label: 'bullish',
-        sentiment_score: 0.88,
-        source: 'FinBERT NLP',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        source: 'Feeds RSS',
       });
     }
   };
@@ -169,50 +186,7 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
         </div>
       </div>
 
-      {/* 3. Middle Element: Último Titular Procesado por FinBERT (Opción 3) */}
-      <div
-        onClick={() => onNavigate('nlp')}
-        className={`p-3 rounded-2xl border transition-all cursor-pointer active:scale-98 ${
-          isDark
-            ? 'bg-white/[0.025] border-white/[0.08] hover:border-indigo-500/40 shadow-xs'
-            : 'bg-white border-slate-200 shadow-2xs hover:border-indigo-300'
-        }`}
-      >
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-indigo-300' : 'text-indigo-700'}`}>
-              {locale === 'es' ? 'Último Titular FinBERT' : 'Latest FinBERT Headline'}
-            </span>
-            <span className={`text-[9px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              · {latestHeadline?.source || 'FinBERT'}
-            </span>
-          </div>
-
-          {latestHeadline && (
-            <span
-              className={`text-[9.5px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                latestHeadline.sentiment_label === 'bullish' || (latestHeadline.sentiment_score ?? 0) >= 0.15
-                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
-                  : latestHeadline.sentiment_label === 'bearish' || (latestHeadline.sentiment_score ?? 0) <= -0.15
-                  ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
-                  : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-              }`}
-            >
-              {latestHeadline.sentiment_label?.toUpperCase() || 'NEUTRAL'} ·{' '}
-              {latestHeadline.sentiment_score > 0
-                ? `+${latestHeadline.sentiment_score.toFixed(2)}`
-                : latestHeadline.sentiment_score?.toFixed(2)}
-            </span>
-          )}
-        </div>
-
-        <p className={`text-xs font-mono line-clamp-2 leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-          {latestHeadline?.title || (locale === 'es' ? 'Cargando titulares en tiempo real...' : 'Loading real-time headlines...')}
-        </p>
-      </div>
-
-      {/* 4. Primary Sync Pipeline Button */}
+      {/* 3. Primary Sync Pipeline Button */}
       <div className="py-1 flex justify-center">
         <button
           onClick={onTriggerPipeline}
@@ -226,7 +200,7 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
           {isPipelineRunning ? (
             <>
               <IconRefresh className="w-3.5 h-3.5 animate-spin text-indigo-200" />
-              <span>{locale === 'es' ? 'Sincronizando...' : 'Syncing...'}</span>
+              <span>{locale === 'es' ? 'Sincronizar Pipeline' : 'Sync Pipeline'}</span>
             </>
           ) : (
             <>
@@ -235,6 +209,54 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
             </>
           )}
         </button>
+      </div>
+
+      {/* 4. Último Titular (Directamente debajo del botón) */}
+      <div
+        onClick={() => onNavigate('nlp')}
+        className={`p-3 rounded-2xl border transition-all cursor-pointer active:scale-98 ${
+          isDark
+            ? 'bg-white/[0.025] border-white/[0.08] hover:border-indigo-500/40 shadow-xs'
+            : 'bg-white border-slate-200 shadow-2xs hover:border-indigo-300'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isDark ? 'text-indigo-300' : 'text-indigo-700'}`}>
+              {locale === 'es' ? 'Último Titular' : 'Latest Headline'}
+            </span>
+            <span className={`text-[9px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              · {latestHeadline?.source || 'Feeds'}
+            </span>
+          </div>
+
+          {latestHeadline && (
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[9.5px] font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {latestHeadline.time}
+              </span>
+              <span
+                className={`text-[9.5px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                  latestHeadline.sentiment_label === 'bullish' || latestHeadline.sentiment_label === 'alcista'
+                    ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                    : latestHeadline.sentiment_label === 'bearish' || latestHeadline.sentiment_label === 'bajista'
+                    ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
+                    : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                }`}
+              >
+                {latestHeadline.sentiment_label === 'bullish' || latestHeadline.sentiment_label === 'alcista'
+                  ? (locale === 'es' ? 'ALCISTA' : 'BULLISH')
+                  : latestHeadline.sentiment_label === 'bearish' || latestHeadline.sentiment_label === 'bajista'
+                  ? (locale === 'es' ? 'BAJISTA' : 'BEARISH')
+                  : (locale === 'es' ? 'NEUTRAL' : 'NEUTRAL')}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <p className={`text-xs font-mono line-clamp-2 leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+          {latestHeadline?.title || (locale === 'es' ? 'Cargando titulares en tiempo real...' : 'Loading real-time headlines...')}
+        </p>
       </div>
 
       {/* 5. Minimalist Text Tabs */}

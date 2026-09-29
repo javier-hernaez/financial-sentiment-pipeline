@@ -90,7 +90,7 @@ export const translations: Record<Locale, Translations> = {
     consoleRunning: 'Ejecutando Pipeline ELT...',
     consoleOffline: 'Desconectado',
     recordsConsolidated: 'registros consolidados en DuckDB',
-    runPipeline: 'Ejecutar Pipeline',
+    runPipeline: 'Sincronizar Pipeline',
     syncPipeline: 'Sincronizar Pipeline',
     running: 'Procesando...',
     exportCsv: 'Exportar Gold CSV',

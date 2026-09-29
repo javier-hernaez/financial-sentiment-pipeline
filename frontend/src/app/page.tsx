@@ -88,25 +88,42 @@ export default function Home() {
 
   const handleDirectRunPipeline = async (
     stage: 'extract' | 'transform' | 'gold' | 'full' = 'full',
-    sym: string = selectedSymbol,
+    sym?: string,
     hrs: number = 24
   ) => {
     if (isPipelineRunning) return;
     setIsPipelineRunning(true);
-    addPipelineLog(`[${stage.toUpperCase()}] Iniciando ejecución del pipeline para ${sym} (${hrs}h)...`, 'info', stage);
-    handleSystemAlert(`Ejecutando pipeline ELT (${stage.toUpperCase()}) en segundo plano...`, 'info');
+
+    const targetSymbols = (!sym || sym === 'ALL' || sym === 'MULTI')
+      ? ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
+      : [sym];
+
+    const labelNames = targetSymbols.map((s) => s.replace('USDT', '')).join(', ');
+    addPipelineLog(`[${stage.toUpperCase()}] Sincronizando pipeline para ${labelNames} (${hrs}h)...`, 'info', stage);
+    handleSystemAlert(`Sincronizando pipeline (${stage.toUpperCase()}) para ${labelNames}...`, 'info');
     try {
-      const result = await runStage(stage, sym, hrs);
+      let totalCandles = 0;
+      let totalPosts = 0;
+      let totalElapsed = 0;
+
+      for (const asset of targetSymbols) {
+        addPipelineLog(`[${asset.replace('USDT', '')}] Extracción & FinBERT en curso...`, 'info', stage);
+        const result = await runStage(stage, asset, hrs);
+        totalCandles += (result?.candles_processed || 0);
+        totalPosts += (result?.posts_processed || 0);
+        totalElapsed += (result?.elapsed_seconds || 0);
+      }
+
       await loadAll();
-      const totalProcessed = (result?.candles_processed || 0) + (result?.posts_processed || 0) + (result?.macro_records || 0);
-      const successMsg = `Pipeline (${stage.toUpperCase()}) finalizado en ${(result?.elapsed_seconds || 0).toFixed(1)}s (${totalProcessed} registros procesados).`;
+      const totalProcessed = totalCandles + totalPosts;
+      const successMsg = `Pipeline (${stage.toUpperCase()}) sincronizado con éxito para ${labelNames} (${totalProcessed} registros en ${totalElapsed.toFixed(1)}s).`;
       addPipelineLog(`[${stage.toUpperCase()}] ${successMsg}`, 'success', stage);
       handleSystemAlert(successMsg, 'success');
     } catch (err: any) {
       console.error('Error running pipeline directly:', err);
       const errMsg = err?.message || String(err);
-      addPipelineLog(`[ERROR] Fallo al ejecutar ${stage}: ${errMsg}`, 'error', stage);
-      handleSystemAlert(`Fallo al ejecutar el pipeline: ${errMsg}`, 'error');
+      addPipelineLog(`[ERROR] Fallo al sincronizar pipeline: ${errMsg}`, 'error', stage);
+      handleSystemAlert(`Fallo al sincronizar pipeline: ${errMsg}`, 'error');
     } finally {
       setIsPipelineRunning(false);
     }
@@ -364,7 +381,7 @@ export default function Home() {
                   diagnostics={diagnostics}
                   selectedSymbol={selectedSymbol}
                   isDark={isDark}
-                  onTriggerPipeline={() => handleDirectRunPipeline('full', selectedSymbol, 24)}
+                  onTriggerPipeline={() => handleDirectRunPipeline('full')}
                   isPipelineRunning={isPipelineRunning}
                   pipelineLogs={pipelineLogs}
                   onRefresh={loadAll}
@@ -391,7 +408,7 @@ export default function Home() {
                   <div className="flex flex-wrap items-center gap-2.5">
                     {/* Trigger Pipeline Button */}
                     <button
-                      onClick={() => handleDirectRunPipeline('full', selectedSymbol, 24)}
+                      onClick={() => handleDirectRunPipeline('full')}
                       disabled={isPipelineRunning}
                       className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-mono font-bold transition active:scale-95 ${
                         isPipelineRunning ? 'opacity-60 cursor-not-allowed' : ''
@@ -400,10 +417,10 @@ export default function Home() {
                           ? 'bg-white/[0.04] border-white/[0.1] text-[#818cf8] hover:text-white hover:bg-white/[0.08] hover:border-indigo-500/40'
                           : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50'
                       }`}
-                      title="Ejecuta extracción, FinBERT y actualización DuckDB sin salir de esta vista"
+                      title="Sincroniza extracción, FinBERT y DuckDB para BTC, ETH y SOL"
                     >
                       <IconRefresh className={`w-3.5 h-3.5 ${isPipelineRunning ? 'animate-spin' : ''}`} />
-                      <span>{isPipelineRunning ? 'Ejecutando...' : 'Ejecutar Pipeline'}</span>
+                      <span>{isPipelineRunning ? 'Sincronizando...' : 'Sincronizar Pipeline'}</span>
                     </button>
 
                     {/* Export Button — indigo */}

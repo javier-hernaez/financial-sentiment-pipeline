@@ -352,12 +352,12 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({
             {
               op: 'refresh_views' as const,
               title: 'REFRESH DDL',
-              subtitle: 'Recalcular vistas',
+              subtitle: 'Refrescar',
               iconClass: isDark ? 'text-emerald-400' : 'text-emerald-600',
               icon: IconFinbertLab,
               desc: 'Re-ejecuta las definiciones DDL de gold_hourly_market_sentiment sincronizando precios y sentimiento NLP.',
-              runningLabel: 'Recalculando…',
-              runLabel: 'Recalcular Vistas DDL',
+              runningLabel: 'Refrescando…',
+              runLabel: 'Refrescar DDL',
             },
           ].map(({ op, title, subtitle, iconClass, icon: Icon, desc, runningLabel, runLabel }) => (
             <div
