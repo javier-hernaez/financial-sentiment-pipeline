@@ -262,9 +262,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={onTriggerFullPipeline}
                 disabled={isPipelineRunning}
                 className={`
-                  w-full h-8 px-3 rounded-sm text-[11px] font-mono font-bold
-                  flex items-center justify-center gap-2 transition-all
-                  ${isPipelineRunning ? 'opacity-60 cursor-not-allowed' : 'active:scale-[0.98]'}
+                  w-full h-11 md:h-8 px-4 md:px-3 rounded-xl md:rounded-sm text-xs md:text-[11px] font-mono font-bold
+                  flex items-center justify-center gap-2 transition-all shadow-sm
+                  ${isPipelineRunning ? 'opacity-60 cursor-not-allowed' : 'active:scale-[0.98] cursor-pointer'}
                   ${isDark
                     ? 'bg-[#6366f1] hover:bg-[#818cf8] text-white'
                     : 'bg-[#6366f1] hover:bg-[#4f46e5] text-white'}

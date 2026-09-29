@@ -473,14 +473,14 @@ export default function Home() {
 
           {/* Subview: Medallion Explorer / Data Warehouse */}
           {(activeView === 'warehouse' || activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="flex-1 flex flex-col min-h-0 space-y-3 sm:space-y-6">
               <SubviewHeader
                 title="Data Lake & Feature Store DuckDB"
                 description="Inspecciona particiones Bronze (Parquet), registros limpios Silver y agregaciones analíticas Gold."
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <div className="block md:hidden">
+              <div className="block md:hidden flex-1 h-[calc(100dvh-180px)] min-h-0 flex flex-col">
                 <MobileMedallionExplorer isDark={isDark} />
               </div>
               <div className="hidden md:block">

@@ -6,7 +6,6 @@ import {
   IconFinbertLab,
   IconMarket,
   IconPipeline,
-  IconShield,
 } from './CustomIcons';
 import { SystemMetrics } from '@/types';
 
@@ -121,10 +120,9 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
           <span className={labelColor}>Pipeline de Datos End-to-End</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
             isDark ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
           }`}>
-            <IconShield className="w-3.5 h-3.5 text-indigo-400" />
             ACID DuckDB
           </span>
         </div>
@@ -185,9 +183,11 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
 
               {/* Bottom: Technical specification */}
               <div className={`mt-4 pt-3 border-t text-[11px] font-mono space-y-1.5 ${isDark ? 'border-white/[0.04]' : 'border-slate-100'}`}>
-                <div className="flex justify-between items-center">
-                  <span className={labelColor}>Esquema</span>
-                  <span className="text-indigo-400 font-medium truncate max-w-[140px]">{stage.schema}</span>
+                <div className="flex justify-between items-center gap-2">
+                  <span className={`${labelColor} shrink-0`}>Esquema</span>
+                  <span className="text-indigo-400 font-medium font-mono text-[10.5px] text-right truncate" title={stage.schema}>
+                    {stage.schema}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className={labelColor}>Detalle</span>

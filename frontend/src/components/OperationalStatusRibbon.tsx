@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { IconDuckDB, IconFinbertLab, IconMarket, IconShield, IconTerminal } from './CustomIcons';
+import { IconDuckDB, IconFinbertLab, IconMarket, IconGlobe, IconTerminal } from './CustomIcons';
 import { SystemMetrics, Diagnostics } from '@/types';
 
 interface OperationalStatusRibbonProps {
@@ -76,7 +76,7 @@ export const OperationalStatusRibbon: React.FC<OperationalStatusRibbonProps> = (
 
         {/* Macro Index Latency */}
         <div className="flex items-center gap-1.5">
-          <IconShield className={`w-3 h-3 ${isDark ? 'text-[#10b981]' : 'text-emerald-500'}`} />
+          <IconGlobe className={`w-3 h-3 ${isDark ? 'text-[#10b981]' : 'text-emerald-500'}`} />
           <span className={val}>Macro API:</span>
           <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
             {fgLatency}ms

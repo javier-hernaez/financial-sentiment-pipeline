@@ -2,8 +2,21 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Market ELT • Terminal de Datos, NLP y Almacén DuckDB',
+  title: 'ELT Project • Terminal de Datos, NLP y Almacén DuckDB',
   description: 'Consola operacional de datos, scoring FinBERT y analítica en DuckDB.',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico' },
+    ],
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
+  openGraph: {
+    title: 'ELT Project • Terminal de Datos, NLP y Almacén DuckDB',
+    description: 'Consola operacional de datos, scoring FinBERT y analítica en DuckDB.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

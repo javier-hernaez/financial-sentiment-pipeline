@@ -617,3 +617,14 @@ export const IconSparkles: React.FC<IconProps> = ({ className = 'w-4 h-4' }) => 
   </svg>
 );
 
+// ── 43. Globe / Macro API ────────────────────────────────────────────────────
+export const IconGlobe: React.FC<IconProps> = ({ className = 'w-4 h-4' }) => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"
+    strokeLinecap="square" strokeLinejoin="miter" className={className}>
+    <circle cx="10" cy="10" r="7.5" />
+    <line x1="2.5" y1="10" x2="17.5" y2="10" />
+    <path d="M10 2.5 C12.5 5 13.8 7.5 13.8 10 C13.8 12.5 12.5 15 10 17.5 C7.5 15 6.2 12.5 6.2 10 C6.2 7.5 7.5 5 10 2.5 Z" />
+  </svg>
+);
+
+
