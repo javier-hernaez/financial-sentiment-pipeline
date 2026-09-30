@@ -156,7 +156,7 @@ export const MobileFinbertLab: React.FC<MobileFinbertLabProps> = ({ isDark = tru
               </span>
             </div>
 
-            {/* Softmax Probability Bar */}
+            {/* Softmax Probability Bar — UNTOUCHED */}
             <div className="max-w-xs mx-auto space-y-1 pt-1.5 text-[10px] font-mono">
               <div className={`flex justify-between ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
                 <span className="text-emerald-400 font-semibold">Bull: {(result.prob_positive * 100).toFixed(0)}%</span>
@@ -175,6 +175,14 @@ export const MobileFinbertLab: React.FC<MobileFinbertLabProps> = ({ isDark = tru
             {locale === 'es' ? 'Selecciona un ejemplo o escribe un texto para ver la polaridad.' : 'Select a preset or enter text to view polarity.'}
           </div>
         )}
+      </div>
+
+      {/* 5. Compact Technical Specs Card */}
+      <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[10px] font-mono ${
+        isDark ? 'bg-white/[0.015] border-white/[0.05] text-[#8b95b0]' : 'bg-slate-50 border-slate-200 text-slate-600'
+      }`}>
+        <span>ProsusAI/finbert (110M params)</span>
+        <span className="text-indigo-400 font-bold">768-dim · WordPiece</span>
       </div>
     </div>
   );

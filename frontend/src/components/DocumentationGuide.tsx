@@ -15,6 +15,7 @@ import {
 
 interface DocumentationGuideProps {
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
 const CodeSnippet: React.FC<{ title: string; code: string; isDark: boolean }> = ({ title, code, isDark }) => (
@@ -31,7 +32,7 @@ const CodeSnippet: React.FC<{ title: string; code: string; isDark: boolean }> = 
   </div>
 );
 
-export const DocumentationGuide: React.FC<DocumentationGuideProps> = ({ isDark = true }) => {
+export const DocumentationGuide: React.FC<DocumentationGuideProps> = ({ isDark = true, locale = 'es' }) => {
   const card = isDark ? 'bg-white/[0.02] border-white/[0.08]' : 'bg-white border-slate-200 shadow-xs';
   const innerCard = isDark ? 'bg-[#0a0e17] border-white/[0.06]' : 'bg-slate-50 border-slate-200';
   const textHead = isDark ? 'text-white' : 'text-slate-900';

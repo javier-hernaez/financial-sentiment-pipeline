@@ -26,9 +26,11 @@ import { fetchGoldData, fetchMetrics, fetchBronzeTree } from '@/lib/api';
 
 interface MarketTerminalProps {
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
-export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true }) => {
+export const MarketTerminal: React.FC<MarketTerminalProps> = ({ isDark = true, locale = 'es' }) => {
+  const isEn = locale === 'en';
   const [isMounted, setIsMounted] = useState(false);
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [hours, setHours] = useState(24);

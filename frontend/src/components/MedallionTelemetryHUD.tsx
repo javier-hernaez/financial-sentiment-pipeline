@@ -12,12 +12,15 @@ import { SystemMetrics } from '@/types';
 interface MedallionTelemetryHUDProps {
   metrics: SystemMetrics | null;
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
 export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
   metrics,
   isDark = true,
+  locale = 'es',
 }) => {
+  const isEn = locale === 'en';
   const bronzeFiles  = metrics?.bronze.total_files ?? 0;
   const bronzeKb     = metrics?.bronze.total_size_kb ? Math.round(metrics.bronze.total_size_kb) : 0;
   const socialRows   = metrics?.silver.social_rows ?? 0;
@@ -30,15 +33,15 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       step: '01',
       layer: 'BRONZE',
       sublabel: 'Data Lake · Parquet',
-      badge: 'Inmutable',
+      badge: isEn ? 'Immutable' : 'Inmutable',
       badgeClass: isDark
         ? 'bg-[#d97706]/10 text-[#d97706] border-[#d97706]/20'
         : 'bg-amber-50 text-amber-700 border-amber-200',
       layerColor: isDark ? 'text-amber-400' : 'text-amber-600',
       borderTop: isDark ? 'border-t-[#d97706]/40' : 'border-t-amber-400',
       mainValue: `${bronzeFiles}`,
-      mainUnit: 'particiones',
-      contextDesc: 'Particiones Parquet sin procesar en disco',
+      mainUnit: isEn ? 'partitions' : 'particiones',
+      contextDesc: isEn ? 'Raw Parquet partitions stored on disk' : 'Particiones Parquet sin procesar en disco',
       subText: `${bronzeKb} KB · Snappy`,
       schema: 'bronze/year=YYYY/...',
       icon: IconPipeline,
@@ -47,15 +50,15 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       step: '02',
       layer: 'SILVER NLP',
       sublabel: 'FinBERT Scoring',
-      badge: 'Semántico',
+      badge: isEn ? 'Semantic' : 'Semántico',
       badgeClass: isDark
         ? 'bg-[#a78bfa]/10 text-[#a78bfa] border-[#a78bfa]/20'
         : 'bg-purple-50 text-purple-700 border-purple-200',
       layerColor: isDark ? 'text-purple-300' : 'text-purple-600',
       borderTop: isDark ? 'border-t-[#a78bfa]/40' : 'border-t-purple-400',
       mainValue: `${socialRows.toLocaleString()}`,
-      mainUnit: 'titulares',
-      contextDesc: 'Titulares clasificados con FinBERT',
+      mainUnit: isEn ? 'headlines' : 'titulares',
+      contextDesc: isEn ? 'Headlines classified with FinBERT' : 'Titulares clasificados con FinBERT',
       subText: 'ProsusAI/finbert (768-dim)',
       schema: 'silver_social_sentiment',
       icon: IconFinbertLab,
@@ -71,9 +74,9 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       layerColor: isDark ? 'text-sky-400' : 'text-sky-600',
       borderTop: isDark ? 'border-t-[#38bdf8]/40' : 'border-t-sky-400',
       mainValue: `${marketRows.toLocaleString()}`,
-      mainUnit: 'velas',
-      contextDesc: 'Velas horarias OHLCV validadas',
-      subText: 'Normalización Polars UTC',
+      mainUnit: isEn ? 'candles' : 'velas',
+      contextDesc: isEn ? 'Validated hourly OHLCV candles' : 'Velas horarias OHLCV validadas',
+      subText: isEn ? 'Polars UTC Normalization' : 'Normalización Polars UTC',
       schema: 'silver_market_prices',
       icon: IconMarket,
     },
@@ -88,9 +91,9 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       layerColor: isDark ? 'text-emerald-400' : 'text-emerald-600',
       borderTop: isDark ? 'border-t-[#10b981]/40' : 'border-t-emerald-400',
       mainValue: `${goldRows.toLocaleString()}`,
-      mainUnit: 'horas',
-      contextDesc: 'Ventanas consolidadas con señal Alpha',
-      subText: `${duckDbMb} MB columnar`,
+      mainUnit: isEn ? 'hours' : 'horas',
+      contextDesc: isEn ? 'Consolidated windows with Alpha signal' : 'Ventanas consolidadas con señal Alpha',
+      subText: `${duckDbMb} MB ${isEn ? 'data' : 'de datos'}`,
       schema: 'gold_hourly_market_sentiment',
       icon: IconDuckDB,
     },
@@ -114,10 +117,10 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       `}>
         <div className="flex items-center gap-2.5">
           <span className={`font-bold tracking-wider uppercase text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-            Arquitectura Medallion
+            {isEn ? 'Medallion Architecture' : 'Arquitectura Medallion'}
           </span>
           <span className="text-white/[0.1]">·</span>
-          <span className={labelColor}>Pipeline de Datos End-to-End</span>
+          <span className={labelColor}>{isEn ? 'End-to-End Data Pipeline' : 'Pipeline de Datos End-to-End'}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
@@ -184,13 +187,13 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
               {/* Bottom: Technical specification */}
               <div className={`mt-4 pt-3 border-t text-[11px] font-mono space-y-1.5 ${isDark ? 'border-white/[0.04]' : 'border-slate-100'}`}>
                 <div className="flex justify-between items-center gap-2">
-                  <span className={`${labelColor} shrink-0`}>Esquema</span>
+                  <span className={`${labelColor} shrink-0`}>{isEn ? 'Schema' : 'Esquema'}</span>
                   <span className="text-indigo-400 font-medium font-mono text-[10.5px] text-right truncate" title={stage.schema}>
                     {stage.schema}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className={labelColor}>Detalle</span>
+                  <span className={labelColor}>{isEn ? 'Detail' : 'Detalle'}</span>
                   <span className={subColor}>{stage.subText}</span>
                 </div>
               </div>

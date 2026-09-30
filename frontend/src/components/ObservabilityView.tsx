@@ -21,6 +21,7 @@ interface ObservabilityViewProps {
   onRefresh: () => void;
   onAlert: (msg: string, type?: 'success' | 'error' | 'info') => void;
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
 /* ── tiny helpers ─────────────────────────────────────────────────────────── */

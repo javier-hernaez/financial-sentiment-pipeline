@@ -11,6 +11,7 @@ interface MobileObservabilityViewProps {
   onRefresh: () => void;
   onAlert: (msg: string, type?: 'success' | 'error' | 'info') => void;
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
 export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = ({
@@ -19,6 +20,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
   onRefresh,
   onAlert,
   isDark = true,
+  locale = 'es',
 }) => {
   const [runningOp, setRunningOp] = useState<string | null>(null);
 

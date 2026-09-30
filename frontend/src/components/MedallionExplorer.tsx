@@ -15,9 +15,10 @@ import { fetchTableData, fetchBronzeTree } from '@/lib/api';
 
 interface MedallionExplorerProps {
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
-export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = true }) => {
+export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = true, locale = 'es' }) => {
   const [selectedTable, setSelectedTable] = useState('gold_hourly_market_sentiment');
   const [limit, setLimit] = useState(25);
   const [offset, setOffset] = useState(0);
@@ -120,15 +121,15 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                 : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500'
             }`}
           >
-            <optgroup label="Capa Gold (Feature Store)">
-              <option value="gold_hourly_market_sentiment">gold_hourly_market_sentiment (Consolidado)</option>
+            <optgroup label={locale === 'es' ? "Capa Gold (Feature Store)" : "Gold Layer (Feature Store)"}>
+              <option value="gold_hourly_market_sentiment">gold_hourly_market_sentiment ({locale === 'es' ? 'Consolidado' : 'Consolidated'})</option>
             </optgroup>
-            <optgroup label="Capa Silver (Relacional DuckDB)">
-              <option value="silver_market_prices">silver_market_prices (Precios y Volumen)</option>
-              <option value="silver_social_sentiment">silver_social_sentiment (FinBERT Noticias)</option>
+            <optgroup label={locale === 'es' ? "Capa Silver (Relacional DuckDB)" : "Silver Layer (DuckDB Relational)"}>
+              <option value="silver_market_prices">silver_market_prices ({locale === 'es' ? 'Precios y Volumen' : 'Prices & Volume'})</option>
+              <option value="silver_social_sentiment">silver_social_sentiment ({locale === 'es' ? 'FinBERT Noticias' : 'FinBERT News'})</option>
             </optgroup>
-            <optgroup label="Capa Bronze (Data Lake)">
-              <option value="__bronze_lake__">Bronze Lake (Particiones Parquet)</option>
+            <optgroup label={locale === 'es' ? "Capa Bronze (Data Lake)" : "Bronze Layer (Data Lake)"}>
+              <option value="__bronze_lake__">Bronze Lake ({locale === 'es' ? 'Particiones Parquet' : 'Parquet Partitions'})</option>
             </optgroup>
           </select>
         </div>
@@ -137,7 +138,11 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
           <div className="relative flex-1 md:w-72">
             <input
               type="text"
-              placeholder={selectedTable === '__bronze_lake__' ? 'Buscar archivo o partición...' : 'Buscar en tiempo real...'}
+              placeholder={
+                selectedTable === '__bronze_lake__'
+                  ? (locale === 'es' ? 'Buscar archivo o partición...' : 'Search file or partition...')
+                  : (locale === 'es' ? 'Buscar en tiempo real...' : 'Search real-time...')
+              }
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={`text-xs rounded-full pl-8 pr-4 py-2 outline-none w-full font-mono transition border ${
@@ -154,7 +159,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               onClick={() => setSearch('')}
               className="text-xs font-mono text-slate-400 hover:text-white px-2 py-1 transition cursor-pointer"
             >
-              Limpiar
+              {locale === 'es' ? 'Limpiar' : 'Clear'}
             </button>
           )}
         </form>
@@ -172,8 +177,8 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
           {/* Header & Pagination */}
           <div className={`p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
             <div className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>
-              Mostrando <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{tableData?.total_count === 0 ? 0 : offset + 1}-{Math.min(offset + limit, tableData?.total_count || 0)}</span> de{' '}
-              <span className="text-emerald-400 font-bold">{tableData?.total_count || 0}</span> registros
+              {locale === 'es' ? 'Mostrando' : 'Showing'} <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{tableData?.total_count === 0 ? 0 : offset + 1}-{Math.min(offset + limit, tableData?.total_count || 0)}</span> {locale === 'es' ? 'de' : 'of'}{' '}
+              <span className="text-emerald-400 font-bold">{tableData?.total_count || 0}</span> {locale === 'es' ? 'registros' : 'records'}
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
               <button
@@ -185,7 +190,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                     : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-30'
                 }`}
               >
-                <IconChevronLeft className="w-3.5 h-3.5" /> Anterior
+                <IconChevronLeft className="w-3.5 h-3.5" /> {locale === 'es' ? 'Anterior' : 'Previous'}
               </button>
               <span className={`text-xs font-bold px-2 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 {currentPage} / {totalPages}
@@ -199,7 +204,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                     : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-30'
                 }`}
               >
-                Siguiente <IconChevronRight className="w-3.5 h-3.5" />
+                {locale === 'es' ? 'Siguiente' : 'Next'} <IconChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -208,19 +213,20 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
           <div className="md:hidden divide-y divide-slate-800/40 p-3 space-y-3">
             {isLoading ? (
               <div className="p-8 text-center text-slate-500 font-mono text-xs">
-                Cargando registros...
+                {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
               </div>
             ) : !tableData?.rows || tableData.rows.length === 0 ? (
               <div className="p-8 text-center text-slate-500 font-mono text-xs">
-                No se encontraron registros en esta tabla.
+                {locale === 'es' ? 'No se encontraron registros en esta tabla.' : 'No records found in this table.'}
               </div>
             ) : (
               tableData.rows.map((row, rIdx) => {
                 const isExpanded = !!expandedRows[rIdx];
                 const primaryTime = row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${offset + rIdx + 1}`;
                 const sentiment = row.sentiment_label;
-                const isBullish = String(sentiment).toLowerCase() === 'bullish';
-                const isBearish = String(sentiment).toLowerCase() === 'bearish';
+                const sentStr = String(sentiment || '').toLowerCase();
+                const isBullish = sentStr.includes('bull') || sentStr.includes('alcista');
+                const isBearish = sentStr.includes('bear') || sentStr.includes('bajista');
 
                 return (
                   <div
@@ -241,7 +247,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                               ? 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30'
                               : isBearish
                               ? 'text-rose-400 bg-rose-500/15 border border-rose-500/30'
-                              : 'text-amber-400 bg-amber-500/15 border border-amber-500/30'
+                              : 'text-sky-400 bg-sky-500/15 border border-sky-500/30'
                           }`}
                         >
                           {sentiment}
@@ -343,13 +349,13 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                 {isLoading ? (
                   <tr>
                     <td colSpan={tableData?.columns.length || 5} className="p-8 text-center text-[#64748b] font-mono">
-                      Cargando registros...
+                      {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
                     </td>
                   </tr>
                 ) : !tableData?.rows || tableData.rows.length === 0 ? (
                   <tr>
                     <td colSpan={tableData?.columns.length || 5} className="p-8 text-center text-[#64748b] font-mono">
-                      No se encontraron registros en esta tabla.
+                      {locale === 'es' ? 'No se encontraron registros en esta tabla.' : 'No records found in this table.'}
                     </td>
                   </tr>
                 ) : (
@@ -358,18 +364,30 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                       {tableData.columns.map((col) => {
                         const val = row[col];
                         if (col === 'sentiment_label') {
-                          const isBullish = String(val).toLowerCase() === 'bullish';
-                          const isBearish = String(val).toLowerCase() === 'bearish';
+                          const str = String(val || '').toLowerCase();
+                          const isBullish = str.includes('bull') || str.includes('alcista');
+                          const isBearish = str.includes('bear') || str.includes('bajista');
                           const badge = isBullish
-                            ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                            ? 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30'
                             : isBearish
-                            ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
-                            : 'text-amber-400 bg-amber-500/10 border border-amber-500/20';
+                            ? 'text-rose-400 bg-rose-500/15 border border-rose-500/30'
+                            : 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
                           return (
                             <td key={col} className="py-2.5 px-4 whitespace-nowrap">
                               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badge}`}>
                                 {val}
                               </span>
+                            </td>
+                          );
+                        }
+                        if (col === 'sentiment_score' && val !== null && val !== undefined) {
+                          const num = Number(val);
+                          const isPos = num > 0.05;
+                          const isNeg = num < -0.05;
+                          const color = isPos ? 'text-emerald-400' : isNeg ? 'text-rose-400' : 'text-sky-400';
+                          return (
+                            <td key={col} className={`py-2.5 px-4 whitespace-nowrap font-tabular font-bold ${color}`}>
+                              {num > 0 ? `+${num.toFixed(3)}` : num.toFixed(3)}
                             </td>
                           );
                         }
@@ -398,10 +416,10 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
           <div className={`p-4 border-b flex justify-between items-center text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
             <span className={`font-bold flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               <IconFolderTree className="w-4 h-4 text-emerald-400" />
-              Particiones Parquet en Disco
+              {locale === 'es' ? 'Particiones Parquet en Disco' : 'Parquet Partitions on Disk'}
             </span>
             <span className="text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full text-[11px]">
-              {displayedBronzeFiles.length} ficheros {search ? '(filtrados)' : ''}
+              {displayedBronzeFiles.length} {locale === 'es' ? 'ficheros' : 'files'} {search ? (locale === 'es' ? '(filtrados)' : '(filtered)') : ''}
             </span>
           </div>
 
@@ -409,7 +427,9 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
           <div className="md:hidden divide-y divide-white/[0.04] p-3 space-y-2.5">
             {displayedBronzeFiles.length === 0 ? (
               <div className="p-8 text-center text-[#64748b] font-mono text-xs">
-                {search ? `No se encontraron particiones que coincidan con "${search}".` : 'No hay archivos Parquet en el lago Bronze.'}
+                {search
+                  ? (locale === 'es' ? `No se encontraron particiones que coincidan con "${search}".` : `No partitions matching "${search}".`)
+                  : (locale === 'es' ? 'No hay archivos Parquet en el lago Bronze.' : 'No Parquet files in Bronze Lake.')}
               </div>
             ) : (
               displayedBronzeFiles.map((f, i) => (
@@ -427,7 +447,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                   <div className={`flex items-center justify-between text-[10px] pt-1 border-t ${
                     isDark ? 'text-[#64748b] border-white/[0.04]' : 'text-slate-500 border-slate-200'
                   }`}>
-                    <span>Partición: {f.partition}</span>
+                    <span>{locale === 'es' ? 'Partición:' : 'Partition:'} {f.partition}</span>
                     <span>{f.modified_utc}</span>
                   </div>
                 </div>
@@ -440,18 +460,20 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
             <table className="w-full text-left text-xs font-mono">
               <thead className={`border-b ${isDark ? 'bg-white/[0.02] border-white/[0.06] text-[#64748b]' : 'bg-slate-50 border-slate-100 text-slate-500'}`}>
                 <tr>
-                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">Fuente</th>
-                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">Partición Temporal</th>
-                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">Nombre del Archivo</th>
-                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">Tamaño</th>
-                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">Modificación (UTC)</th>
+                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">{locale === 'es' ? 'Fuente' : 'Source'}</th>
+                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">{locale === 'es' ? 'Partición Temporal' : 'Time Partition'}</th>
+                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">{locale === 'es' ? 'Nombre del Archivo' : 'File Name'}</th>
+                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">{locale === 'es' ? 'Tamaño' : 'Size'}</th>
+                  <th className="py-3 px-4 font-bold uppercase tracking-wider text-[11px]">{locale === 'es' ? 'Modificación (UTC)' : 'Modified (UTC)'}</th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? 'divide-white/[0.04] text-slate-300' : 'divide-slate-100 text-slate-700'}`}>
                 {displayedBronzeFiles.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-[#64748b] font-mono">
-                      {search ? `No se encontraron particiones que coincidan con "${search}".` : 'No hay archivos Parquet en el lago Bronze.'}
+                      {search
+                        ? (locale === 'es' ? `No se encontraron particiones que coincidan con "${search}".` : `No partitions matching "${search}".`)
+                        : (locale === 'es' ? 'No hay archivos Parquet en el lago Bronze.' : 'No Parquet files in Bronze Lake.')}
                     </td>
                   </tr>
                 ) : (

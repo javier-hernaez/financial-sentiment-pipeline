@@ -164,7 +164,7 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
               {socialRows.toLocaleString()}
             </div>
             <div className={`text-[10px] font-mono leading-tight ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
-              {locale === 'es' ? 'titulares FinBERT' : 'FinBERT headlines'}
+              {locale === 'es' ? 'titulares' : 'headlines'}
             </div>
           </div>
 
@@ -180,7 +180,7 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
               {goldRows.toLocaleString()}
             </div>
             <div className={`text-[10px] font-mono leading-tight ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
-              {locale === 'es' ? `${duckDbMb} MB analíticos` : `${duckDbMb} MB analytics`}
+              {locale === 'es' ? `${duckDbMb} MB de datos` : `${duckDbMb} MB data`}
             </div>
           </div>
         </div>
@@ -211,9 +211,9 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
         </button>
       </div>
 
-      {/* 4. Último Titular (Directamente debajo del botón) */}
+      {/* 4. Último Titular (Lleva a la pantalla de noticias/feeds sin recortar texto) */}
       <div
-        onClick={() => onNavigate('nlp')}
+        onClick={() => onNavigate('content')}
         className={`p-3 rounded-2xl border transition-all cursor-pointer active:scale-98 ${
           isDark
             ? 'bg-white/[0.025] border-white/[0.08] hover:border-indigo-500/40 shadow-xs'
@@ -254,7 +254,7 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
           )}
         </div>
 
-        <p className={`text-xs font-mono line-clamp-2 leading-relaxed ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+        <p className={`text-xs font-mono leading-relaxed break-words ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
           {latestHeadline?.title || (locale === 'es' ? 'Cargando titulares en tiempo real...' : 'Loading real-time headlines...')}
         </p>
       </div>
@@ -336,27 +336,31 @@ export const MobileEltConsole: React.FC<MobileEltConsoleProps> = ({
                   const isSuccess = log.type === 'success';
                   const isError = log.type === 'error';
                   const isWarning = log.type === 'warning';
-                  const stageTag = (log.stage || log.type).toUpperCase();
+                  const rawStage = (log.stage || log.type).toUpperCase();
+                  const stageTag = rawStage === 'FULL' ? 'PIPELINE' : rawStage;
+                  const messageAlreadyHasTag = log.message.startsWith('[');
 
                   return (
-                    <div key={log.id} className="flex items-baseline gap-1.5 leading-snug">
-                      <span className={`text-[10px] shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <div key={log.id} className="flex items-start gap-1.5 leading-snug py-0.5">
+                      <span className={`text-[10px] shrink-0 font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                         [{log.timestamp}]
                       </span>
-                      <span
-                        className={`text-[9.5px] font-bold shrink-0 font-mono ${
-                          isSuccess
-                            ? 'text-emerald-400'
-                            : isError
-                            ? 'text-rose-400'
-                            : isWarning
-                            ? 'text-amber-400'
-                            : 'text-indigo-400'
-                        }`}
-                      >
-                        {stageTag}:
-                      </span>
-                      <span className={`truncate text-xs ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                      {!messageAlreadyHasTag && (
+                        <span
+                          className={`text-[9.5px] font-bold shrink-0 font-mono ${
+                            isSuccess
+                              ? 'text-emerald-400'
+                              : isError
+                              ? 'text-rose-400'
+                              : isWarning
+                              ? 'text-amber-400'
+                              : 'text-indigo-400'
+                          }`}
+                        >
+                          {stageTag}:
+                        </span>
+                      )}
+                      <span className={`break-words whitespace-normal leading-relaxed text-xs flex-1 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                         {log.message}
                       </span>
                     </div>

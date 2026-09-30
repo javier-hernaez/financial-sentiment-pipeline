@@ -20,6 +20,7 @@ import { runStage } from '@/lib/api';
 interface PipelineRunnerProps {
   onSuccess: () => void;
   isDark?: boolean;
+  locale?: 'es' | 'en';
   isExternalRunning?: boolean;
   externalLogs?: LogEntry[];
   onTriggerPipeline?: (stage: 'extract' | 'transform' | 'gold' | 'full', sym: string, hrs: number) => Promise<void>;
@@ -36,10 +37,12 @@ interface LogEntry {
 export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
   onSuccess,
   isDark = true,
+  locale = 'es',
   isExternalRunning,
   externalLogs,
   onTriggerPipeline,
 }) => {
+  const isEn = locale === 'en';
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [hours, setHours] = useState(24);
   const [localRunning, setLocalRunning] = useState(false);
@@ -148,10 +151,10 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
         >
           <div>
             <h3 className={`text-base font-bold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-              Parámetros de Ingesta
+              {isEn ? 'Ingestion Parameters' : 'Parámetros de Ingesta'}
             </h3>
             <p className={`text-xs mt-1 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-              Control de extracción, enriquecimiento y capas analíticas.
+              {isEn ? 'Extraction, enrichment and analytical layer controls.' : 'Control de extracción, enriquecimiento y capas analíticas.'}
             </p>
           </div>
 
@@ -159,7 +162,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
             {/* Asset Selection */}
             <div>
               <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-                Activo Financiero
+                {isEn ? 'Financial Asset' : 'Activo Financiero'}
               </label>
               <select
                 value={symbol}
@@ -179,7 +182,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
             {/* Time Horizon Selection */}
             <div>
               <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 font-mono ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-                Ventana de Tiempo
+                {isEn ? 'Time Window' : 'Ventana de Tiempo'}
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[12, 24, 48, 72].map((h) => (
@@ -204,15 +207,15 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
             {/* Feed Status Information */}
             <div className={`pt-4 space-y-2.5 border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>Noticias en Vivo:</span>
+                <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>{isEn ? 'Live News:' : 'Noticias en Vivo:'}</span>
                 <span className="text-emerald-400 font-medium">CoinTelegraph &amp; Desk</span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>Precios Spot:</span>
+                <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>{isEn ? 'Spot Prices:' : 'Precios Spot:'}</span>
                 <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Binance REST v3</span>
               </div>
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>Motor NLP:</span>
+                <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>{isEn ? 'NLP Engine:' : 'Motor NLP:'}</span>
                 <span className="text-indigo-400 font-medium">FinBERT Engine</span>
               </div>
             </div>
@@ -227,8 +230,8 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                 <IconPlay className={`w-3.5 h-3.5 ${isRunning && activeStage === 'full' ? 'animate-spin' : ''}`} />
                 <span>
                   {isRunning && activeStage === 'full'
-                    ? 'Sincronizando Pipeline...'
-                    : 'Sincronizar Pipeline'}
+                    ? (isEn ? 'Syncing Pipeline...' : 'Sincronizando Pipeline...')
+                    : (isEn ? 'Sync Pipeline' : 'Sincronizar Pipeline')}
                 </span>
               </button>
             </div>
@@ -247,7 +250,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
             }`}
           >
             <h3 className={`text-xs font-mono uppercase tracking-wider font-semibold mb-4 ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
-              Ejecución Modular por Capas
+              {isEn ? 'Modular Layer Execution' : 'Ejecución Modular por Capas'}
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -265,9 +268,9 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                     </span>
                     <span className="text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">RAW</span>
                   </div>
-                  <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Extracción Inmutable</h4>
+                  <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{isEn ? 'Immutable Extraction' : 'Extracción Inmutable'}</h4>
                   <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-                    Descarga en paralelo de velas Binance y feeds RSS a ficheros Parquet.
+                    {isEn ? 'Parallel ingest of Binance candles and RSS feeds to Parquet.' : 'Descarga en paralelo de velas Binance y feeds RSS a ficheros Parquet.'}
                   </p>
                 </div>
                 <button
@@ -280,7 +283,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                   }`}
                 >
                   <IconArrowRight className="w-3.5 h-3.5" />
-                  <span>Extraer a Bronze</span>
+                  <span>{isEn ? 'Extract to Bronze' : 'Extraer a Bronze'}</span>
                 </button>
               </div>
 
@@ -298,9 +301,9 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                     </span>
                     <span className="text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">NLP</span>
                   </div>
-                  <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Limpieza y Scoring</h4>
+                  <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{isEn ? 'Cleaning & Scoring' : 'Limpieza y Scoring'}</h4>
                   <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-                    Normalización con Polars, inferencia FinBERT y tablas DuckDB.
+                    {isEn ? 'Polars normalization, FinBERT inference and DuckDB tables.' : 'Normalización con Polars, inferencia FinBERT y tablas DuckDB.'}
                   </p>
                 </div>
                 <button
@@ -313,7 +316,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                   }`}
                 >
                   <IconArrowRight className="w-3.5 h-3.5" />
-                  <span>Procesar Silver</span>
+                  <span>{isEn ? 'Process Silver' : 'Procesar Silver'}</span>
                 </button>
               </div>
 
@@ -333,7 +336,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                   </div>
                   <h4 className={`text-xs font-bold mt-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Feature Store</h4>
                   <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-                    Alineación horaria de retornos y agregaciones de polaridad FinBERT en DuckDB.
+                    {isEn ? 'Hourly return alignment and FinBERT aggregations in DuckDB.' : 'Alineación horaria de retornos y agregaciones de polaridad FinBERT en DuckDB.'}
                   </p>
                 </div>
                 <button
@@ -346,7 +349,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                   }`}
                 >
                   <IconArrowRight className="w-3.5 h-3.5" />
-                  <span>Actualizar Gold</span>
+                  <span>{isEn ? 'Update Gold' : 'Actualizar Gold'}</span>
                 </button>
               </div>
             </div>
@@ -365,7 +368,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <h3 className={`text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                   <IconTerminal className="w-3.5 h-3.5 text-indigo-400" />
-                  Registro de Operaciones ELT
+                  {isEn ? 'ELT Operations Log' : 'Registro de Operaciones ELT'}
                 </h3>
               </div>
               <button
@@ -373,7 +376,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                 className={`flex items-center gap-1 text-xs font-mono transition ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 <IconTrash className="w-3 h-3" />
-                Limpiar
+                {isEn ? 'Clear' : 'Limpiar'}
               </button>
             </div>
 
@@ -390,14 +393,14 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
               }`}>
                 <span>TIMESTAMP</span>
                 <span>·</span>
-                <span>FASE</span>
+                <span>{isEn ? 'STAGE' : 'FASE'}</span>
                 <span>·</span>
-                <span>EVENTO</span>
+                <span>{isEn ? 'EVENT' : 'EVENTO'}</span>
               </div>
 
               {logs.length === 0 ? (
                 <div className="px-4 py-6 text-slate-600 text-center">
-                  Sin eventos. Ejecuta una fase del pipeline para ver los logs en tiempo real.
+                  {isEn ? 'No events. Run a pipeline stage to see real-time logs.' : 'Sin eventos. Ejecuta una fase del pipeline para ver los logs en tiempo real.'}
                 </div>
               ) : (
                 <div className="px-2 py-2 space-y-0.5">
@@ -421,7 +424,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                       log.stage === 'extract' ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
                       : log.stage === 'transform' ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20'
                       : log.stage === 'gold' ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
-                      : log.stage === 'full' ? 'bg-purple-500/10 text-purple-300 border border-purple-500/20'
+                      : (log.stage === 'full' || log.stage === 'pipeline') ? 'bg-purple-500/10 text-purple-300 border border-purple-500/20'
                       : null;
 
                     return (
@@ -438,7 +441,7 @@ export const PipelineRunner: React.FC<PipelineRunnerProps> = ({
                           <span className="text-[#64748b] whitespace-nowrap text-[10px]">{log.timestamp}</span>
                           {stageBadgeColor && (
                             <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${stageBadgeColor}`}>
-                              {log.stage}
+                              {log.stage === 'full' ? 'PIPELINE' : log.stage}
                             </span>
                           )}
                         </div>

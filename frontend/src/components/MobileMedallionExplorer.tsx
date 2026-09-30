@@ -10,9 +10,10 @@ import { fetchTableData, fetchBronzeTree } from '@/lib/api';
 
 interface MobileMedallionExplorerProps {
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
-export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = ({ isDark = true }) => {
+export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = ({ isDark = true, locale = 'es' }) => {
   const [selectedLayer, setSelectedLayer] = useState<'bronze' | 'silver' | 'gold'>('gold');
   const [limit, setLimit] = useState(10);
   const [offset, setOffset] = useState(0);
@@ -192,40 +193,69 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         ) : (
           <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-slate-100'}`}>
             {tableData?.rows && tableData.rows.length > 0 ? (
-              tableData.rows.map((row, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setSelectedRecord(row)}
-                  className="py-2.5 px-1.5 flex items-center justify-between cursor-pointer active:opacity-70 transition hover:bg-white/[0.02]"
-                >
-                  <div className="min-w-0 pr-3">
-                    <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                      {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${offset + idx + 1}`}
-                    </div>
-                    <div className={`text-[10px] font-mono truncate mt-0.5 ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
-                      {selectedLayer === 'gold'
-                        ? `Close: $${row.close_price ?? '--'} · Vol: ${row.social_volume_mentions ?? 0}`
-                        : `${row.source ?? 'Web'} · Conf: ${row.confidence ?? '--'}`}
-                    </div>
-                  </div>
-                  <span
-                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                      (row.avg_hourly_sentiment ?? 0) >= 0.1
-                        ? 'text-emerald-400 bg-emerald-500/10'
-                        : (row.avg_hourly_sentiment ?? 0) <= -0.1
-                        ? 'text-rose-400 bg-rose-500/10'
-                        : 'text-amber-400 bg-amber-500/10'
-                    }`}
+              tableData.rows.map((row, idx) => {
+                const isGold = selectedLayer === 'gold';
+                let badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                let badgeText = 'NEUTRAL';
+
+                if (isGold) {
+                  const avg = row.avg_hourly_sentiment !== undefined ? Number(row.avg_hourly_sentiment) : 0;
+                  if (avg >= 0.05) {
+                    badgeColor = 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30';
+                  } else if (avg <= -0.05) {
+                    badgeColor = 'text-rose-400 bg-rose-500/15 border border-rose-500/30';
+                  } else {
+                    badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                  }
+                  badgeText = row.avg_hourly_sentiment !== undefined
+                    ? (avg > 0 ? `+${avg.toFixed(2)}` : avg.toFixed(2))
+                    : '0.00';
+                } else {
+                  // Silver Layer
+                  const labelStr = String(row.sentiment_label || '').toUpperCase();
+                  const score = typeof row.sentiment_score === 'number' ? row.sentiment_score : undefined;
+                  const isBull = labelStr.includes('BULL') || labelStr.includes('ALCISTA') || (score !== undefined && score > 0.05);
+                  const isBear = labelStr.includes('BEAR') || labelStr.includes('BAJISTA') || (score !== undefined && score < -0.05);
+
+                  if (isBull) {
+                    badgeColor = 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30';
+                    badgeText = 'BULLISH';
+                  } else if (isBear) {
+                    badgeColor = 'text-rose-400 bg-rose-500/15 border border-rose-500/30';
+                    badgeText = 'BEARISH';
+                  } else {
+                    badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                    badgeText = 'NEUTRAL';
+                  }
+                }
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setSelectedRecord(row)}
+                    className="py-2.5 px-1.5 flex items-center justify-between cursor-pointer active:opacity-70 transition hover:bg-white/[0.02]"
                   >
-                    {row.avg_hourly_sentiment !== undefined
-                      ? (row.avg_hourly_sentiment > 0 ? `+${row.avg_hourly_sentiment.toFixed(2)}` : row.avg_hourly_sentiment.toFixed(2))
-                      : row.sentiment_label || 'OK'}
-                  </span>
-                </div>
-              ))
+                    <div className="min-w-0 pr-3">
+                      <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                        {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${offset + idx + 1}`}
+                      </div>
+                      <div className={`text-[10px] font-mono truncate mt-0.5 ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+                        {selectedLayer === 'gold'
+                          ? `Close: $${row.close_price ?? '--'} · Vol: ${row.social_volume_mentions ?? 0}`
+                          : `${row.source ?? 'Web'} · Conf: ${row.confidence ? (Number(row.confidence) * 100).toFixed(0) + '%' : '--'}`}
+                      </div>
+                    </div>
+                    <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeColor}`}>
+                      {badgeText}
+                    </span>
+                  </div>
+                );
+              })
             ) : (
               <div className={`py-12 text-center text-xs font-mono ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-                {search ? `Sin registros que coincidan con "${search}".` : 'Sin registros en esta capa.'}
+                {search
+                  ? (locale === 'es' ? `Sin registros que coincidan con "${search}".` : `No records matching "${search}".`)
+                  : (locale === 'es' ? 'Sin registros en esta capa.' : 'No records in this layer.')}
               </div>
             )}
           </div>
@@ -244,7 +274,7 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
               isDark ? 'bg-white/[0.05] text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'
             }`}
           >
-            &lt; Anterior
+            {locale === 'es' ? '< Anterior' : '< Previous'}
           </button>
           <span className={`text-[11px] ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
             {currentPage} / {totalPages} ({tableData?.total_count || 0} total)
@@ -256,7 +286,7 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
               isDark ? 'bg-white/[0.05] text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'
             }`}
           >
-            Siguiente &gt;
+            {locale === 'es' ? 'Siguiente >' : 'Next >'}
           </button>
         </div>
       )}
