@@ -42,7 +42,7 @@ export const MedallionTelemetryHUD: React.FC<MedallionTelemetryHUDProps> = ({
       mainValue: `${bronzeFiles}`,
       mainUnit: isEn ? 'partitions' : 'particiones',
       contextDesc: isEn ? 'Raw Parquet partitions stored on disk' : 'Particiones Parquet sin procesar en disco',
-      subText: `${bronzeKb} KB · Snappy`,
+      subText: `${bronzeKb} KB`,
       schema: 'bronze/year=YYYY/...',
       icon: IconPipeline,
     },

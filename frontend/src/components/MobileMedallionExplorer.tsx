@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   IconSearch,
   IconClose,
+  IconRefresh,
 } from './CustomIcons';
 import { TableDataResponse, BronzeFile } from '@/types';
 import { fetchTableData, fetchBronzeTree } from '@/lib/api';
@@ -15,13 +16,14 @@ interface MobileMedallionExplorerProps {
 
 export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = ({ isDark = true, locale = 'es' }) => {
   const [selectedLayer, setSelectedLayer] = useState<'bronze' | 'silver' | 'gold'>('gold');
-  const [limit, setLimit] = useState(10);
-  const [offset, setOffset] = useState(0);
+  const [rows, setRows] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState('');
-  const [tableData, setTableData] = useState<TableDataResponse | null>(null);
   const [bronzeFiles, setBronzeFiles] = useState<BronzeFile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<Record<string, any> | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const getTableName = () => {
     if (selectedLayer === 'gold') return 'gold_hourly_market_sentiment';
@@ -29,43 +31,83 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
     return '__bronze_lake__';
   };
 
-  useEffect(() => {
-    if (selectedLayer === 'bronze') {
+  const loadInitial = async (layer = selectedLayer, query = search) => {
+    if (layer === 'bronze') {
       loadBronze();
+      return;
     }
+    setIsLoadingInitial(true);
+    try {
+      const tableName = layer === 'gold' ? 'gold_hourly_market_sentiment' : 'silver_social_sentiment';
+      const data = await fetchTableData(tableName, 15, 0, query);
+      setRows(data.rows || []);
+      setTotalCount(data.total_count || 0);
+    } catch (err) {
+      console.error('Error loading mobile table data:', err);
+      setRows([]);
+      setTotalCount(0);
+    } finally {
+      setIsLoadingInitial(false);
+    }
+  };
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || isLoadingInitial || selectedLayer === 'bronze') return;
+    if (rows.length >= totalCount && totalCount > 0) return;
+    setIsLoadingMore(true);
+    try {
+      const tableName = selectedLayer === 'gold' ? 'gold_hourly_market_sentiment' : 'silver_social_sentiment';
+      const data = await fetchTableData(tableName, 15, rows.length, search);
+      if (data.rows && data.rows.length > 0) {
+        setRows((prev) => [...prev, ...data.rows]);
+      }
+      setTotalCount(data.total_count || 0);
+    } catch (err) {
+      console.error('Error loading more mobile rows:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, isLoadingInitial, selectedLayer, rows.length, totalCount, search]);
+
+  useEffect(() => {
+    loadInitial(selectedLayer, search);
   }, [selectedLayer]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setOffset(0);
-      if (selectedLayer !== 'bronze') {
-        loadTable(search);
-      }
+      loadInitial(selectedLayer, search);
     }, 250);
     return () => clearTimeout(handler);
-  }, [search, selectedLayer]);
+  }, [search]);
 
-  const loadTable = async (searchQuery: string = search) => {
-    setIsLoading(true);
-    try {
-      const data = await fetchTableData(getTableName(), limit, offset, searchQuery);
-      setTableData(data);
-    } catch (err) {
-      console.error('Error loading table data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Observer for progressive scroll in mobile
+  useEffect(() => {
+    if (selectedLayer === 'bronze') return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && !isLoadingInitial && rows.length < totalCount) {
+          loadMore();
+        }
+      },
+      { rootMargin: '250px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore, selectedLayer, isLoadingMore, isLoadingInitial, rows.length, totalCount]);
 
   const loadBronze = async () => {
-    setIsLoading(true);
+    setIsLoadingInitial(true);
     try {
       const res = await fetchBronzeTree();
       setBronzeFiles(res.files || []);
     } catch (err) {
       console.error('Error loading bronze tree:', err);
     } finally {
-      setIsLoading(false);
+      setIsLoadingInitial(false);
     }
   };
 
@@ -79,9 +121,6 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
     );
   });
 
-  const totalPages = tableData ? Math.max(1, Math.ceil(tableData.total_count / limit)) : 1;
-  const currentPage = Math.floor(offset / limit) + 1;
-
   return (
     <div className="md:hidden flex flex-col h-full w-full min-h-0 overflow-hidden space-y-3 px-1 pb-4">
       {/* 1. Architecture Layer Selector (Pinned at top - No global page scroll) */}
@@ -89,7 +128,6 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         <button
           onClick={() => {
             setSelectedLayer('bronze');
-            setOffset(0);
           }}
           className={`pb-1 px-2 transition-colors cursor-pointer ${
             selectedLayer === 'bronze'
@@ -102,7 +140,6 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         <button
           onClick={() => {
             setSelectedLayer('silver');
-            setOffset(0);
           }}
           className={`pb-1 px-2 transition-colors cursor-pointer ${
             selectedLayer === 'silver'
@@ -115,7 +152,6 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         <button
           onClick={() => {
             setSelectedLayer('gold');
-            setOffset(0);
           }}
           className={`pb-1 px-2 transition-colors cursor-pointer ${
             selectedLayer === 'gold'
@@ -158,7 +194,7 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
       <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border p-2 ${
         isDark ? 'bg-white/[0.015] border-white/[0.06]' : 'bg-white border-slate-200 shadow-2xs'
       }`}>
-        {isLoading ? (
+        {isLoadingInitial ? (
           <div className="py-16 text-center text-xs font-mono text-[#64748b] animate-pulse">
             Consultando registros en DuckDB...
           </div>
@@ -192,8 +228,12 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
           </div>
         ) : (
           <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-slate-100'}`}>
-            {tableData?.rows && tableData.rows.length > 0 ? (
-              tableData.rows.map((row, idx) => {
+            {isLoadingInitial ? (
+              <div className={`py-12 text-center text-xs font-mono ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
+                {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
+              </div>
+            ) : rows.length > 0 ? (
+              rows.map((row, idx) => {
                 const isGold = selectedLayer === 'gold';
                 let badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
                 let badgeText = 'NEUTRAL';
@@ -237,7 +277,7 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
                   >
                     <div className="min-w-0 pr-3">
                       <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                        {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${offset + idx + 1}`}
+                        {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${idx + 1}`}
                       </div>
                       <div className={`text-[10px] font-mono truncate mt-0.5 ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
                         {selectedLayer === 'gold'
@@ -262,32 +302,37 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         )}
       </div>
 
-      {/* 4. Pinned Bottom Pagination (Layer Silver / Gold) */}
-      {selectedLayer !== 'bronze' && totalPages > 1 && (
-        <div className={`shrink-0 flex items-center justify-between pt-1 text-xs font-mono ${
-          isDark ? 'border-t border-white/[0.06]' : 'border-t border-slate-200'
+      {/* 4. Progressive Scroll Telemetry & Trigger (Layer Silver / Gold) */}
+      {selectedLayer !== 'bronze' && (
+        <div className={`shrink-0 pt-2 text-center text-xs font-mono border-t ${
+          isDark ? 'border-white/[0.06]' : 'border-slate-200'
         }`}>
-          <button
-            onClick={() => setOffset(Math.max(0, offset - limit))}
-            disabled={offset === 0}
-            className={`px-3 py-1.5 rounded-full disabled:opacity-20 transition cursor-pointer ${
-              isDark ? 'bg-white/[0.05] text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'
-            }`}
-          >
-            {locale === 'es' ? '< Anterior' : '< Previous'}
-          </button>
-          <span className={`text-[11px] ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-            {currentPage} / {totalPages} ({tableData?.total_count || 0} total)
-          </span>
-          <button
-            onClick={() => setOffset(offset + limit)}
-            disabled={currentPage >= totalPages}
-            className={`px-3 py-1.5 rounded-full disabled:opacity-20 transition cursor-pointer ${
-              isDark ? 'bg-white/[0.05] text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'
-            }`}
-          >
-            {locale === 'es' ? 'Siguiente >' : 'Next >'}
-          </button>
+          {isLoadingMore ? (
+            <div className="flex items-center justify-center gap-2 text-indigo-400 py-1.5">
+              <IconRefresh className="w-3.5 h-3.5 animate-spin" />
+              <span>{locale === 'es' ? 'Cargando más...' : 'Loading more...'}</span>
+            </div>
+          ) : rows.length < totalCount ? (
+            <div className="space-y-1.5">
+              <button
+                onClick={loadMore}
+                className={`w-full py-2 px-3 rounded-full text-xs font-mono font-medium transition cursor-pointer active:scale-95 ${
+                  isDark
+                    ? 'bg-white/[0.05] text-slate-300 hover:text-white'
+                    : 'bg-slate-100 text-slate-700 border border-slate-200'
+                }`}
+              >
+                {locale === 'es'
+                  ? `Cargar más (${rows.length} de ${totalCount})`
+                  : `Load more (${rows.length} of ${totalCount})`}
+              </button>
+              <div ref={sentinelRef} className="h-1" />
+            </div>
+          ) : rows.length > 0 ? (
+            <div className="text-[11px] text-slate-500 py-1">
+              ✓ {locale === 'es' ? `${totalCount} registros cargados` : `${totalCount} records loaded`}
+            </div>
+          ) : null}
         </div>
       )}
 

@@ -185,8 +185,8 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true, l
           </div>
           <p className={`text-xs mt-0.5 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
             {isEn
-              ? `Real-world news ingested from financial feeds and classified by NLP model (${items.length} articles in DuckDB)`
-              : `Noticias reales extraídas de feeds financieros y clasificados por el modelo NLP (${items.length} artículos en DuckDB)`}
+              ? 'Real-world news ingested from financial feeds and classified by FinBERT NLP'
+              : 'Noticias reales extraídas de feeds financieros y clasificadas por FinBERT NLP'}
           </p>
           {lastFetched && (
             <p className={`text-[11px] mt-1 font-mono flex items-center gap-1.5 ${isDark ? 'text-[#64748b]' : 'text-slate-400'}`}>
@@ -199,7 +199,7 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true, l
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Real-time search filter */}
           <div
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs w-full sm:w-64 ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs w-full sm:w-72 ${
               isDark ? 'bg-white/[0.03] border-white/[0.08] text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
             }`}
           >
@@ -221,20 +221,6 @@ export const AssetFeedTable: React.FC<AssetFeedTableProps> = ({ isDark = true, l
               </button>
             )}
           </div>
-
-          <button
-            onClick={fetchRealHeadlines}
-            disabled={isLoading}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-mono font-bold transition active:scale-95 ${
-              isDark
-                ? 'border-white/[0.08] bg-white/[0.04] text-[#818cf8] hover:text-white hover:bg-white/[0.08]'
-                : 'border-slate-200 bg-white text-indigo-600 hover:bg-slate-50'
-            }`}
-            title={isEn ? 'Refresh headlines from DuckDB' : 'Actualizar titulares desde DuckDB'}
-          >
-            <IconRefresh className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>{isEn ? 'Refresh' : 'Actualizar'}</span>
-          </button>
         </div>
       </div>
 

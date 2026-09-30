@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   IconSearch,
-  IconChevronLeft,
-  IconChevronRight,
   IconChevronDown,
   IconChevronUp,
   IconFolderTree,
   IconDatabase,
+  IconRefresh,
 } from './CustomIcons';
 import { TableDataResponse, BronzeFile } from '@/types';
 import { fetchTableData, fetchBronzeTree } from '@/lib/api';
@@ -20,69 +19,109 @@ interface MedallionExplorerProps {
 
 export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = true, locale = 'es' }) => {
   const [selectedTable, setSelectedTable] = useState('gold_hourly_market_sentiment');
-  const [limit, setLimit] = useState(25);
-  const [offset, setOffset] = useState(0);
   const [search, setSearch] = useState('');
-  const [tableData, setTableData] = useState<TableDataResponse | null>(null);
+  const [rows, setRows] = useState<any[]>([]);
+  const [columns, setColumns] = useState<string[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [bronzeFiles, setBronzeFiles] = useState<BronzeFile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
-
-  useEffect(() => {
-    if (selectedTable === '__bronze_lake__') {
-      loadBronze();
-    } else {
-      loadTable(search);
-    }
-    setExpandedRows({});
-  }, [selectedTable, offset, limit]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setOffset(0);
-      if (selectedTable !== '__bronze_lake__') {
-        loadTable(search);
-      }
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const toggleRow = (rIdx: number) => {
     setExpandedRows((prev) => ({ ...prev, [rIdx]: !prev[rIdx] }));
   };
 
-  const loadTable = async (query: string = search) => {
-    setIsLoading(true);
+  const loadInitial = async (tableName: string, query: string) => {
+    setIsLoadingInitial(true);
     try {
-      const data = await fetchTableData(selectedTable, limit, offset, query);
-      setTableData(data);
+      const data = await fetchTableData(tableName, 25, 0, query);
+      setRows(data.rows || []);
+      setColumns(data.columns || []);
+      setTotalCount(data.total_count || 0);
     } catch (err) {
-      console.error('Error loading table data:', err);
+      console.error('Error loading initial table data:', err);
+      setRows([]);
+      setColumns([]);
+      setTotalCount(0);
     } finally {
-      setIsLoading(false);
+      setIsLoadingInitial(false);
     }
   };
 
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || isLoadingInitial) return;
+    if (rows.length >= totalCount && totalCount > 0) return;
+    setIsLoadingMore(true);
+    try {
+      const data = await fetchTableData(selectedTable, 25, rows.length, search);
+      if (data.rows && data.rows.length > 0) {
+        setRows((prev) => [...prev, ...data.rows]);
+      }
+      setTotalCount(data.total_count || 0);
+    } catch (err) {
+      console.error('Error loading more table data:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, isLoadingInitial, rows.length, totalCount, selectedTable, search]);
+
+  useEffect(() => {
+    if (selectedTable === '__bronze_lake__') {
+      loadBronze();
+    } else {
+      loadInitial(selectedTable, search);
+    }
+    setExpandedRows({});
+  }, [selectedTable]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (selectedTable !== '__bronze_lake__') {
+        loadInitial(selectedTable, search);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Observer for progressive infinite scroll loading
+  useEffect(() => {
+    if (selectedTable === '__bronze_lake__') return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && !isLoadingInitial && rows.length < totalCount) {
+          loadMore();
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore, selectedTable, isLoadingMore, isLoadingInitial, rows.length, totalCount]);
+
   const loadBronze = async () => {
-    setIsLoading(true);
+    setIsLoadingInitial(true);
     try {
       const res = await fetchBronzeTree();
-      setBronzeFiles(res.files);
+      setBronzeFiles(res.files || []);
     } catch (err) {
       console.error('Error loading bronze tree:', err);
     } finally {
-      setIsLoading(false);
+      setIsLoadingInitial(false);
     }
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setOffset(0);
-    loadTable(search);
+    if (selectedTable !== '__bronze_lake__') {
+      loadInitial(selectedTable, search);
+    }
   };
-
-  const totalPages = tableData ? Math.max(1, Math.ceil(tableData.total_count / limit)) : 1;
-  const currentPage = Math.floor(offset / limit) + 1;
 
   const displayedBronzeFiles = bronzeFiles.filter((f) => {
     if (!search.trim()) return true;
@@ -113,7 +152,6 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
             value={selectedTable}
             onChange={(e) => {
               setSelectedTable(e.target.value);
-              setOffset(0);
             }}
             className={`text-xs font-mono font-medium rounded-xl px-3.5 py-2 outline-none transition cursor-pointer border w-full sm:w-auto max-w-full truncate ${
               isDark
@@ -174,55 +212,47 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               : 'bg-white border-slate-200/80 text-slate-800 shadow-xs'
           }`}
         >
-          {/* Header & Pagination */}
+          {/* Header & Progressive Scroll Counter */}
           <div className={`p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
-            <div className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>
-              {locale === 'es' ? 'Mostrando' : 'Showing'} <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{tableData?.total_count === 0 ? 0 : offset + 1}-{Math.min(offset + limit, tableData?.total_count || 0)}</span> {locale === 'es' ? 'de' : 'of'}{' '}
-              <span className="text-emerald-400 font-bold">{tableData?.total_count || 0}</span> {locale === 'es' ? 'registros' : 'records'}
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-              <button
-                onClick={() => setOffset((o) => Math.max(0, o - limit))}
-                disabled={offset === 0 || isLoading}
-                className={`h-8 px-3 rounded-full border text-xs font-medium transition flex items-center justify-center gap-1 active:scale-95 ${
-                  isDark
-                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06] disabled:opacity-30'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-30'
-                }`}
-              >
-                <IconChevronLeft className="w-3.5 h-3.5" /> {locale === 'es' ? 'Anterior' : 'Previous'}
-              </button>
-              <span className={`text-xs font-bold px-2 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                {currentPage} / {totalPages}
+            <div className="flex items-center gap-2.5">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                isDark ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                {locale === 'es' ? 'Scroll Continuo' : 'Continuous Scroll'}
               </span>
-              <button
-                onClick={() => setOffset((o) => o + limit)}
-                disabled={offset + limit >= (tableData?.total_count || 0) || isLoading}
-                className={`h-8 px-3 rounded-full border text-xs font-medium transition flex items-center justify-center gap-1 active:scale-95 ${
-                  isDark
-                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06] disabled:opacity-30'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 disabled:opacity-30'
-                }`}
-              >
-                {locale === 'es' ? 'Siguiente' : 'Next'} <IconChevronRight className="w-3.5 h-3.5" />
-              </button>
+              <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>
+                {locale === 'es' ? 'Cargados' : 'Loaded'}{' '}
+                <strong className={isDark ? 'text-white' : 'text-slate-900'}>{rows.length}</strong>{' '}
+                {locale === 'es' ? 'de' : 'of'}{' '}
+                <strong className="text-emerald-400">{totalCount}</strong>{' '}
+                {locale === 'es' ? 'registros' : 'records'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+              {rows.length < totalCount && (
+                <span>
+                  {locale === 'es' ? 'Desplaza hacia abajo para cargar más' : 'Scroll down to load more'}
+                </span>
+              )}
             </div>
           </div>
 
           {/* 1. Mobile Native Card View (md:hidden) — No horizontal scrolling required */}
           <div className="md:hidden divide-y divide-slate-800/40 p-3 space-y-3">
-            {isLoading ? (
+            {isLoadingInitial ? (
               <div className="p-8 text-center text-slate-500 font-mono text-xs">
                 {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
               </div>
-            ) : !tableData?.rows || tableData.rows.length === 0 ? (
+            ) : rows.length === 0 ? (
               <div className="p-8 text-center text-slate-500 font-mono text-xs">
                 {locale === 'es' ? 'No se encontraron registros en esta tabla.' : 'No records found in this table.'}
               </div>
             ) : (
-              tableData.rows.map((row, rIdx) => {
+              rows.map((row, rIdx) => {
                 const isExpanded = !!expandedRows[rIdx];
-                const primaryTime = row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${offset + rIdx + 1}`;
+                const primaryTime = row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${rIdx + 1}`;
                 const sentiment = row.sentiment_label;
                 const sentStr = String(sentiment || '').toLowerCase();
                 const isBullish = sentStr.includes('bull') || sentStr.includes('alcista');
@@ -294,7 +324,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                     {/* Expandable Accordion for remaining columns */}
                     {isExpanded && (
                       <div className={`pt-2 border-t space-y-1.5 text-[10px] font-mono ${isDark ? 'border-slate-700/30' : 'border-slate-200'}`}>
-                        {tableData.columns.map((col) => {
+                        {columns.map((col) => {
                           const val = row[col];
                           return (
                             <div key={col} className={`flex justify-between items-center py-0.5 border-b ${isDark ? 'border-slate-800/30' : 'border-slate-100'}`}>
@@ -322,7 +352,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                         </>
                       ) : (
                         <>
-                          <span>Ver todas las columnas ({tableData.columns.length})</span>
+                          <span>Ver todas las columnas ({columns.length})</span>
                           <IconChevronDown className="w-3.5 h-3.5" />
                         </>
                       )}
@@ -334,11 +364,11 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
           </div>
 
           {/* 2. Desktop Full SQL Table (hidden md:block) */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto max-h-[580px] overflow-y-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className={`border-b ${isDark ? 'bg-white/[0.02] border-white/[0.06] text-[#64748b]' : 'bg-slate-50 border-slate-100 text-slate-500'}`}>
+              <thead className={`sticky top-0 z-10 border-b ${isDark ? 'bg-[#0a0e17] border-white/[0.06] text-[#64748b]' : 'bg-slate-50 border-slate-100 text-slate-500'}`}>
                 <tr>
-                  {tableData?.columns.map((col) => (
+                  {columns.map((col) => (
                     <th key={col} className="py-3 px-4 font-bold whitespace-nowrap uppercase tracking-wider text-[11px]">
                       {col}
                     </th>
@@ -346,22 +376,22 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? 'divide-white/[0.04] text-slate-300' : 'divide-slate-100 text-slate-700'}`}>
-                {isLoading ? (
+                {isLoadingInitial ? (
                   <tr>
-                    <td colSpan={tableData?.columns.length || 5} className="p-8 text-center text-[#64748b] font-mono">
+                    <td colSpan={columns.length || 5} className="p-8 text-center text-[#64748b] font-mono">
                       {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
                     </td>
                   </tr>
-                ) : !tableData?.rows || tableData.rows.length === 0 ? (
+                ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={tableData?.columns.length || 5} className="p-8 text-center text-[#64748b] font-mono">
+                    <td colSpan={columns.length || 5} className="p-8 text-center text-[#64748b] font-mono">
                       {locale === 'es' ? 'No se encontraron registros en esta tabla.' : 'No records found in this table.'}
                     </td>
                   </tr>
                 ) : (
-                  tableData.rows.map((row, rIdx) => (
+                  rows.map((row, rIdx) => (
                     <tr key={rIdx} className={`transition ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'}`}>
-                      {tableData.columns.map((col) => {
+                      {columns.map((col) => {
                         const val = row[col];
                         if (col === 'sentiment_label') {
                           const str = String(val || '').toLowerCase();
@@ -402,6 +432,34 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Progressive Loading Sentinel & Trigger */}
+          <div className={`p-4 border-t text-center text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+            {isLoadingMore ? (
+              <div className="flex items-center justify-center gap-2 text-indigo-400 py-2">
+                <IconRefresh className="w-4 h-4 animate-spin" />
+                <span>{locale === 'es' ? 'Cargando más registros desde DuckDB...' : 'Loading more records from DuckDB...'}</span>
+              </div>
+            ) : rows.length < totalCount ? (
+              <div className="space-y-2 py-1">
+                <button
+                  onClick={loadMore}
+                  className={`px-4 py-1.5 rounded-full border text-xs font-mono font-medium transition cursor-pointer active:scale-95 ${
+                    isDark
+                      ? 'bg-white/[0.04] border-white/[0.08] text-slate-300 hover:text-white hover:bg-white/[0.08]'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {locale === 'es' ? `Cargar siguientes 25 registros (${rows.length} de ${totalCount})` : `Load next 25 records (${rows.length} of ${totalCount})`}
+                </button>
+                <div ref={sentinelRef} className="h-2" />
+              </div>
+            ) : rows.length > 0 ? (
+              <div className="text-slate-500 py-2">
+                ✓ {locale === 'es' ? `Todos los registros cargados (${totalCount} en total)` : `All records loaded (${totalCount} total)`}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : (

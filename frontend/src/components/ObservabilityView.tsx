@@ -293,7 +293,7 @@ export const ObservabilityView: React.FC<ObservabilityViewProps> = ({
             {
               label: 'Bronze Lake (Parquet)',
               value: `${metrics?.bronze.total_files ?? 0} lotes`,
-              detail: `${bronzeKb} KB · Snappy`,
+              detail: `${bronzeKb} KB`,
               color: isDark ? 'text-amber-400' : 'text-amber-600',
             },
             {

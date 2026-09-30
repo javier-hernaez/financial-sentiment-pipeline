@@ -166,8 +166,6 @@ export const TopNav: React.FC<TopNavProps> = ({
               J
             </span>
             <span className="font-sans font-semibold text-[11px] leading-none">Javier H.</span>
-            {/* Online indicator */}
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
           </button>
 
           {/* Dropdown - Solid, Opaque, High-Contrast */}
@@ -202,7 +200,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               {/* Metadata rows */}
               <div className={`px-4 py-2.5 border-b space-y-1.5 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                 {[
-                  { label: locale === 'es' ? 'Almacén' : 'Warehouse', value: 'DuckDB Gold', color: isDark ? 'text-amber-400' : 'text-amber-600' },
+                  { label: locale === 'es' ? 'Almacén' : 'Warehouse', value: 'DuckDB', color: isDark ? 'text-amber-400' : 'text-amber-600' },
                   { label: locale === 'es' ? 'Modelo NLP' : 'NLP Model', value: 'FinBERT (768-dim)', color: isDark ? 'text-purple-300' : 'text-purple-600' },
                   { label: locale === 'es' ? 'Arquitectura' : 'Architecture', value: 'Medallion ELT', color: isDark ? 'text-indigo-300' : 'text-indigo-600' },
                 ].map(({ label, value, color }) => (

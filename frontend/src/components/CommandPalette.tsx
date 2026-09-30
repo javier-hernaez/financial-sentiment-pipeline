@@ -61,7 +61,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'nav-terminal',       title: 'Terminal de Precios & Sentimiento de Mercado',  category: 'Navegación',        icon: IconMarket,         shortcut: '2', action: () => { onNavigate('terminal');       onClose(); } },
     { id: 'nav-nlp',            title: 'Laboratorio FinBERT — Scoring NLP',             category: 'Navegación',        icon: IconFinbertLab,     shortcut: '3', action: () => { onNavigate('nlp');           onClose(); } },
     { id: 'nav-pipeline',       title: 'Orquestación de Pipeline ELT',                 category: 'Navegación',        icon: IconPipeline,       shortcut: '4', badge: 'LIVE', action: () => { onNavigate('orchestration'); onClose(); } },
-    { id: 'nav-warehouse',      title: 'Almacén Medallion — DuckDB Gold',               category: 'Navegación',        icon: IconDuckDB,         shortcut: '5', action: () => { onNavigate('warehouse');      onClose(); } },
+    { id: 'nav-warehouse',      title: 'Almacén Medallion — DuckDB',               category: 'Navegación',        icon: IconDuckDB,         shortcut: '5', action: () => { onNavigate('warehouse');      onClose(); } },
     { id: 'nav-observability',  title: 'Observabilidad, Telemetría & Mantenimiento',   category: 'Navegación',        icon: IconObservability,  shortcut: '6', action: () => { onNavigate('observability'); onClose(); } },
     { id: 'nav-docs',           title: 'Manual Técnico & Documentación',               category: 'Navegación',        icon: IconDocumentation,  shortcut: '7', action: () => { onNavigate('documentation'); onClose(); } },
     // Acciones
