@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   IconSearch,
   IconChevronDown,
@@ -8,6 +8,8 @@ import {
   IconFolderTree,
   IconDatabase,
   IconRefresh,
+  IconChevronLeft,
+  IconChevronRight,
 } from './CustomIcons';
 import { TableDataResponse, BronzeFile } from '@/types';
 import { fetchTableData, fetchBronzeTree } from '@/lib/api';
@@ -20,108 +22,80 @@ interface MedallionExplorerProps {
 export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = true, locale = 'es' }) => {
   const [selectedTable, setSelectedTable] = useState('gold_hourly_market_sentiment');
   const [search, setSearch] = useState('');
+  const [offset, setOffset] = useState(0);
+  const limit = 25;
   const [rows, setRows] = useState<any[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [bronzeFiles, setBronzeFiles] = useState<BronzeFile[]>([]);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const toggleRow = (rIdx: number) => {
     setExpandedRows((prev) => ({ ...prev, [rIdx]: !prev[rIdx] }));
   };
 
-  const loadInitial = async (tableName: string, query: string) => {
-    setIsLoadingInitial(true);
+  const loadData = useCallback(async (tableName = selectedTable, currentOffset = offset, query = search) => {
+    if (tableName === '__bronze_lake__') {
+      loadBronze();
+      return;
+    }
+    setIsLoading(true);
     try {
-      const data = await fetchTableData(tableName, 25, 0, query);
+      const data = await fetchTableData(tableName, limit, currentOffset, query);
       setRows(data.rows || []);
       setColumns(data.columns || []);
       setTotalCount(data.total_count || 0);
     } catch (err) {
-      console.error('Error loading initial table data:', err);
+      console.error('Error loading table data:', err);
       setRows([]);
       setColumns([]);
       setTotalCount(0);
     } finally {
-      setIsLoadingInitial(false);
+      setIsLoading(false);
     }
-  };
-
-  const loadMore = useCallback(async () => {
-    if (isLoadingMore || isLoadingInitial) return;
-    if (rows.length >= totalCount && totalCount > 0) return;
-    setIsLoadingMore(true);
-    try {
-      const data = await fetchTableData(selectedTable, 25, rows.length, search);
-      if (data.rows && data.rows.length > 0) {
-        setRows((prev) => [...prev, ...data.rows]);
-      }
-      setTotalCount(data.total_count || 0);
-    } catch (err) {
-      console.error('Error loading more table data:', err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [isLoadingMore, isLoadingInitial, rows.length, totalCount, selectedTable, search]);
+  }, [selectedTable, offset, search, limit]);
 
   useEffect(() => {
-    if (selectedTable === '__bronze_lake__') {
-      loadBronze();
-    } else {
-      loadInitial(selectedTable, search);
-    }
+    setOffset(0);
     setExpandedRows({});
+    loadData(selectedTable, 0, search);
   }, [selectedTable]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (selectedTable !== '__bronze_lake__') {
-        loadInitial(selectedTable, search);
-      }
+      setOffset(0);
+      loadData(selectedTable, 0, search);
     }, 250);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Observer for progressive infinite scroll loading
   useEffect(() => {
-    if (selectedTable === '__bronze_lake__') return;
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && !isLoadingInitial && rows.length < totalCount) {
-          loadMore();
-        }
-      },
-      { rootMargin: '300px' }
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore, selectedTable, isLoadingMore, isLoadingInitial, rows.length, totalCount]);
+    if (selectedTable !== '__bronze_lake__') {
+      loadData(selectedTable, offset, search);
+    }
+  }, [offset]);
 
   const loadBronze = async () => {
-    setIsLoadingInitial(true);
+    setIsLoading(true);
     try {
       const res = await fetchBronzeTree();
       setBronzeFiles(res.files || []);
     } catch (err) {
       console.error('Error loading bronze tree:', err);
     } finally {
-      setIsLoadingInitial(false);
+      setIsLoading(false);
     }
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedTable !== '__bronze_lake__') {
-      loadInitial(selectedTable, search);
-    }
+    setOffset(0);
+    loadData(selectedTable, 0, search);
   };
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+  const currentPage = Math.floor(offset / limit) + 1;
 
   const displayedBronzeFiles = bronzeFiles.filter((f) => {
     if (!search.trim()) return true;
@@ -212,36 +186,60 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               : 'bg-white border-slate-200/80 text-slate-800 shadow-xs'
           }`}
         >
-          {/* Header & Progressive Scroll Counter */}
+          {/* Header & Pagination Controls */}
           <div className={`p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
             <div className="flex items-center gap-2.5">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                 isDark ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
               }`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                {locale === 'es' ? 'Scroll Continuo' : 'Continuous Scroll'}
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                DuckDB OLAP
               </span>
               <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>
-                {locale === 'es' ? 'Cargados' : 'Loaded'}{' '}
-                <strong className={isDark ? 'text-white' : 'text-slate-900'}>{rows.length}</strong>{' '}
+                {locale === 'es' ? 'Mostrando' : 'Showing'}{' '}
+                <strong className={isDark ? 'text-white' : 'text-slate-900'}>
+                  {totalCount > 0 ? offset + 1 : 0}–{Math.min(offset + limit, totalCount)}
+                </strong>{' '}
                 {locale === 'es' ? 'de' : 'of'}{' '}
                 <strong className="text-emerald-400">{totalCount}</strong>{' '}
                 {locale === 'es' ? 'registros' : 'records'}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
-              {rows.length < totalCount && (
-                <span>
-                  {locale === 'es' ? 'Desplaza hacia abajo para cargar más' : 'Scroll down to load more'}
-                </span>
-              )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
+                disabled={offset === 0 || isLoading}
+                className={`px-3 py-1 rounded-lg border text-xs font-mono font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 ${
+                  isDark
+                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06]'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <IconChevronLeft className="w-3.5 h-3.5" />
+                <span>{locale === 'es' ? 'Anterior' : 'Previous'}</span>
+              </button>
+              <span className={`text-[11px] font-mono px-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setOffset((prev) => prev + limit)}
+                disabled={offset + limit >= totalCount || isLoading}
+                className={`px-3 py-1 rounded-lg border text-xs font-mono font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 ${
+                  isDark
+                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06]'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <span>{locale === 'es' ? 'Siguiente' : 'Next'}</span>
+                <IconChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
           {/* 1. Mobile Native Card View (md:hidden) — No horizontal scrolling required */}
           <div className="md:hidden divide-y divide-slate-800/40 p-3 space-y-3">
-            {isLoadingInitial ? (
+            {isLoading ? (
               <div className="p-8 text-center text-slate-500 font-mono text-xs">
                 {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
               </div>
@@ -376,7 +374,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? 'divide-white/[0.04] text-slate-300' : 'divide-slate-100 text-slate-700'}`}>
-                {isLoadingInitial ? (
+                {isLoading ? (
                   <tr>
                     <td colSpan={columns.length || 5} className="p-8 text-center text-[#64748b] font-mono">
                       {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
@@ -434,32 +432,42 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
             </table>
           </div>
 
-          {/* Progressive Loading Sentinel & Trigger */}
-          <div className={`p-4 border-t text-center text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
-            {isLoadingMore ? (
-              <div className="flex items-center justify-center gap-2 text-indigo-400 py-2">
-                <IconRefresh className="w-4 h-4 animate-spin" />
-                <span>{locale === 'es' ? 'Cargando más registros desde DuckDB...' : 'Loading more records from DuckDB...'}</span>
-              </div>
-            ) : rows.length < totalCount ? (
-              <div className="space-y-2 py-1">
-                <button
-                  onClick={loadMore}
-                  className={`px-4 py-1.5 rounded-full border text-xs font-mono font-medium transition cursor-pointer active:scale-95 ${
-                    isDark
-                      ? 'bg-white/[0.04] border-white/[0.08] text-slate-300 hover:text-white hover:bg-white/[0.08]'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  {locale === 'es' ? `Cargar siguientes 25 registros (${rows.length} de ${totalCount})` : `Load next 25 records (${rows.length} of ${totalCount})`}
-                </button>
-                <div ref={sentinelRef} className="h-2" />
-              </div>
-            ) : rows.length > 0 ? (
-              <div className="text-slate-500 py-2">
-                ✓ {locale === 'es' ? `Todos los registros cargados (${totalCount} en total)` : `All records loaded (${totalCount} total)`}
-              </div>
-            ) : null}
+          {/* Bottom Pagination Bar */}
+          <div className={`p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+              {locale === 'es'
+                ? `Página ${currentPage} de ${totalPages} · ${totalCount.toLocaleString()} registros en total`
+                : `Page ${currentPage} of ${totalPages} · ${totalCount.toLocaleString()} total records`}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
+                disabled={offset === 0 || isLoading}
+                className={`px-3.5 py-1.5 rounded-lg border text-xs font-mono font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 ${
+                  isDark
+                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06]'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <IconChevronLeft className="w-3.5 h-3.5" />
+                <span>{locale === 'es' ? 'Anterior' : 'Previous'}</span>
+              </button>
+              <span className={`text-[11px] font-mono px-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setOffset((prev) => prev + limit)}
+                disabled={offset + limit >= totalCount || isLoading}
+                className={`px-3.5 py-1.5 rounded-lg border text-xs font-mono font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 ${
+                  isDark
+                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06]'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <span>{locale === 'es' ? 'Siguiente' : 'Next'}</span>
+                <IconChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       ) : (
