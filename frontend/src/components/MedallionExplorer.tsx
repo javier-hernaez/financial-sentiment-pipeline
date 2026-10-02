@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   IconSearch,
   IconChevronDown,
@@ -8,8 +8,6 @@ import {
   IconFolderTree,
   IconDatabase,
   IconRefresh,
-  IconChevronLeft,
-  IconChevronRight,
 } from './CustomIcons';
 import { TableDataResponse, BronzeFile } from '@/types';
 import { fetchTableData, fetchBronzeTree } from '@/lib/api';
@@ -22,80 +20,102 @@ interface MedallionExplorerProps {
 export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = true, locale = 'es' }) => {
   const [selectedTable, setSelectedTable] = useState('gold_hourly_market_sentiment');
   const [search, setSearch] = useState('');
-  const [offset, setOffset] = useState(0);
   const limit = 25;
   const [rows, setRows] = useState<any[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [bronzeFiles, setBronzeFiles] = useState<BronzeFile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+  const isFetchingRef = useRef(false);
 
   const toggleRow = (rIdx: number) => {
     setExpandedRows((prev) => ({ ...prev, [rIdx]: !prev[rIdx] }));
   };
 
-  const loadData = useCallback(async (tableName = selectedTable, currentOffset = offset, query = search) => {
-    if (tableName === '__bronze_lake__') {
-      loadBronze();
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const data = await fetchTableData(tableName, limit, currentOffset, query);
-      setRows(data.rows || []);
-      setColumns(data.columns || []);
-      setTotalCount(data.total_count || 0);
-    } catch (err) {
-      console.error('Error loading table data:', err);
-      setRows([]);
-      setColumns([]);
-      setTotalCount(0);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedTable, offset, search, limit]);
-
-  useEffect(() => {
-    setOffset(0);
-    setExpandedRows({});
-    loadData(selectedTable, 0, search);
-  }, [selectedTable]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setOffset(0);
-      loadData(selectedTable, 0, search);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  useEffect(() => {
-    if (selectedTable !== '__bronze_lake__') {
-      loadData(selectedTable, offset, search);
-    }
-  }, [offset]);
-
   const loadBronze = async () => {
-    setIsLoading(true);
+    setIsLoadingInitial(true);
     try {
       const res = await fetchBronzeTree();
       setBronzeFiles(res.files || []);
     } catch (err) {
       console.error('Error loading bronze tree:', err);
     } finally {
-      setIsLoading(false);
+      setIsLoadingInitial(false);
     }
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setOffset(0);
-    loadData(selectedTable, 0, search);
+  const loadInitialData = useCallback(async (tableName = selectedTable, query = search) => {
+    if (tableName === '__bronze_lake__') {
+      loadBronze();
+      return;
+    }
+    isFetchingRef.current = true;
+    setIsLoadingInitial(true);
+    try {
+      const data = await fetchTableData(tableName, limit, 0, query);
+      setRows(data.rows || []);
+      setColumns(data.columns || []);
+      setTotalCount(data.total_count || 0);
+    } catch (err) {
+      console.error('Error loading initial table data:', err);
+      setRows([]);
+      setColumns([]);
+      setTotalCount(0);
+    } finally {
+      setIsLoadingInitial(false);
+      isFetchingRef.current = false;
+    }
+  }, [selectedTable, search, limit]);
+
+  const loadMore = useCallback(async () => {
+    if (selectedTable === '__bronze_lake__') return;
+    if (isFetchingRef.current) return;
+    if (rows.length >= totalCount && totalCount > 0) return;
+
+    isFetchingRef.current = true;
+    setIsLoadingMore(true);
+    try {
+      const data = await fetchTableData(selectedTable, limit, rows.length, search);
+      const newRows = data.rows || [];
+      if (newRows.length > 0) {
+        setRows((prev) => [...prev, ...newRows]);
+      }
+      if (data.total_count !== undefined) {
+        setTotalCount(data.total_count);
+      }
+    } catch (err) {
+      console.error('Error loading more table data:', err);
+    } finally {
+      setIsLoadingMore(false);
+      isFetchingRef.current = false;
+    }
+  }, [selectedTable, rows.length, totalCount, search, limit]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 120) {
+      loadMore();
+    }
   };
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
-  const currentPage = Math.floor(offset / limit) + 1;
+  useEffect(() => {
+    setExpandedRows({});
+    loadInitialData(selectedTable, search);
+  }, [selectedTable]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadInitialData(selectedTable, search);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    loadInitialData(selectedTable, search);
+  };
 
   const displayedBronzeFiles = bronzeFiles.filter((f) => {
     if (!search.trim()) return true;
@@ -186,7 +206,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               : 'bg-white border-slate-200/80 text-slate-800 shadow-xs'
           }`}
         >
-          {/* Header & Pagination Controls */}
+          {/* Header & Status Indicator */}
           <div className={`p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
             <div className="flex items-center gap-2.5">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
@@ -198,7 +218,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               <span className={isDark ? 'text-[#64748b]' : 'text-slate-500'}>
                 {locale === 'es' ? 'Mostrando' : 'Showing'}{' '}
                 <strong className={isDark ? 'text-white' : 'text-slate-900'}>
-                  {totalCount > 0 ? offset + 1 : 0}–{Math.min(offset + limit, totalCount)}
+                  {rows.length}
                 </strong>{' '}
                 {locale === 'es' ? 'de' : 'of'}{' '}
                 <strong className="text-emerald-400">{totalCount}</strong>{' '}
@@ -206,40 +226,25 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
-                disabled={offset === 0 || isLoading}
-                className={`px-3 py-1 rounded-lg border text-xs font-mono font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 ${
-                  isDark
-                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06]'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <IconChevronLeft className="w-3.5 h-3.5" />
-                <span>{locale === 'es' ? 'Anterior' : 'Previous'}</span>
-              </button>
-              <span className={`text-[11px] font-mono px-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                {currentPage} / {totalPages}
-              </span>
-              <button
-                onClick={() => setOffset((prev) => prev + limit)}
-                disabled={offset + limit >= totalCount || isLoading}
-                className={`px-3 py-1 rounded-lg border text-xs font-mono font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 ${
-                  isDark
-                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06]'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <span>{locale === 'es' ? 'Siguiente' : 'Next'}</span>
-                <IconChevronRight className="w-3.5 h-3.5" />
-              </button>
+            <div className="flex items-center gap-2 text-[11px]">
+              {rows.length < totalCount ? (
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                  {locale === 'es' ? '↓ Desplaza hacia abajo para cargar más' : '↓ Scroll down to load more'}
+                </span>
+              ) : (
+                <span className="text-emerald-400 font-medium">
+                  {locale === 'es' ? '✓ Todos los registros cargados' : '✓ All records loaded'}
+                </span>
+              )}
             </div>
           </div>
 
           {/* 1. Mobile Native Card View (md:hidden) — No horizontal scrolling required */}
-          <div className="md:hidden divide-y divide-slate-800/40 p-3 space-y-3">
-            {isLoading ? (
+          <div
+            className="md:hidden divide-y divide-slate-800/40 p-3 space-y-3 max-h-[580px] overflow-y-auto"
+            onScroll={handleScroll}
+          >
+            {isLoadingInitial ? (
               <div className="p-8 text-center text-slate-500 font-mono text-xs">
                 {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
               </div>
@@ -248,121 +253,132 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                 {locale === 'es' ? 'No se encontraron registros en esta tabla.' : 'No records found in this table.'}
               </div>
             ) : (
-              rows.map((row, rIdx) => {
-                const isExpanded = !!expandedRows[rIdx];
-                const primaryTime = row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${rIdx + 1}`;
-                const sentiment = row.sentiment_label;
-                const sentStr = String(sentiment || '').toLowerCase();
-                const isBullish = sentStr.includes('bull') || sentStr.includes('alcista');
-                const isBearish = sentStr.includes('bear') || sentStr.includes('bajista');
+              <>
+                {rows.map((row, rIdx) => {
+                  const isExpanded = !!expandedRows[rIdx];
+                  const primaryTime = row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${rIdx + 1}`;
+                  const sentiment = row.sentiment_label;
+                  const sentStr = String(sentiment || '').toLowerCase();
+                  const isBullish = sentStr.includes('bull') || sentStr.includes('alcista');
+                  const isBearish = sentStr.includes('bear') || sentStr.includes('bajista');
 
-                return (
-                  <div
-                    key={rIdx}
-                    className={`p-3.5 rounded-xl border space-y-2.5 transition ${
-                      isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200'
-                    }`}
-                  >
-                    {/* Header Row: Primary Key + Status */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono font-bold text-xs truncate max-w-[200px]">
-                        {String(primaryTime).slice(0, 19).replace('T', ' ')}
-                      </span>
-                      {sentiment && (
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
-                            isBullish
-                              ? 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30'
-                              : isBearish
-                              ? 'text-rose-400 bg-rose-500/15 border border-rose-500/30'
-                              : 'text-sky-400 bg-sky-500/15 border border-sky-500/30'
-                          }`}
-                        >
-                          {sentiment}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Summary Key Values Grid */}
-                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                      {row.symbol && (
-                        <div>
-                          <span className="text-slate-500 block text-[9px] uppercase">Símbolo</span>
-                          <span className="font-bold text-sky-400">{row.symbol}</span>
-                        </div>
-                      )}
-                      {row.close_price !== undefined && (
-                        <div>
-                          <span className="text-slate-500 block text-[9px] uppercase">Precio</span>
-                          <span className="font-bold">${Number(row.close_price).toLocaleString()}</span>
-                        </div>
-                      )}
-                      {row.avg_hourly_sentiment !== undefined && (
-                        <div>
-                          <span className="text-slate-500 block text-[9px] uppercase">Score Medio</span>
-                          <span className={`font-bold ${Number(row.avg_hourly_sentiment) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {Number(row.avg_hourly_sentiment) > 0 ? '+' : ''}{Number(row.avg_hourly_sentiment).toFixed(3)}
-                          </span>
-                        </div>
-                      )}
-                      {row.social_volume_mentions !== undefined && (
-                        <div>
-                          <span className="text-slate-500 block text-[9px] uppercase">Menciones</span>
-                          <span className="font-bold">{row.social_volume_mentions}</span>
-                        </div>
-                      )}
-                      {row.source && (
-                        <div>
-                          <span className="text-slate-500 block text-[9px] uppercase">Fuente</span>
-                          <span className="font-bold truncate block">{row.source}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Expandable Accordion for remaining columns */}
-                    {isExpanded && (
-                      <div className={`pt-2 border-t space-y-1.5 text-[10px] font-mono ${isDark ? 'border-slate-700/30' : 'border-slate-200'}`}>
-                        {columns.map((col) => {
-                          const val = row[col];
-                          return (
-                            <div key={col} className={`flex justify-between items-center py-0.5 border-b ${isDark ? 'border-slate-800/30' : 'border-slate-100'}`}>
-                              <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{col}:</span>
-                              <span className={`font-bold font-tabular text-right max-w-[180px] truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                                {val !== null && val !== undefined ? String(val) : '-'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Toggle Button */}
-                    <button
-                      onClick={() => toggleRow(rIdx)}
-                      className={`w-full py-2 text-[11px] font-mono font-semibold flex items-center justify-center gap-1 border-t transition cursor-pointer ${
-                        isDark ? 'text-slate-400 hover:text-white border-slate-800/30' : 'text-slate-600 hover:text-slate-900 border-slate-200'
+                  return (
+                    <div
+                      key={rIdx}
+                      className={`p-3.5 rounded-xl border space-y-2.5 transition ${
+                        isDark ? 'bg-[#0e1628] border-[#1f2d48]' : 'bg-slate-50 border-slate-200'
                       }`}
                     >
-                      {isExpanded ? (
-                        <>
-                          <span>Ocultar columnas</span>
-                          <IconChevronUp className="w-3.5 h-3.5" />
-                        </>
-                      ) : (
-                        <>
-                          <span>Ver todas las columnas ({columns.length})</span>
-                          <IconChevronDown className="w-3.5 h-3.5" />
-                        </>
+                      {/* Header Row: Primary Key + Status */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono font-bold text-xs truncate max-w-[200px]">
+                          {String(primaryTime).slice(0, 19).replace('T', ' ')}
+                        </span>
+                        {sentiment && (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                              isBullish
+                                ? 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30'
+                                : isBearish
+                                ? 'text-rose-400 bg-rose-500/15 border border-rose-500/30'
+                                : 'text-sky-400 bg-sky-500/15 border border-sky-500/30'
+                            }`}
+                          >
+                            {sentiment}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Summary Key Values Grid */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                        {row.symbol && (
+                          <div>
+                            <span className="text-slate-500 block text-[9px] uppercase">Símbolo</span>
+                            <span className="font-bold text-sky-400">{row.symbol}</span>
+                          </div>
+                        )}
+                        {row.close_price !== undefined && (
+                          <div>
+                            <span className="text-slate-500 block text-[9px] uppercase">Precio</span>
+                            <span className="font-bold">${Number(row.close_price).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {row.avg_hourly_sentiment !== undefined && (
+                          <div>
+                            <span className="text-slate-500 block text-[9px] uppercase">Score Medio</span>
+                            <span className={`font-bold ${Number(row.avg_hourly_sentiment) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {Number(row.avg_hourly_sentiment) > 0 ? '+' : ''}{Number(row.avg_hourly_sentiment).toFixed(3)}
+                            </span>
+                          </div>
+                        )}
+                        {row.social_volume_mentions !== undefined && (
+                          <div>
+                            <span className="text-slate-500 block text-[9px] uppercase">Menciones</span>
+                            <span className="font-bold">{row.social_volume_mentions}</span>
+                          </div>
+                        )}
+                        {row.source && (
+                          <div>
+                            <span className="text-slate-500 block text-[9px] uppercase">Fuente</span>
+                            <span className="font-bold truncate block">{row.source}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Expandable Accordion for remaining columns */}
+                      {isExpanded && (
+                        <div className={`pt-2 border-t space-y-1.5 text-[10px] font-mono ${isDark ? 'border-slate-700/30' : 'border-slate-200'}`}>
+                          {columns.map((col) => {
+                            const val = row[col];
+                            return (
+                              <div key={col} className={`flex justify-between items-center py-0.5 border-b ${isDark ? 'border-slate-800/30' : 'border-slate-100'}`}>
+                                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{col}:</span>
+                                <span className={`font-bold font-tabular text-right max-w-[180px] truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                                  {val !== null && val !== undefined ? String(val) : '-'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
-                    </button>
+
+                      {/* Toggle Button */}
+                      <button
+                        onClick={() => toggleRow(rIdx)}
+                        className={`w-full py-2 text-[11px] font-mono font-semibold flex items-center justify-center gap-1 border-t transition cursor-pointer ${
+                          isDark ? 'text-slate-400 hover:text-white border-slate-800/30' : 'text-slate-600 hover:text-slate-900 border-slate-200'
+                        }`}
+                      >
+                        {isExpanded ? (
+                          <>
+                            <span>Ocultar columnas</span>
+                            <IconChevronUp className="w-3.5 h-3.5" />
+                          </>
+                        ) : (
+                          <>
+                            <span>Ver todas las columnas ({columns.length})</span>
+                            <IconChevronDown className="w-3.5 h-3.5" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+                {isLoadingMore && (
+                  <div className="py-4 text-center text-xs font-mono text-indigo-400 flex items-center justify-center gap-2">
+                    <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                    <span>{locale === 'es' ? 'Cargando más registros...' : 'Loading more records...'}</span>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </div>
 
           {/* 2. Desktop Full SQL Table (hidden md:block) */}
-          <div className="hidden md:block overflow-x-auto max-h-[580px] overflow-y-auto">
+          <div
+            className="hidden md:block overflow-x-auto max-h-[580px] overflow-y-auto"
+            onScroll={handleScroll}
+          >
             <table className="w-full text-left text-xs font-mono">
               <thead className={`sticky top-0 z-10 border-b ${isDark ? 'bg-[#0a0e17] border-white/[0.06] text-[#64748b]' : 'bg-slate-50 border-slate-100 text-slate-500'}`}>
                 <tr>
@@ -374,7 +390,7 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? 'divide-white/[0.04] text-slate-300' : 'divide-slate-100 text-slate-700'}`}>
-                {isLoading ? (
+                {isLoadingInitial ? (
                   <tr>
                     <td colSpan={columns.length || 5} className="p-8 text-center text-[#64748b] font-mono">
                       {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
@@ -387,87 +403,80 @@ export const MedallionExplorer: React.FC<MedallionExplorerProps> = ({ isDark = t
                     </td>
                   </tr>
                 ) : (
-                  rows.map((row, rIdx) => (
-                    <tr key={rIdx} className={`transition ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'}`}>
-                      {columns.map((col) => {
-                        const val = row[col];
-                        if (col === 'sentiment_label') {
-                          const str = String(val || '').toLowerCase();
-                          const isBullish = str.includes('bull') || str.includes('alcista');
-                          const isBearish = str.includes('bear') || str.includes('bajista');
-                          const badge = isBullish
-                            ? 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30'
-                            : isBearish
-                            ? 'text-rose-400 bg-rose-500/15 border border-rose-500/30'
-                            : 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                  <>
+                    {rows.map((row, rIdx) => (
+                      <tr key={rIdx} className={`transition ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'}`}>
+                        {columns.map((col) => {
+                          const val = row[col];
+                          if (col === 'sentiment_label') {
+                            const str = String(val || '').toLowerCase();
+                            const isBullish = str.includes('bull') || str.includes('alcista');
+                            const isBearish = str.includes('bear') || str.includes('bajista');
+                            const badge = isBullish
+                              ? 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30'
+                              : isBearish
+                              ? 'text-rose-400 bg-rose-500/15 border border-rose-500/30'
+                              : 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                            return (
+                              <td key={col} className="py-2.5 px-4 whitespace-nowrap">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badge}`}>
+                                  {val}
+                                </span>
+                              </td>
+                            );
+                          }
+                          if (col === 'sentiment_score' && val !== null && val !== undefined) {
+                            const num = Number(val);
+                            const isPos = num > 0.05;
+                            const isNeg = num < -0.05;
+                            const color = isPos ? 'text-emerald-400' : isNeg ? 'text-rose-400' : 'text-sky-400';
+                            return (
+                              <td key={col} className={`py-2.5 px-4 whitespace-nowrap font-tabular font-bold ${color}`}>
+                                {num > 0 ? `+${num.toFixed(3)}` : num.toFixed(3)}
+                              </td>
+                            );
+                          }
                           return (
-                            <td key={col} className="py-2.5 px-4 whitespace-nowrap">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badge}`}>
-                                {val}
-                              </span>
+                            <td key={col} className="py-2.5 px-4 whitespace-nowrap font-tabular">
+                              {val !== null && val !== undefined ? String(val) : '-'}
                             </td>
                           );
-                        }
-                        if (col === 'sentiment_score' && val !== null && val !== undefined) {
-                          const num = Number(val);
-                          const isPos = num > 0.05;
-                          const isNeg = num < -0.05;
-                          const color = isPos ? 'text-emerald-400' : isNeg ? 'text-rose-400' : 'text-sky-400';
-                          return (
-                            <td key={col} className={`py-2.5 px-4 whitespace-nowrap font-tabular font-bold ${color}`}>
-                              {num > 0 ? `+${num.toFixed(3)}` : num.toFixed(3)}
-                            </td>
-                          );
-                        }
-                        return (
-                          <td key={col} className="py-2.5 px-4 whitespace-nowrap font-tabular">
-                            {val !== null && val !== undefined ? String(val) : '-'}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))
+                        })}
+                      </tr>
+                    ))}
+                    {isLoadingMore && (
+                      <tr>
+                        <td colSpan={columns.length || 5} className="py-3 text-center text-xs font-mono text-indigo-400">
+                          <div className="inline-flex items-center justify-center gap-2">
+                            <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                            <span>{locale === 'es' ? 'Cargando más registros...' : 'Loading more records...'}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 )}
               </tbody>
             </table>
           </div>
 
-          {/* Bottom Pagination Bar */}
-          <div className={`p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+          {/* Bottom Progressive Scroll Info Bar - No Buttons */}
+          <div className={`p-3.5 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}`}>
             <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-              {locale === 'es'
-                ? `Página ${currentPage} de ${totalPages} · ${totalCount.toLocaleString()} registros en total`
-                : `Page ${currentPage} of ${totalPages} · ${totalCount.toLocaleString()} total records`}
+              {rows.length < totalCount
+                ? (locale === 'es'
+                    ? `Desplaza hacia abajo para cargar más · ${rows.length} de ${totalCount.toLocaleString()} registros cargados`
+                    : `Scroll down to load more · ${rows.length} of ${totalCount.toLocaleString()} records loaded`)
+                : (locale === 'es'
+                    ? `✓ Todos los registros cargados (${totalCount.toLocaleString()} en total)`
+                    : `✓ All records loaded (${totalCount.toLocaleString()} total)`)}
             </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
-                disabled={offset === 0 || isLoading}
-                className={`px-3.5 py-1.5 rounded-lg border text-xs font-mono font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 ${
-                  isDark
-                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06]'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <IconChevronLeft className="w-3.5 h-3.5" />
-                <span>{locale === 'es' ? 'Anterior' : 'Previous'}</span>
-              </button>
-              <span className={`text-[11px] font-mono px-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                {currentPage} / {totalPages}
+            {isLoadingMore && (
+              <span className="flex items-center gap-1.5 text-indigo-400 font-medium">
+                <span className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                {locale === 'es' ? 'Cargando más...' : 'Loading more...'}
               </span>
-              <button
-                onClick={() => setOffset((prev) => prev + limit)}
-                disabled={offset + limit >= totalCount || isLoading}
-                className={`px-3.5 py-1.5 rounded-lg border text-xs font-mono font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 ${
-                  isDark
-                    ? 'bg-white/[0.03] border-white/[0.08] text-slate-200 hover:bg-white/[0.06]'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <span>{locale === 'es' ? 'Siguiente' : 'Next'}</span>
-                <IconChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            )}
           </div>
         </div>
       ) : (

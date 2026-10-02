@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   IconSearch,
   IconClose,
@@ -18,24 +18,35 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
   const [rows, setRows] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState('');
-  const [offset, setOffset] = useState(0);
-  const limit = 15;
+  const limit = 20;
   const [bronzeFiles, setBronzeFiles] = useState<BronzeFile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<Record<string, any> | null>(null);
+  const isFetchingRef = useRef(false);
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
-  const currentPage = Math.floor(offset / limit) + 1;
+  const loadBronze = async () => {
+    setIsLoadingInitial(true);
+    try {
+      const res = await fetchBronzeTree();
+      setBronzeFiles(res.files || []);
+    } catch (err) {
+      console.error('Error loading bronze tree:', err);
+    } finally {
+      setIsLoadingInitial(false);
+    }
+  };
 
-  const loadData = useCallback(async (layer = selectedLayer, currentOffset = offset, query = search) => {
+  const loadInitialData = useCallback(async (layer = selectedLayer, query = search) => {
     if (layer === 'bronze') {
       loadBronze();
       return;
     }
-    setIsLoading(true);
+    isFetchingRef.current = true;
+    setIsLoadingInitial(true);
     try {
       const tableName = layer === 'gold' ? 'gold_hourly_market_sentiment' : 'silver_social_sentiment';
-      const data = await fetchTableData(tableName, limit, currentOffset, query);
+      const data = await fetchTableData(tableName, limit, 0, query);
       setRows(data.rows || []);
       setTotalCount(data.total_count || 0);
     } catch (err) {
@@ -43,40 +54,53 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
       setRows([]);
       setTotalCount(0);
     } finally {
-      setIsLoading(false);
+      setIsLoadingInitial(false);
+      isFetchingRef.current = false;
     }
-  }, [selectedLayer, offset, search, limit]);
+  }, [selectedLayer, search, limit]);
+
+  const loadMore = useCallback(async () => {
+    if (selectedLayer === 'bronze') return;
+    if (isFetchingRef.current) return;
+    if (rows.length >= totalCount && totalCount > 0) return;
+
+    isFetchingRef.current = true;
+    setIsLoadingMore(true);
+    try {
+      const tableName = selectedLayer === 'gold' ? 'gold_hourly_market_sentiment' : 'silver_social_sentiment';
+      const data = await fetchTableData(tableName, limit, rows.length, search);
+      const newRows = data.rows || [];
+      if (newRows.length > 0) {
+        setRows((prev) => [...prev, ...newRows]);
+      }
+      if (data.total_count !== undefined) {
+        setTotalCount(data.total_count);
+      }
+    } catch (err) {
+      console.error('Error loading more mobile table data:', err);
+    } finally {
+      setIsLoadingMore(false);
+      isFetchingRef.current = false;
+    }
+  }, [selectedLayer, rows.length, totalCount, search, limit]);
+
+  const handleMobileScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      loadMore();
+    }
+  };
 
   useEffect(() => {
-    setOffset(0);
-    loadData(selectedLayer, 0, search);
+    loadInitialData(selectedLayer, search);
   }, [selectedLayer]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setOffset(0);
-      loadData(selectedLayer, 0, search);
+      loadInitialData(selectedLayer, search);
     }, 250);
     return () => clearTimeout(handler);
   }, [search]);
-
-  useEffect(() => {
-    if (selectedLayer !== 'bronze') {
-      loadData(selectedLayer, offset, search);
-    }
-  }, [offset]);
-
-  const loadBronze = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetchBronzeTree();
-      setBronzeFiles(res.files || []);
-    } catch (err) {
-      console.error('Error loading bronze tree:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const displayedBronzeFiles = bronzeFiles.filter((f) => {
     if (!search.trim()) return true;
@@ -157,11 +181,14 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         </div>
       </div>
 
-      {/* 3. Internal Scroll Viewport for Each Architecture Part (Isolated scrolling) */}
-      <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border p-2 ${
-        isDark ? 'bg-white/[0.015] border-white/[0.06]' : 'bg-white border-slate-200 shadow-2xs'
-      }`}>
-        {isLoading ? (
+      {/* 3. Internal Scroll Viewport for Each Architecture Part (Isolated progressive scroll) */}
+      <div
+        className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border p-2 ${
+          isDark ? 'bg-white/[0.015] border-white/[0.06]' : 'bg-white border-slate-200 shadow-2xs'
+        }`}
+        onScroll={handleMobileScroll}
+      >
+        {isLoadingInitial ? (
           <div className="py-16 text-center text-xs font-mono text-[#64748b] animate-pulse">
             Consultando registros en DuckDB...
           </div>
@@ -195,69 +222,83 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
           </div>
         ) : (
           <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-slate-100'}`}>
-            {isLoading ? (
-              <div className={`py-12 text-center text-xs font-mono ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-                {locale === 'es' ? 'Cargando registros...' : 'Loading records...'}
-              </div>
-            ) : rows.length > 0 ? (
-              rows.map((row, idx) => {
-                const isGold = selectedLayer === 'gold';
-                let badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
-                let badgeText = 'NEUTRAL';
+            {rows.length > 0 ? (
+              <>
+                {rows.map((row, idx) => {
+                  const isGold = selectedLayer === 'gold';
+                  let badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                  let badgeText = 'NEUTRAL';
 
-                if (isGold) {
-                  const avg = row.avg_hourly_sentiment !== undefined ? Number(row.avg_hourly_sentiment) : 0;
-                  if (avg >= 0.05) {
-                    badgeColor = 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30';
-                  } else if (avg <= -0.05) {
-                    badgeColor = 'text-rose-400 bg-rose-500/15 border border-rose-500/30';
+                  if (isGold) {
+                    const avg = row.avg_hourly_sentiment !== undefined ? Number(row.avg_hourly_sentiment) : 0;
+                    if (avg >= 0.05) {
+                      badgeColor = 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30';
+                    } else if (avg <= -0.05) {
+                      badgeColor = 'text-rose-400 bg-rose-500/15 border border-rose-500/30';
+                    } else {
+                      badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                    }
+                    badgeText = row.avg_hourly_sentiment !== undefined
+                      ? (avg > 0 ? `+${avg.toFixed(2)}` : avg.toFixed(2))
+                      : '0.00';
                   } else {
-                    badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
-                  }
-                  badgeText = row.avg_hourly_sentiment !== undefined
-                    ? (avg > 0 ? `+${avg.toFixed(2)}` : avg.toFixed(2))
-                    : '0.00';
-                } else {
-                  // Silver Layer
-                  const labelStr = String(row.sentiment_label || '').toUpperCase();
-                  const score = typeof row.sentiment_score === 'number' ? row.sentiment_score : undefined;
-                  const isBull = labelStr.includes('BULL') || labelStr.includes('ALCISTA') || (score !== undefined && score > 0.05);
-                  const isBear = labelStr.includes('BEAR') || labelStr.includes('BAJISTA') || (score !== undefined && score < -0.05);
+                    // Silver Layer
+                    const labelStr = String(row.sentiment_label || '').toUpperCase();
+                    const score = typeof row.sentiment_score === 'number' ? row.sentiment_score : undefined;
+                    const isBull = labelStr.includes('BULL') || labelStr.includes('ALCISTA') || (score !== undefined && score > 0.05);
+                    const isBear = labelStr.includes('BEAR') || labelStr.includes('BAJISTA') || (score !== undefined && score < -0.05);
 
-                  if (isBull) {
-                    badgeColor = 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30';
-                    badgeText = 'BULLISH';
-                  } else if (isBear) {
-                    badgeColor = 'text-rose-400 bg-rose-500/15 border border-rose-500/30';
-                    badgeText = 'BEARISH';
-                  } else {
-                    badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
-                    badgeText = 'NEUTRAL';
+                    if (isBull) {
+                      badgeColor = 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30';
+                      badgeText = 'BULLISH';
+                    } else if (isBear) {
+                      badgeColor = 'text-rose-400 bg-rose-500/15 border border-rose-500/30';
+                      badgeText = 'BEARISH';
+                    } else {
+                      badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                      badgeText = 'NEUTRAL';
+                    }
                   }
-                }
 
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => setSelectedRecord(row)}
-                    className="py-2.5 px-1.5 flex items-center justify-between cursor-pointer active:opacity-70 transition hover:bg-white/[0.02]"
-                  >
-                    <div className="min-w-0 pr-3">
-                      <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                        {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${offset + idx + 1}`}
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedRecord(row)}
+                      className="py-2.5 px-1.5 flex items-center justify-between cursor-pointer active:opacity-70 transition hover:bg-white/[0.02]"
+                    >
+                      <div className="min-w-0 pr-3">
+                        <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                          {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${idx + 1}`}
+                        </div>
+                        <div className={`text-[10px] font-mono truncate mt-0.5 ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+                          {selectedLayer === 'gold'
+                            ? `Close: $${row.close_price ?? '--'} · Vol: ${row.social_volume_mentions ?? 0}`
+                            : `${row.source ?? 'Web'} · Conf: ${row.confidence ? (Number(row.confidence) * 100).toFixed(0) + '%' : '--'}`}
+                        </div>
                       </div>
-                      <div className={`text-[10px] font-mono truncate mt-0.5 ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
-                        {selectedLayer === 'gold'
-                          ? `Close: $${row.close_price ?? '--'} · Vol: ${row.social_volume_mentions ?? 0}`
-                          : `${row.source ?? 'Web'} · Conf: ${row.confidence ? (Number(row.confidence) * 100).toFixed(0) + '%' : '--'}`}
-                      </div>
+                      <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeColor}`}>
+                        {badgeText}
+                      </span>
                     </div>
-                    <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeColor}`}>
-                      {badgeText}
-                    </span>
+                  );
+                })}
+                {isLoadingMore && (
+                  <div className="py-3 text-center text-xs font-mono text-indigo-400 flex items-center justify-center gap-2">
+                    <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                    <span>{locale === 'es' ? 'Cargando más...' : 'Loading more...'}</span>
                   </div>
-                );
-              })
+                )}
+                {!isLoadingMore && rows.length > 0 && rows.length < totalCount && (
+                  <div className="py-2.5 text-center text-[10px] font-mono text-slate-500">
+                    {locale === 'es' ? `Desliza hacia abajo para más (${rows.length} de ${totalCount})` : `Scroll down for more (${rows.length} of ${totalCount})`}
+                  </div>
+                )}
+                {!isLoadingMore && rows.length >= totalCount && rows.length > 0 && (
+                  <div className="py-2.5 text-center text-[10px] font-mono text-slate-500">
+                    {locale === 'es' ? `✓ ${totalCount} registros cargados` : `✓ ${totalCount} records loaded`}
+                  </div>
+                )}
+              </>
             ) : (
               <div className={`py-12 text-center text-xs font-mono ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
                 {search
@@ -268,35 +309,6 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
           </div>
         )}
       </div>
-
-      {/* 4. Pinned Bottom Pagination (Layer Silver / Gold) */}
-      {selectedLayer !== 'bronze' && totalPages > 1 && (
-        <div className={`shrink-0 flex items-center justify-between pt-2 px-1 text-xs font-mono border-t ${
-          isDark ? 'border-white/[0.06]' : 'border-slate-200'
-        }`}>
-          <button
-            onClick={() => setOffset((prev) => Math.max(0, prev - limit))}
-            disabled={offset === 0 || isLoading}
-            className={`px-3 py-1.5 rounded-full disabled:opacity-20 transition cursor-pointer font-medium ${
-              isDark ? 'bg-white/[0.05] text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
-            }`}
-          >
-            {locale === 'es' ? '< Anterior' : '< Previous'}
-          </button>
-          <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            {currentPage} / {totalPages} ({totalCount} {locale === 'es' ? 'reg.' : 'rec.'})
-          </span>
-          <button
-            onClick={() => setOffset((prev) => prev + limit)}
-            disabled={offset + limit >= totalCount || isLoading}
-            className={`px-3 py-1.5 rounded-full disabled:opacity-20 transition cursor-pointer font-medium ${
-              isDark ? 'bg-white/[0.05] text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
-            }`}
-          >
-            {locale === 'es' ? 'Siguiente >' : 'Next >'}
-          </button>
-        </div>
-      )}
 
       {/* 5. Clean Bottom Sheet Modal */}
       {selectedRecord && (
