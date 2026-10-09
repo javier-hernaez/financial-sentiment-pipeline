@@ -283,7 +283,7 @@ async def get_gold_layer(
         return []
 
     try:
-        with MarketWarehouse(db_path=Path(db_path), read_only=True) as warehouse:
+        with MarketWarehouse(db_path=Path(db_path)) as warehouse:
             raw_gold = warehouse.query_gold(symbol=clean_sym, limit=limit)
 
         enriched = QuantSignalsEngine.calculate_signals(raw_gold)
@@ -303,7 +303,7 @@ async def get_social_posts(
         return []
 
     try:
-        with MarketWarehouse(db_path=Path(db_path), read_only=True) as warehouse:
+        with MarketWarehouse(db_path=Path(db_path)) as warehouse:
             posts = warehouse.query_social_posts(limit=limit)
         return posts.to_dicts()
     except Exception as exc:
@@ -318,7 +318,7 @@ async def export_gold_csv(
     """Exports consolidated Gold layer data to downloadable CSV."""
     clean_sym = sanitize_symbol(symbol, default="BTCUSDT")
     try:
-        with MarketWarehouse(read_only=True) as warehouse:
+        with MarketWarehouse() as warehouse:
             raw_gold = warehouse.query_gold(symbol=clean_sym, limit=500)
 
         enriched = QuantSignalsEngine.calculate_signals(raw_gold)

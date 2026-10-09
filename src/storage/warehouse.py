@@ -15,6 +15,7 @@ class MarketWarehouse:
     """Manages DuckDB tables, data ingestion into Silver, and Gold transformations."""
 
     _shared_connections: Dict[str, duckdb.DuckDBPyConnection] = {}
+    _shared_read_only: Dict[str, bool] = {}
     _conn_lock = threading.Lock()
 
     def __init__(self, db_path: Optional[Path] = None, read_only: bool = False, isolated: Optional[bool] = None):
@@ -27,16 +28,26 @@ class MarketWarehouse:
         self.isolated = isolated if isolated is not None else (not is_default)
 
         with self._conn_lock:
-            # If database file is already open in this process, reuse connection via cursor
-            if path_resolved in self._shared_connections:
-                self.conn = self._shared_connections[path_resolved].cursor()
-                self._is_cursor = True
+            if self.isolated:
+                self.conn = duckdb.connect(path_resolved, read_only=read_only)
+                self._is_cursor = False
             else:
-                if self.isolated:
-                    self.conn = duckdb.connect(path_resolved, read_only=read_only)
-                    self._is_cursor = False
+                # If database file is already open in this process:
+                # Check if it was opened read-only but this instance requires write access (read_only=False)
+                if path_resolved in self._shared_connections:
+                    if not self.read_only and self._shared_read_only.get(path_resolved, False):
+                        # Upgrade connection to read-write
+                        try:
+                            self._shared_connections[path_resolved].close()
+                        except Exception:
+                            pass
+                        self._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=False)
+                        self._shared_read_only[path_resolved] = False
+                    self.conn = self._shared_connections[path_resolved].cursor()
+                    self._is_cursor = True
                 else:
                     self._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=read_only)
+                    self._shared_read_only[path_resolved] = read_only
                     self.conn = self._shared_connections[path_resolved].cursor()
                     self._is_cursor = True
 
@@ -51,8 +62,17 @@ class MarketWarehouse:
         path_resolved = str(target_path.resolve())
 
         with cls._conn_lock:
-            if path_resolved not in cls._shared_connections:
+            if path_resolved in cls._shared_connections:
+                if not read_only and cls._shared_read_only.get(path_resolved, False):
+                    try:
+                        cls._shared_connections[path_resolved].close()
+                    except Exception:
+                        pass
+                    cls._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=False)
+                    cls._shared_read_only[path_resolved] = False
+            else:
                 cls._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=read_only)
+                cls._shared_read_only[path_resolved] = read_only
             return cls._shared_connections[path_resolved].cursor()
 
     @classmethod

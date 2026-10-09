@@ -11,6 +11,7 @@ interface MobileObservabilityViewProps {
   onRefresh: () => void;
   onAlert: (msg: string, type?: 'success' | 'error' | 'info') => void;
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
 export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = ({
@@ -19,6 +20,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
   onRefresh,
   onAlert,
   isDark = true,
+  locale = 'es',
 }) => {
   const [runningOp, setRunningOp] = useState<string | null>(null);
 
@@ -102,7 +104,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
                 : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
             }`}
           >
-            {runningOp === 'checkpoint' ? 'Guardando...' : '⚡ Checkpoint'}
+            {runningOp === 'checkpoint' ? 'Guardando...' : 'Checkpoint'}
           </button>
 
           <button
@@ -114,7 +116,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
                 : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
             }`}
           >
-            {runningOp === 'vacuum' ? 'Limpiando...' : '🧹 Vacuum'}
+            {runningOp === 'vacuum' ? 'Limpiando...' : 'Vacuum'}
           </button>
 
           <button
@@ -126,7 +128,7 @@ export const MobileObservabilityView: React.FC<MobileObservabilityViewProps> = (
                 : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-200'
             }`}
           >
-            {runningOp === 'refresh_views' ? 'Refrescando...' : '⟳ Vistas'}
+            {runningOp === 'refresh_views' ? 'Refrescando...' : 'Refrescar'}
           </button>
         </div>
 
