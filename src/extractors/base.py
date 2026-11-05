@@ -82,10 +82,10 @@ class BaseAsyncExtractor(ABC):
 
                 # Handle rate limits (429) or transient server errors (5xx)
                 if response.status_code in (429, 500, 502, 503, 504):
-                    retry_after = response.headers.get("Retry-After")
-                    if retry_after:
-                        sleep_time = float(retry_after)
-                    else:
+                    if attempt == self.max_retries:
+                        response.raise_for_status()
+                    sleep_time = self._retry_after_seconds(response.headers.get("Retry-After"))
+                    if sleep_time is None:
                         jitter = random.uniform(0.1, 0.5)
                         sleep_time = min(self.max_backoff, self.base_backoff * (2 ** (attempt - 1))) + jitter
 
@@ -119,6 +119,18 @@ class BaseAsyncExtractor(ABC):
                     f"[yellow][{self.name}] Network error: {exc}. Retrying in {sleep_time:.2f}s...[/yellow]"
                 )
                 await asyncio.sleep(sleep_time)
+
+        # Only reachable with max_retries < 1
+        raise RuntimeError(f"[{self.name}] No request attempts were made for {url}")
+
+    def _retry_after_seconds(self, header_value: Optional[str]) -> Optional[float]:
+        """Parses a numeric Retry-After header, capped at max_backoff. HTTP-date values fall back to backoff."""
+        if not header_value:
+            return None
+        try:
+            return max(0.0, min(float(header_value), self.max_backoff))
+        except ValueError:
+            return None
 
     @abstractmethod
     async def extract(self, **kwargs) -> List[Dict[str, Any]]:

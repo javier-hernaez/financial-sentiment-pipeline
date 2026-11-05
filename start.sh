@@ -26,7 +26,8 @@ done
 # 3. Start Next.js Frontend in production on public port 7860
 echo "[*] Launching Next.js Production Server on port 7860..."
 cd /app/frontend
-npx next start -p 7860 &
+# Standalone Next.js server. HOSTNAME must be set explicitly: Docker sets it to the container id.
+PORT=7860 HOSTNAME=0.0.0.0 node server.js &
 FRONTEND_PID=$!
 
 # Function to handle shutdown

@@ -1,9 +1,12 @@
 """Application settings and environment configuration."""
 
 from pathlib import Path
+from typing import Annotated, Any
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+INSECURE_DEFAULT_SECRET = "dev-insecure-secret-key"
 
 
 class Settings(BaseSettings):
@@ -29,8 +32,9 @@ class Settings(BaseSettings):
     default_interval: str = Field(default="1h", alias="DEFAULT_INTERVAL")
 
     # Security & Access Control
-    api_secret_key: str = Field(default="dev-insecure-secret-key", alias="API_SECRET_KEY")
-    allowed_origins: list[str] = Field(
+    api_secret_key: str = Field(default=INSECURE_DEFAULT_SECRET, alias="API_SECRET_KEY")
+    # NoDecode: accept the comma-separated format documented in .env.example instead of JSON
+    allowed_origins: Annotated[list[str], NoDecode] = Field(
         default=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8080", "http://127.0.0.1:8080"],
         alias="ALLOWED_ORIGINS",
     )
@@ -51,6 +55,22 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            raw = value.strip()
+            if raw.startswith("["):
+                import json
+
+                return json.loads(raw)
+            return [origin.strip() for origin in raw.split(",") if origin.strip()]
+        return value
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() in ("production", "prod")
 
     def setup_directories(self) -> None:
         """Ensure all data lake directories exist."""
