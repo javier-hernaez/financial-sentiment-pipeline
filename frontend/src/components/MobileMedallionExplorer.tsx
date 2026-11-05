@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   IconSearch,
   IconClose,
@@ -10,63 +10,97 @@ import { fetchTableData, fetchBronzeTree } from '@/lib/api';
 
 interface MobileMedallionExplorerProps {
   isDark?: boolean;
+  locale?: 'es' | 'en';
 }
 
-export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = ({ isDark = true }) => {
+export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = ({ isDark = true, locale = 'es' }) => {
   const [selectedLayer, setSelectedLayer] = useState<'bronze' | 'silver' | 'gold'>('gold');
-  const [limit, setLimit] = useState(10);
-  const [offset, setOffset] = useState(0);
+  const [rows, setRows] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState('');
-  const [tableData, setTableData] = useState<TableDataResponse | null>(null);
+  const limit = 20;
   const [bronzeFiles, setBronzeFiles] = useState<BronzeFile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<Record<string, any> | null>(null);
-
-  const getTableName = () => {
-    if (selectedLayer === 'gold') return 'gold_hourly_market_sentiment';
-    if (selectedLayer === 'silver') return 'silver_social_sentiment';
-    return '__bronze_lake__';
-  };
-
-  useEffect(() => {
-    if (selectedLayer === 'bronze') {
-      loadBronze();
-    }
-  }, [selectedLayer]);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setOffset(0);
-      if (selectedLayer !== 'bronze') {
-        loadTable(search);
-      }
-    }, 250);
-    return () => clearTimeout(handler);
-  }, [search, selectedLayer]);
-
-  const loadTable = async (searchQuery: string = search) => {
-    setIsLoading(true);
-    try {
-      const data = await fetchTableData(getTableName(), limit, offset, searchQuery);
-      setTableData(data);
-    } catch (err) {
-      console.error('Error loading table data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const isFetchingRef = useRef(false);
 
   const loadBronze = async () => {
-    setIsLoading(true);
+    setIsLoadingInitial(true);
     try {
       const res = await fetchBronzeTree();
       setBronzeFiles(res.files || []);
     } catch (err) {
       console.error('Error loading bronze tree:', err);
     } finally {
-      setIsLoading(false);
+      setIsLoadingInitial(false);
     }
   };
+
+  const loadInitialData = useCallback(async (layer = selectedLayer, query = search) => {
+    if (layer === 'bronze') {
+      loadBronze();
+      return;
+    }
+    isFetchingRef.current = true;
+    setIsLoadingInitial(true);
+    try {
+      const tableName = layer === 'gold' ? 'gold_hourly_market_sentiment' : 'silver_social_sentiment';
+      const data = await fetchTableData(tableName, limit, 0, query);
+      setRows(data.rows || []);
+      setTotalCount(data.total_count || 0);
+    } catch (err) {
+      console.error('Error loading mobile table data:', err);
+      setRows([]);
+      setTotalCount(0);
+    } finally {
+      setIsLoadingInitial(false);
+      isFetchingRef.current = false;
+    }
+  }, [selectedLayer, search, limit]);
+
+  const loadMore = useCallback(async () => {
+    if (selectedLayer === 'bronze') return;
+    if (isFetchingRef.current) return;
+    if (rows.length >= totalCount && totalCount > 0) return;
+
+    isFetchingRef.current = true;
+    setIsLoadingMore(true);
+    try {
+      const tableName = selectedLayer === 'gold' ? 'gold_hourly_market_sentiment' : 'silver_social_sentiment';
+      const data = await fetchTableData(tableName, limit, rows.length, search);
+      const newRows = data.rows || [];
+      if (newRows.length > 0) {
+        setRows((prev) => [...prev, ...newRows]);
+      }
+      if (data.total_count !== undefined) {
+        setTotalCount(data.total_count);
+      }
+    } catch (err) {
+      console.error('Error loading more mobile table data:', err);
+    } finally {
+      setIsLoadingMore(false);
+      isFetchingRef.current = false;
+    }
+  }, [selectedLayer, rows.length, totalCount, search, limit]);
+
+  const handleMobileScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      loadMore();
+    }
+  };
+
+  useEffect(() => {
+    loadInitialData(selectedLayer, search);
+  }, [selectedLayer]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      loadInitialData(selectedLayer, search);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   const displayedBronzeFiles = bronzeFiles.filter((f) => {
     if (!search.trim()) return true;
@@ -78,47 +112,41 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
     );
   });
 
-  const totalPages = tableData ? Math.max(1, Math.ceil(tableData.total_count / limit)) : 1;
-  const currentPage = Math.floor(offset / limit) + 1;
-
   return (
-    <div className="md:hidden flex flex-col max-w-lg mx-auto w-full px-2 py-4 space-y-5">
-      {/* 1. Minimalist Text Tabs for Layers */}
-      <div className={`flex items-center justify-around text-xs font-mono pb-2 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
+    <div className="md:hidden flex flex-col h-full w-full min-h-0 overflow-hidden space-y-3 px-1 pb-4">
+      {/* 1. Architecture Layer Selector (Pinned at top - No global page scroll) */}
+      <div className={`shrink-0 flex items-center justify-around text-xs font-mono pb-2 border-b ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
         <button
           onClick={() => {
             setSelectedLayer('bronze');
-            setOffset(0);
           }}
-          className={`pb-1 transition-colors ${
+          className={`pb-1 px-2 transition-colors cursor-pointer ${
             selectedLayer === 'bronze'
-              ? 'text-amber-500 border-b-2 border-amber-500 font-bold'
+              ? 'text-amber-400 border-b-2 border-amber-400 font-bold'
               : isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          01 Bronze
+          01 Bronze Lake
         </button>
         <button
           onClick={() => {
             setSelectedLayer('silver');
-            setOffset(0);
           }}
-          className={`pb-1 transition-colors ${
+          className={`pb-1 px-2 transition-colors cursor-pointer ${
             selectedLayer === 'silver'
-              ? 'text-purple-500 border-b-2 border-purple-500 font-bold'
+              ? 'text-purple-400 border-b-2 border-purple-400 font-bold'
               : isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          02 Silver
+          02 Silver NLP
         </button>
         <button
           onClick={() => {
             setSelectedLayer('gold');
-            setOffset(0);
           }}
-          className={`pb-1 transition-colors ${
+          className={`pb-1 px-2 transition-colors cursor-pointer ${
             selectedLayer === 'gold'
-              ? 'text-emerald-500 border-b-2 border-emerald-500 font-bold'
+              ? 'text-emerald-400 border-b-2 border-emerald-400 font-bold'
               : isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
@@ -126,15 +154,15 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         </button>
       </div>
 
-      {/* 2. Real-time Search Bar (Works on all layers including Bronze) */}
-      <div className="flex gap-2">
+      {/* 2. Search Bar (Pinned at top) */}
+      <div className="shrink-0 flex gap-2">
         <div className="relative flex-1">
           <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748b]" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={selectedLayer === 'bronze' ? 'Buscar partición o archivo...' : 'Buscar en tiempo real...'}
+            placeholder={selectedLayer === 'bronze' ? 'Buscar partición o archivo Parquet...' : 'Buscar en tiempo real...'}
             className={`w-full pl-9 pr-8 py-2 rounded-xl text-xs font-mono outline-none border transition ${
               isDark
                 ? 'bg-white/[0.03] border-white/[0.08] text-slate-100 placeholder:text-slate-500 focus:border-indigo-500'
@@ -153,32 +181,39 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
         </div>
       </div>
 
-      {/* 3. Airy List of Records (Hairline Dividers) */}
-      <div className="space-y-1">
-        {isLoading ? (
-          <div className="py-12 text-center text-xs font-mono text-[#64748b] animate-pulse">
-            Consultando almacenamiento DuckDB...
+      {/* 3. Internal Scroll Viewport for Each Architecture Part (Isolated progressive scroll) */}
+      <div
+        className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border p-2 ${
+          isDark ? 'bg-white/[0.015] border-white/[0.06]' : 'bg-white border-slate-200 shadow-2xs'
+        }`}
+        onScroll={handleMobileScroll}
+      >
+        {isLoadingInitial ? (
+          <div className="py-16 text-center text-xs font-mono text-[#64748b] animate-pulse">
+            Consultando registros en DuckDB...
           </div>
         ) : selectedLayer === 'bronze' ? (
-          <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-slate-200'}`}>
+          <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-slate-100'}`}>
             {displayedBronzeFiles.length === 0 ? (
               <div className={`py-12 text-center text-xs font-mono ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
                 {search ? `Sin particiones que coincidan con "${search}".` : 'No hay archivos Parquet en Bronze.'}
               </div>
             ) : (
-              displayedBronzeFiles.slice(0, 15).map((file, idx) => (
+              displayedBronzeFiles.map((file, idx) => (
                 <div
                   key={idx}
                   onClick={() => setSelectedRecord(file)}
-                  className="py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition"
+                  className="py-2.5 px-1.5 flex items-center justify-between cursor-pointer active:opacity-70 transition hover:bg-white/[0.02]"
                 >
                   <div className="min-w-0 pr-3">
-                    <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>{file.filename}</div>
+                    <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                      {file.filename}
+                    </div>
                     <div className={`text-[10px] font-mono mt-0.5 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
                       {file.source} · {file.partition}
                     </div>
                   </div>
-                  <span className="text-xs font-mono font-bold text-amber-500 shrink-0">
+                  <span className="text-xs font-mono font-bold text-amber-400 shrink-0">
                     {file.size_kb.toFixed(1)} KB
                   </span>
                 </div>
@@ -186,71 +221,91 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
             )}
           </div>
         ) : (
-          <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-slate-200'}`}>
-            {tableData?.rows && tableData.rows.length > 0 ? (
-              tableData.rows.map((row, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setSelectedRecord(row)}
-                  className="py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition"
-                >
-                  <div className="min-w-0 pr-3">
-                    <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                      {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${offset + idx + 1}`}
+          <div className={`divide-y ${isDark ? 'divide-white/[0.04]' : 'divide-slate-100'}`}>
+            {rows.length > 0 ? (
+              <>
+                {rows.map((row, idx) => {
+                  const isGold = selectedLayer === 'gold';
+                  let badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                  let badgeText = 'NEUTRAL';
+
+                  if (isGold) {
+                    const avg = row.avg_hourly_sentiment !== undefined ? Number(row.avg_hourly_sentiment) : 0;
+                    if (avg >= 0.05) {
+                      badgeColor = 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30';
+                    } else if (avg <= -0.05) {
+                      badgeColor = 'text-rose-400 bg-rose-500/15 border border-rose-500/30';
+                    } else {
+                      badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                    }
+                    badgeText = row.avg_hourly_sentiment !== undefined
+                      ? (avg > 0 ? `+${avg.toFixed(2)}` : avg.toFixed(2))
+                      : '0.00';
+                  } else {
+                    // Silver Layer
+                    const labelStr = String(row.sentiment_label || '').toUpperCase();
+                    const score = typeof row.sentiment_score === 'number' ? row.sentiment_score : undefined;
+                    const isBull = labelStr.includes('BULL') || labelStr.includes('ALCISTA') || (score !== undefined && score > 0.05);
+                    const isBear = labelStr.includes('BEAR') || labelStr.includes('BAJISTA') || (score !== undefined && score < -0.05);
+
+                    if (isBull) {
+                      badgeColor = 'text-emerald-400 bg-emerald-500/15 border border-emerald-500/30';
+                      badgeText = 'BULLISH';
+                    } else if (isBear) {
+                      badgeColor = 'text-rose-400 bg-rose-500/15 border border-rose-500/30';
+                      badgeText = 'BEARISH';
+                    } else {
+                      badgeColor = 'text-sky-400 bg-sky-500/15 border border-sky-500/30';
+                      badgeText = 'NEUTRAL';
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedRecord(row)}
+                      className="py-2.5 px-1.5 flex items-center justify-between cursor-pointer active:opacity-70 transition hover:bg-white/[0.02]"
+                    >
+                      <div className="min-w-0 pr-3">
+                        <div className={`text-xs font-mono font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                          {row.timestamp_hour || row.created_utc || row.timestamp || `Fila #${idx + 1}`}
+                        </div>
+                        <div className={`text-[10px] font-mono truncate mt-0.5 ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
+                          {selectedLayer === 'gold'
+                            ? `Close: $${row.close_price ?? '--'} · Vol: ${row.social_volume_mentions ?? 0}`
+                            : `${row.source ?? 'Web'} · Conf: ${row.confidence ? (Number(row.confidence) * 100).toFixed(0) + '%' : '--'}`}
+                        </div>
+                      </div>
+                      <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeColor}`}>
+                        {badgeText}
+                      </span>
                     </div>
-                    <div className={`text-[10px] font-mono truncate mt-0.5 ${isDark ? 'text-[#8b95b0]' : 'text-slate-500'}`}>
-                      {selectedLayer === 'gold'
-                        ? `Close: $${row.close_price ?? '--'} · Menciones: ${row.social_volume_mentions ?? 0}`
-                        : `${row.source ?? 'Web'} · Confianza: ${row.confidence ?? '--'}`}
-                    </div>
+                  );
+                })}
+                {isLoadingMore && (
+                  <div className="py-3 text-center text-xs font-mono text-indigo-400 flex items-center justify-center gap-2">
+                    <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                    <span>{locale === 'es' ? 'Cargando más...' : 'Loading more...'}</span>
                   </div>
-                  <span
-                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                      (row.avg_hourly_sentiment ?? 0) >= 0.1
-                        ? 'text-emerald-500 bg-emerald-500/10'
-                        : (row.avg_hourly_sentiment ?? 0) <= -0.1
-                        ? 'text-rose-500 bg-rose-500/10'
-                        : 'text-amber-500 bg-amber-500/10'
-                    }`}
-                  >
-                    {row.avg_hourly_sentiment !== undefined
-                      ? (row.avg_hourly_sentiment > 0 ? `+${row.avg_hourly_sentiment.toFixed(2)}` : row.avg_hourly_sentiment.toFixed(2))
-                      : row.sentiment_label || 'OK'}
-                  </span>
-                </div>
-              ))
+                )}
+                {!isLoadingMore && rows.length > 0 && rows.length < totalCount && (
+                  <div className="py-2.5 text-center text-[10px] font-mono text-slate-500">
+                    {locale === 'es' ? `Desliza hacia abajo para más (${rows.length} de ${totalCount})` : `Scroll down for more (${rows.length} of ${totalCount})`}
+                  </div>
+                )}
+                {!isLoadingMore && rows.length >= totalCount && rows.length > 0 && (
+                  <div className="py-2.5 text-center text-[10px] font-mono text-slate-500">
+                    {locale === 'es' ? `✓ ${totalCount} registros cargados` : `✓ ${totalCount} records loaded`}
+                  </div>
+                )}
+              </>
             ) : (
               <div className={`py-12 text-center text-xs font-mono ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-                {search ? `Sin registros que coincidan con "${search}".` : 'Sin registros en esta capa.'}
+                {search
+                  ? (locale === 'es' ? `Sin registros que coincidan con "${search}".` : `No records matching "${search}".`)
+                  : (locale === 'es' ? 'Sin registros en esta capa.' : 'No records in this layer.')}
               </div>
             )}
-          </div>
-        )}
-
-        {/* 4. Compact Pagination */}
-        {selectedLayer !== 'bronze' && totalPages > 1 && (
-          <div className={`flex items-center justify-between pt-6 border-t text-xs font-mono ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
-            <button
-              onClick={() => setOffset(Math.max(0, offset - limit))}
-              disabled={offset === 0}
-              className={`px-3 py-1.5 rounded-full disabled:opacity-20 transition ${
-                isDark ? 'bg-white/[0.05] text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'
-              }`}
-            >
-              &lt; Anterior
-            </button>
-            <span className={`text-[11px] ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-              {currentPage} / {totalPages}
-            </span>
-            <button
-              onClick={() => setOffset(offset + limit)}
-              disabled={currentPage >= totalPages}
-              className={`px-3 py-1.5 rounded-full disabled:opacity-20 transition ${
-                isDark ? 'bg-white/[0.05] text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'
-              }`}
-            >
-              Siguiente &gt;
-            </button>
           </div>
         )}
       </div>
@@ -263,11 +318,11 @@ export const MobileMedallionExplorer: React.FC<MobileMedallionExplorerProps> = (
           }`}>
             <div className={`flex items-center justify-between border-b pb-3 ${isDark ? 'border-white/[0.06]' : 'border-slate-200'}`}>
               <span className={`text-xs font-mono font-bold ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
-                Ficha del Registro · {selectedLayer.toUpperCase()}
+                Ficha de Registro · {selectedLayer.toUpperCase()}
               </span>
               <button
                 onClick={() => setSelectedRecord(null)}
-                className={`p-1 rounded-sm transition ${isDark ? 'text-[#8b95b0] hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}
+                className={`p-1 rounded-sm transition cursor-pointer ${isDark ? 'text-[#8b95b0] hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}
               >
                 <IconClose className="w-4 h-4" />
               </button>

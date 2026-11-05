@@ -8,22 +8,25 @@ import { fetchMetrics, fetchGoldData } from '@/lib/api';
 interface IngestionBarAndGaugeProps {
   diagnostics?: Diagnostics | null;
   isDark?: boolean;
+  locale?: 'es' | 'en';
   symbol?: string;
 }
 
 export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
   diagnostics,
   isDark = true,
+  locale = 'es',
   symbol = 'BTCUSDT',
 }) => {
+  const isEn = locale === 'en';
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [consensoScore, setConsensoScore] = useState<number | null>(null);
-  const [consensoLabel, setConsensoLabel] = useState<string>('Calculando...');
+  const [consensoLabel, setConsensoLabel] = useState<string>(isEn ? 'Calculating...' : 'Calculando...');
 
   useEffect(() => {
     fetchMetrics().then(setMetrics).catch(() => null);
     loadConsensus();
-  }, [symbol]);
+  }, [symbol, locale]);
 
   const loadConsensus = async () => {
     try {
@@ -36,18 +39,18 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
           : 50;
         const composite = Math.round(avgFG);
         setConsensoScore(composite);
-        if (composite >= 75) setConsensoLabel('Codicia Extrema');
-        else if (composite >= 55) setConsensoLabel('Codicia / Bullish');
+        if (composite >= 75) setConsensoLabel(isEn ? 'Extreme Greed' : 'Codicia Extrema');
+        else if (composite >= 55) setConsensoLabel(isEn ? 'Greed / Bullish' : 'Codicia / Bullish');
         else if (composite >= 45) setConsensoLabel('Neutral');
-        else if (composite >= 25) setConsensoLabel('Miedo / Bearish');
-        else setConsensoLabel('Miedo Extremo');
+        else if (composite >= 25) setConsensoLabel(isEn ? 'Fear / Bearish' : 'Miedo / Bearish');
+        else setConsensoLabel(isEn ? 'Extreme Fear' : 'Miedo Extremo');
       } else {
         setConsensoScore(null);
-        setConsensoLabel('Sin datos Gold');
+        setConsensoLabel(isEn ? 'No Gold data' : 'Sin datos Gold');
       }
     } catch {
       setConsensoScore(null);
-      setConsensoLabel('Error al calcular');
+      setConsensoLabel(isEn ? 'Calculation error' : 'Error al calcular');
     }
   };
 
@@ -58,13 +61,13 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
 
   const sources = [
     {
-      name: 'Velas de Mercado (Binance)',
+      name: isEn ? 'Market Candles (Binance)' : 'Velas de Mercado (Binance)',
       count: marketRows,
       pct: totalRaw > 0 ? Math.round((marketRows / totalRaw) * 100) : 0,
       color: 'bg-blue-500',
     },
     {
-      name: 'Noticias & Titulares (NLP)',
+      name: isEn ? 'News & Headlines (NLP)' : 'Noticias & Titulares (NLP)',
       count: socialRows,
       pct: totalRaw > 0 ? Math.round((socialRows / totalRaw) * 100) : 0,
       color: 'bg-purple-500',
@@ -95,10 +98,10 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <h3 className={`text-xs font-mono uppercase tracking-wider font-semibold ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
-              Volumen de Ingesta por Fuente
+              {isEn ? 'Ingestion Volume by Source' : 'Volumen de Ingesta por Fuente'}
             </h3>
             <span className={`text-xs font-mono mt-0.5 block ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
-              DuckDB Silver ({totalRaw.toLocaleString()} totales)
+              DuckDB Silver ({totalRaw.toLocaleString()} {isEn ? 'total' : 'totales'})
             </span>
           </div>
           <IconDatabase className="w-4 h-4 text-[#818cf8]" />
@@ -132,7 +135,7 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <h3 className={`text-xs font-mono uppercase tracking-wider font-semibold ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
-              Termómetro de Sentimiento
+              {isEn ? 'Sentiment Thermometer' : 'Termómetro de Sentimiento'}
             </h3>
             <span className={`text-xs font-mono mt-0.5 block ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
               DuckDB Gold (0–100)
@@ -145,7 +148,9 @@ export const IngestionBarAndGauge: React.FC<IngestionBarAndGaugeProps> = ({
         <div className="mt-2 flex-1 flex flex-col items-center justify-center">
           {consensoScore === null ? (
             <div className="py-6 text-xs font-mono text-slate-500 text-center">
-              Sin datos Gold. Ejecuta el pipeline ELT para calcular el consenso.
+              {isEn
+                ? 'No Gold data. Run the ELT pipeline to calculate consensus.'
+                : 'Sin datos Gold. Ejecuta el pipeline ELT para calcular el consenso.'}
             </div>
           ) : (
             <>

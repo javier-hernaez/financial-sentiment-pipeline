@@ -26,7 +26,6 @@ import { ObservabilityView } from '@/components/ObservabilityView';
 import { DocumentationGuide } from '@/components/DocumentationGuide';
 import { SubviewHeader } from '@/components/SubviewHeader';
 import {
-  IconCalendar,
   IconPlay,
   IconDownload,
   IconRefresh,
@@ -51,6 +50,7 @@ export default function Home() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [locale, setLocale] = useState<'es' | 'en'>('es');
 
   const [selectedSymbol, setSelectedSymbol] = useState('BTCUSDT');
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
@@ -88,25 +88,54 @@ export default function Home() {
 
   const handleDirectRunPipeline = async (
     stage: 'extract' | 'transform' | 'gold' | 'full' = 'full',
-    sym: string = selectedSymbol,
+    sym?: string,
     hrs: number = 24
   ) => {
     if (isPipelineRunning) return;
     setIsPipelineRunning(true);
-    addPipelineLog(`[${stage.toUpperCase()}] Iniciando ejecución del pipeline para ${sym} (${hrs}h)...`, 'info', stage);
-    handleSystemAlert(`Ejecutando pipeline ELT (${stage.toUpperCase()}) en segundo plano...`, 'info');
+
+    const targetSymbols = (!sym || sym === 'ALL' || sym === 'MULTI')
+      ? ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
+      : [sym];
+
+    const labelNames = targetSymbols.map((s) => s.replace('USDT', '')).join(', ');
+    const isFull = stage === 'full';
+    const logStage = isFull ? 'pipeline' : stage;
+
+    addPipelineLog(
+      isFull
+        ? `Sincronizando pipeline para ${labelNames} (${hrs}h)...`
+        : `[${stage.toUpperCase()}] Sincronizando fase para ${labelNames} (${hrs}h)...`,
+      'info',
+      logStage
+    );
+    handleSystemAlert(
+      `Sincronizando pipeline para ${labelNames}...`,
+      'info'
+    );
     try {
-      const result = await runStage(stage, sym, hrs);
+      let totalCandles = 0;
+      let totalPosts = 0;
+      let totalElapsed = 0;
+
+      for (const asset of targetSymbols) {
+        addPipelineLog(`[${asset.replace('USDT', '')}] Extracción & FinBERT en curso...`, 'info', logStage);
+        const result = await runStage(stage, asset, hrs);
+        totalCandles += (result?.candles_processed || 0);
+        totalPosts += (result?.posts_processed || 0);
+        totalElapsed += (result?.elapsed_seconds || 0);
+      }
+
       await loadAll();
-      const totalProcessed = (result?.candles_processed || 0) + (result?.posts_processed || 0) + (result?.macro_records || 0);
-      const successMsg = `Pipeline (${stage.toUpperCase()}) finalizado en ${(result?.elapsed_seconds || 0).toFixed(1)}s (${totalProcessed} registros procesados).`;
-      addPipelineLog(`[${stage.toUpperCase()}] ${successMsg}`, 'success', stage);
+      const totalProcessed = totalCandles + totalPosts;
+      const successMsg = `Pipeline sincronizado con éxito para ${labelNames} (${totalProcessed} registros en ${totalElapsed.toFixed(1)}s).`;
+      addPipelineLog(successMsg, 'success', logStage);
       handleSystemAlert(successMsg, 'success');
     } catch (err: any) {
       console.error('Error running pipeline directly:', err);
       const errMsg = err?.message || String(err);
-      addPipelineLog(`[ERROR] Fallo al ejecutar ${stage}: ${errMsg}`, 'error', stage);
-      handleSystemAlert(`Fallo al ejecutar el pipeline: ${errMsg}`, 'error');
+      addPipelineLog(`[ERROR] Fallo al sincronizar pipeline: ${errMsg}`, 'error', logStage);
+      handleSystemAlert(`Fallo al sincronizar pipeline: ${errMsg}`, 'error');
     } finally {
       setIsPipelineRunning(false);
     }
@@ -249,7 +278,7 @@ export default function Home() {
             <div className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-[#6366f1] to-transparent animate-scan" />
           </div>
           <span className="text-[10px] font-mono tracking-widest text-[#4e5d7a] uppercase">
-            Iniciando Q&nbsp;ELT Terminal...
+            Iniciando ELT project...
           </span>
         </div>
       </div>
@@ -258,7 +287,7 @@ export default function Home() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col md:flex-row transition-colors duration-200 ${
+      className={`h-[100dvh] md:min-h-screen flex flex-col md:flex-row transition-colors duration-200 overflow-hidden md:overflow-visible ${
         isDark ? 'bg-[#080b11] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
       }`}
     >
@@ -286,11 +315,12 @@ export default function Home() {
         isDark={isDark}
         onTriggerFullPipeline={handleDirectRunPipeline}
         isPipelineRunning={isPipelineRunning}
+        locale={locale}
       />
 
       {/* Main Content Area */}
       <div
-        className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ml-0 ${
+        className={`flex-1 min-w-0 flex flex-col h-full md:h-auto overflow-hidden md:overflow-visible transition-all duration-300 ml-0 ${
           isCollapsed ? 'md:ml-[52px]' : 'md:ml-60'
         }`}
       >
@@ -298,6 +328,8 @@ export default function Home() {
         <MobileHeader
           currentSymbol={selectedSymbol}
           onSelectSymbol={(sym) => setSelectedSymbol(sym)}
+          locale={locale}
+          onSelectLocale={setLocale}
           isDark={isDark}
           onToggleTheme={toggleTheme}
           onRefresh={loadAll}
@@ -316,6 +348,8 @@ export default function Home() {
             onNavigate={(v) => setActiveView(v)}
             activeView={activeView}
             onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            locale={locale}
+            onSelectLocale={setLocale}
           />
           <OperationalStatusRibbon
             metrics={metrics}
@@ -327,44 +361,25 @@ export default function Home() {
         </div>
 
         {/* Dashboard Content Container */}
-        <main className="flex-1 min-w-0 p-3 sm:p-6 lg:p-8 space-y-6 max-w-full w-full mx-auto pb-32 md:pb-8 overflow-x-hidden">
-          
-          {/* Persistent Global Background Pipeline Sync Banner */}
-          {isPipelineRunning && (
-            <div
-              className={`w-full px-4 py-2.5 rounded-xl border flex items-center justify-between text-xs font-mono transition-all ${
-                isDark
-                  ? 'bg-indigo-950/70 border-indigo-500/30 text-indigo-200'
-                  : 'bg-indigo-50 border-indigo-200 text-indigo-900 shadow-xs'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <IconRefresh className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
-                <span className="font-bold">Sincronización en segundo plano activa:</span>
-                <span className="opacity-90 hidden sm:inline">Binance REST ➔ FinBERT NLP ➔ DuckDB Feature Store</span>
-              </div>
-              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">
-                Procesando...
-              </span>
-            </div>
-          )}
+        <main className="flex-1 min-w-0 flex flex-col p-2 sm:p-6 lg:p-8 space-y-3 sm:space-y-6 max-w-full w-full mx-auto md:pb-8 overflow-y-auto md:overflow-visible">
 
           {/* Main Dashboard View */}
           {activeView === 'dashboard' && (
             <>
               {/* Mobile-Only Streamlined ELT Console (< 768px) */}
-              <div className="block md:hidden">
+              <div className="block md:hidden flex-1 h-full flex flex-col">
                 <MobileEltConsole
                   metrics={metrics}
                   diagnostics={diagnostics}
                   selectedSymbol={selectedSymbol}
                   isDark={isDark}
-                  onTriggerPipeline={() => handleDirectRunPipeline('full', selectedSymbol, 24)}
+                  onTriggerPipeline={() => handleDirectRunPipeline('full')}
                   isPipelineRunning={isPipelineRunning}
                   pipelineLogs={pipelineLogs}
                   onRefresh={loadAll}
                   isRefreshing={isRefreshing}
                   onNavigate={(v) => setActiveView(v)}
+                  locale={locale}
                 />
               </div>
 
@@ -375,7 +390,7 @@ export default function Home() {
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div>
                     <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight font-sans ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                      Dashboard de Sentimiento &amp; Pipeline ELT
+                      {locale === 'es' ? 'Dashboard de Sentimiento & Pipeline ELT' : 'Sentiment Dashboard & ELT Pipeline'}
                     </h1>
                     <p className={`text-xs sm:text-sm mt-1 font-mono tracking-wide ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>
                       Medallion Lakehouse · FinBERT NLP · DuckDB OLAP
@@ -383,21 +398,9 @@ export default function Home() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2.5">
-                    {/* Date Range Pill */}
-                    <div
-                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-mono cursor-pointer transition ${
-                        isDark
-                          ? 'bg-white/[0.03] border-white/[0.08] text-[#8b95b0] hover:border-white/[0.16]'
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      <IconCalendar className="w-3.5 h-3.5 text-[#818cf8]" />
-                      <span>Lote Activo · Tiempo Real</span>
-                    </div>
-
                     {/* Trigger Pipeline Button */}
                     <button
-                      onClick={() => handleDirectRunPipeline('full', selectedSymbol, 24)}
+                      onClick={() => handleDirectRunPipeline('full')}
                       disabled={isPipelineRunning}
                       className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-mono font-bold transition active:scale-95 ${
                         isPipelineRunning ? 'opacity-60 cursor-not-allowed' : ''
@@ -406,10 +409,10 @@ export default function Home() {
                           ? 'bg-white/[0.04] border-white/[0.1] text-[#818cf8] hover:text-white hover:bg-white/[0.08] hover:border-indigo-500/40'
                           : 'bg-white border-slate-200 text-indigo-600 hover:bg-slate-50'
                       }`}
-                      title="Ejecuta extracción, FinBERT y actualización DuckDB sin salir de esta vista"
+                      title={locale === 'es' ? "Sincroniza extracción, FinBERT y DuckDB para BTC, ETH y SOL" : "Sync extraction, FinBERT and DuckDB for BTC, ETH, and SOL"}
                     >
                       <IconRefresh className={`w-3.5 h-3.5 ${isPipelineRunning ? 'animate-spin' : ''}`} />
-                      <span>{isPipelineRunning ? 'Ejecutando...' : 'Ejecutar Pipeline'}</span>
+                      <span>{isPipelineRunning ? (locale === 'es' ? 'Sincronizando...' : 'Syncing...') : (locale === 'es' ? 'Sincronizar Pipeline' : 'Sync Pipeline')}</span>
                     </button>
 
                     {/* Export Button — indigo */}
@@ -418,29 +421,29 @@ export default function Home() {
                       className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6366f1] hover:bg-[#4f46e5] active:scale-95 text-white text-xs font-mono font-bold transition shadow-sm"
                     >
                       <IconDownload className="w-3.5 h-3.5" />
-                      <span>Exportar Gold CSV</span>
+                      <span>{locale === 'es' ? 'Exportar Gold CSV' : 'Export Gold CSV'}</span>
                     </a>
                   </div>
                 </div>
 
                 {/* 1. Medallion Telemetry HUD: 4-Stage Continuous Architecture Pipeline */}
                 <div className="w-full">
-                  <MedallionTelemetryHUD metrics={metrics} isDark={isDark} />
+                  <MedallionTelemetryHUD metrics={metrics} isDark={isDark} locale={locale} />
                 </div>
 
                 {/* 2. Middle Row: Polaridad FinBERT Chart (Left) + Ingestion Bar & Gauge (Right) */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                   <div className="lg:col-span-2 flex flex-col">
-                    <ProfitAndSourcesChart metrics={metrics} isDark={isDark} symbol={selectedSymbol} />
+                    <ProfitAndSourcesChart metrics={metrics} isDark={isDark} symbol={selectedSymbol} locale={locale} />
                   </div>
                   <div className="lg:col-span-1 flex flex-col">
-                    <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} symbol={selectedSymbol} />
+                    <IngestionBarAndGauge diagnostics={diagnostics} isDark={isDark} symbol={selectedSymbol} locale={locale} />
                   </div>
                 </div>
 
                 {/* 3. Bottom Row: Real-time FinBERT Headlines & RSS Feeds */}
                 <div className="w-full">
-                  <AssetFeedTable isDark={isDark} />
+                  <AssetFeedTable isDark={isDark} locale={locale} />
                 </div>
 
               </div>
@@ -451,8 +454,8 @@ export default function Home() {
           {(activeView === 'orchestration' || activeView === 'pipeline') && (
             <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
-                title="Orquestación y Pipeline de Datos (ELT)"
-                description="Lanza extracciones bajo demanda, revisa los logs de ingestión y procesa lotes hacia DuckDB."
+                title={locale === 'es' ? "Orquestación y Pipeline de Datos (ELT)" : "Data Pipeline & Orchestration (ELT)"}
+                description={locale === 'es' ? "Lanza extracciones bajo demanda, revisa los logs de ingestión y procesa lotes hacia DuckDB." : "Trigger on-demand extractions, inspect ingestion logs, and process batches into DuckDB."}
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
@@ -463,6 +466,7 @@ export default function Home() {
                   isExternalRunning={isPipelineRunning}
                   externalLogs={pipelineLogs}
                   onTriggerPipeline={handleDirectRunPipeline}
+                  locale={locale}
                 />
               </div>
               <div className="hidden md:block">
@@ -472,6 +476,7 @@ export default function Home() {
                   isExternalRunning={isPipelineRunning}
                   externalLogs={pipelineLogs}
                   onTriggerPipeline={handleDirectRunPipeline}
+                  locale={locale}
                 />
               </div>
             </div>
@@ -479,50 +484,52 @@ export default function Home() {
 
           {/* Subview: Medallion Explorer / Data Warehouse */}
           {(activeView === 'warehouse' || activeView === 'medallion' || activeView === 'silver' || activeView === 'gold') && (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="flex-1 flex flex-col min-h-0 space-y-3 sm:space-y-6">
               <SubviewHeader
-                title="Data Lake & Feature Store DuckDB"
-                description="Inspecciona particiones Bronze (Parquet), registros limpios Silver y agregaciones analíticas Gold."
+                title={locale === 'es' ? "Data Lake & Feature Store DuckDB" : "DuckDB Data Lake & Feature Store"}
+                description={locale === 'es' ? "Inspecciona particiones Bronze (Parquet), registros limpios Silver y agregaciones analíticas Gold." : "Inspect raw Bronze Parquet partitions, clean Silver relational records, and Gold analytical aggregates."}
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <div className="block md:hidden">
-                <MobileMedallionExplorer isDark={isDark} />
+              <div className="block md:hidden flex-1 h-[calc(100dvh-180px)] min-h-0 flex flex-col">
+                <MobileMedallionExplorer isDark={isDark} locale={locale} />
               </div>
               <div className="hidden md:block">
-                <MedallionExplorer isDark={isDark} />
+                <MedallionExplorer isDark={isDark} locale={locale} />
               </div>
             </div>
           )}
 
           {/* Subview: FinBERT Lab */}
           {(activeView === 'nlp' || activeView === 'finbert') && (
-            <div className="space-y-4 sm:space-y-6">
-              <SubviewHeader
-                title="Laboratorio FinBERT (Scoring NLP)"
-                description="Introduce cualquier titular o texto financiero para evaluar la polaridad inferida por el modelo."
-                onBack={() => setActiveView('dashboard')}
-                isDark={isDark}
-              />
-              <div className="block md:hidden">
-                <MobileFinbertLab isDark={isDark} />
+            <div className="flex-1 flex flex-col space-y-3 sm:space-y-6">
+              <div className="hidden md:block">
+                <SubviewHeader
+                  title={locale === 'es' ? "Laboratorio FinBERT (Scoring NLP)" : "FinBERT Lab (NLP Scoring)"}
+                  description={locale === 'es' ? "Introduce cualquier titular o texto financiero para evaluar la polaridad inferida por el modelo." : "Enter any financial headline or text to evaluate model-inferred polarity."}
+                  onBack={() => setActiveView('dashboard')}
+                  isDark={isDark}
+                />
+              </div>
+              <div className="block md:hidden flex-1 h-full flex flex-col">
+                <MobileFinbertLab isDark={isDark} locale={locale} />
               </div>
               <div className="hidden md:block">
-                <FinbertLab isDark={isDark} />
+                <FinbertLab isDark={isDark} locale={locale} />
               </div>
             </div>
           )}
 
           {/* Subview: Feeds RSS & Titulares */}
-          {activeView === 'content' && (
+          {(activeView === 'content' || activeView === 'news') && (
             <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
-                title="Feeds RSS & Titulares Procesados"
-                description="Visualización de texto completo, fecha exacta y etiqueta de sentimiento asignada."
+                title={locale === 'es' ? "Feeds RSS & Titulares Procesados" : "RSS Feeds & Processed Headlines"}
+                description={locale === 'es' ? "Visualización de texto completo, fecha exacta y etiqueta de sentimiento asignada." : "Full text visualization, exact timestamp, and model-assigned sentiment label."}
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <AssetFeedTable isDark={isDark} />
+              <AssetFeedTable isDark={isDark} locale={locale} />
             </div>
           )}
 
@@ -530,12 +537,12 @@ export default function Home() {
           {(activeView === 'terminal' || activeView === 'market' || activeView === 'alpha') && (
             <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
-                title="Terminal de Precios y Sentimiento de Mercado"
-                description="Series de precios y volumen horarios sincronizados con la polaridad social e insights del Data Lake Bronze."
+                title={locale === 'es' ? "Terminal de Precios y Sentimiento de Mercado" : "Market Price & Sentiment Terminal"}
+                description={locale === 'es' ? "Series de precios y volumen horarios sincronizados con la polaridad social e insights del Data Lake Bronze." : "Hourly price and volume series synchronized with social polarity and Bronze Data Lake insights."}
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <MarketTerminal isDark={isDark} />
+              <MarketTerminal isDark={isDark} locale={locale} />
             </div>
           )}
 
@@ -543,8 +550,8 @@ export default function Home() {
           {(activeView === 'observability' || activeView === 'maintenance') && (
             <div className="space-y-4 sm:space-y-6">
               <SubviewHeader
-                title="Observabilidad, Telemetría & Mantenimiento DuckDB"
-                description="Monitoreo de latencias de red, salud del almacenamiento columnar, DDL y optimización de base de datos."
+                title={locale === 'es' ? "Observabilidad, Telemetría & Mantenimiento DuckDB" : "DuckDB Observability, Telemetry & Maintenance"}
+                description={locale === 'es' ? "Monitoreo de latencias de red, salud del almacenamiento columnar, DDL y optimización de base de datos." : "Monitor network latency, columnar storage health, DDL, and database optimization."}
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
@@ -555,6 +562,7 @@ export default function Home() {
                   onRefresh={loadAll}
                   onAlert={(msg, type) => handleSystemAlert(msg, type)}
                   isDark={isDark}
+                  locale={locale}
                 />
               </div>
               <div className="hidden md:block">
@@ -564,6 +572,7 @@ export default function Home() {
                   onRefresh={loadAll}
                   onAlert={(msg, type) => handleSystemAlert(msg, type)}
                   isDark={isDark}
+                  locale={locale}
                 />
               </div>
             </div>
@@ -573,12 +582,12 @@ export default function Home() {
           {activeView === 'documentation' && (
             <div className="space-y-6">
               <SubviewHeader
-                title="Manual y Documentación del Sistema"
-                description="Guía de referencia de ingeniería de datos, especificaciones del modelo y comandos de terminal."
+                title={locale === 'es' ? "Manual y Documentación del Sistema" : "System Manual & Documentation"}
+                description={locale === 'es' ? "Guía de referencia de ingeniería de datos, especificaciones del modelo y comandos de terminal." : "Data engineering reference guide, model specifications, and terminal commands."}
                 onBack={() => setActiveView('dashboard')}
                 isDark={isDark}
               />
-              <DocumentationGuide isDark={isDark} />
+              <DocumentationGuide isDark={isDark} locale={locale} />
             </div>
           )}
         </main>
@@ -588,6 +597,8 @@ export default function Home() {
           activeView={activeView}
           setActiveView={setActiveView}
           isDark={isDark}
+          isRunningPipeline={isPipelineRunning}
+          locale={locale}
         />
 
         {systemAlert && (

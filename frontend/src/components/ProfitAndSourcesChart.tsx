@@ -26,6 +26,7 @@ interface ProfitAndSourcesChartProps {
   records?: GoldRecord[];
   metrics?: SystemMetrics | null;
   isDark?: boolean;
+  locale?: 'es' | 'en';
   symbol?: string;
 }
 
@@ -33,8 +34,10 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
   records: initialRecords,
   metrics,
   isDark = true,
+  locale = 'es',
   symbol = 'BTCUSDT',
 }) => {
+  const isEn = locale === 'en';
   const [isMounted, setIsMounted] = useState(false);
   const [records, setRecords] = useState<GoldRecord[]>(initialRecords || []);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,37 +80,10 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
 
   const sentimentLabel =
     avgSentiment > 0.15
-      ? 'Consenso Alcista (Bullish)'
+      ? (isEn ? 'Bullish Consensus' : 'Consenso Alcista (Bullish)')
       : avgSentiment < -0.15
-      ? 'Consenso Bajista (Bearish)'
-      : 'Consenso Neutral';
-
-  // Divergence Engine: Price Delta vs Sentiment Delta
-  const priceDelta = latest && prevRecord && prevRecord.close_price ? latest.close_price - prevRecord.close_price : 0;
-  const sentDelta = latest && prevRecord ? latest.avg_hourly_sentiment - prevRecord.avg_hourly_sentiment : 0;
-  let divergenceBadge = null;
-
-  if (latest && prevRecord) {
-    if (priceDelta < 0 && sentDelta > 0.08) {
-      divergenceBadge = {
-        label: 'Divergencia Alcista Detectada',
-        sub: 'Precio bajando con acumulación de sentimiento FinBERT',
-        color: isDark ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40' : 'bg-emerald-50 text-emerald-700 border-emerald-300',
-      };
-    } else if (priceDelta > 0 && sentDelta < -0.08) {
-      divergenceBadge = {
-        label: 'Divergencia Bajista Detectada',
-        sub: 'Precio subiendo con deterioro de sentimiento FinBERT',
-        color: isDark ? 'bg-rose-500/15 text-rose-400 border-rose-500/40' : 'bg-rose-50 text-rose-700 border-rose-300',
-      };
-    } else {
-      divergenceBadge = {
-        label: 'Dinámica Convergente',
-        sub: 'Precio y sentimiento horario sincronizados',
-        color: isDark ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-blue-50 text-blue-700 border-blue-200',
-      };
-    }
-  }
+      ? (isEn ? 'Bearish Consensus' : 'Consenso Bajista (Bearish)')
+      : (isEn ? 'Neutral Consensus' : 'Consenso Neutral');
 
   const chartData = records.map((d) => {
     const timeLabel = d.timestamp_hour ? d.timestamp_hour.slice(11, 16) : '';
@@ -129,12 +105,12 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
           : 'bg-white border-slate-200/80 shadow-xs'
       }`}
     >
-      {/* Top Header: Sentiment Index & Quantitative Divergence */}
+      {/* Top Header: Sentiment Index */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <span className={`text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-2 ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
+          <span className={`text-sm sm:text-base font-bold font-mono tracking-tight flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
             <IconCpu className="w-4 h-4 text-[#818cf8]" />
-            Polaridad FinBERT Agregada &amp; Detección de Divergencias
+            {isEn ? 'Aggregated FinBERT Polarity' : 'Polaridad FinBERT Agregada'}
           </span>
           <div className="mt-2 flex items-baseline gap-3 flex-wrap">
             <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-mono tabular-nums ${
@@ -158,13 +134,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
                 }`}
               >
                 <IconArrowUpRight className="w-3.5 h-3.5" />
-                Última hora: {latest.avg_hourly_sentiment > 0 ? `+${latest.avg_hourly_sentiment.toFixed(2)}` : latest.avg_hourly_sentiment.toFixed(2)}
-              </span>
-            )}
-            {divergenceBadge && (
-              <span className={`inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full border ${divergenceBadge.color}`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                {divergenceBadge.label}
+                {isEn ? 'Last hour:' : 'Última hora:'} {latest.avg_hourly_sentiment > 0 ? `+${latest.avg_hourly_sentiment.toFixed(2)}` : latest.avg_hourly_sentiment.toFixed(2)}
               </span>
             )}
           </div>
@@ -177,7 +147,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
               ? 'border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.05]'
               : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
           }`}
-          title="Recargar datos de sentimiento"
+          title={isEn ? 'Reload sentiment data' : 'Recargar datos de sentimiento'}
         >
           <IconRefresh className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#818cf8]' : ''}`} />
         </button>
@@ -188,12 +158,12 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
         {!isMounted || isLoading ? (
           <div className="h-full w-full flex items-center justify-center text-xs font-mono text-slate-500">
             <IconRefresh className="w-4 h-4 animate-spin text-blue-400 mr-2" />
-            Cargando serie analítica real...
+            {isEn ? 'Loading real analytical series...' : 'Cargando serie analítica real...'}
           </div>
         ) : chartData.length === 0 ? (
           <div className="h-full w-full flex flex-col items-center justify-center text-xs font-mono text-slate-500 space-y-1">
-            <span className="font-bold">Sin datos históricos en DuckDB</span>
-            <span>Ejecute el pipeline ELT para consolidar horas y sentimiento.</span>
+            <span className="font-bold">{isEn ? 'No historical data in DuckDB' : 'Sin datos históricos en DuckDB'}</span>
+            <span>{isEn ? 'Run the ELT pipeline to consolidate hours and sentiment.' : 'Ejecute el pipeline ELT para consolidar horas y sentimiento.'}</span>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -236,7 +206,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
                         }`}
                       >
                         <div className={`font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                          {label} · Consolidado DuckDB Gold
+                          {label} · {isEn ? 'DuckDB Gold Consolidated' : 'Consolidado DuckDB Gold'}
                         </div>
                         <div className="flex items-center gap-2 text-emerald-400 font-bold">
                           <span>—</span>
@@ -244,7 +214,7 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
                         </div>
                         <div className="flex items-center gap-2 text-blue-400">
                           <span>⋯</span>
-                          <span>{item.articles} artículos analizados</span>
+                          <span>{item.articles} {isEn ? 'articles analyzed' : 'artículos analizados'}</span>
                         </div>
                       </div>
                     );
@@ -276,10 +246,10 @@ export const ProfitAndSourcesChart: React.FC<ProfitAndSourcesChartProps> = ({
       <div className={`mt-auto pt-5 border-t ${isDark ? 'border-white/[0.04]' : 'border-slate-100'}`}>
         <div className="flex items-center justify-between mb-4">
           <span className={`text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-[#8b95b0]' : 'text-slate-600'}`}>
-            Distribución Real de Polaridad FinBERT
+            {isEn ? 'Real FinBERT Polarity Distribution' : 'Distribución Real de Polaridad FinBERT'}
           </span>
           <span className={`text-xs font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            {totalMentions} menciones analizadas en DuckDB
+            {totalMentions} {isEn ? 'mentions analyzed in DuckDB' : 'menciones analizadas en DuckDB'}
           </span>
         </div>
 

@@ -16,7 +16,8 @@ class QuantSignalsEngine:
         - Price vs Sentiment Divergence
         - Alpha Signal Recommendation (STRONG BUY, ACCUMULATE, NEUTRAL, DISTRIBUTE, STRONG SELL)
         """
-        if gold_df.is_empty() or len(gold_df) < 2:
+        # A single row still gets signal columns so the API schema stays consistent
+        if gold_df.is_empty():
             return gold_df
 
         # Sort chronologically for time-series computations

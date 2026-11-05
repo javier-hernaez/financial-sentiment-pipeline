@@ -30,8 +30,14 @@ async function handleResponse<T>(res: Response): Promise<T> {
     let errorMsg = `HTTP ${res.status}`;
     try {
       const data = await res.json();
-      if (data && data.error) {
+      // FastAPI reports errors as { detail: string | { error } }; the Next.js proxy uses { error }
+      const detail = data?.detail;
+      if (data?.error) {
         errorMsg = data.error;
+      } else if (typeof detail === 'string') {
+        errorMsg = detail;
+      } else if (detail?.error) {
+        errorMsg = detail.error;
       }
     } catch {
       // response was not JSON
@@ -58,7 +64,8 @@ export async function fetchDiagnostics(): Promise<Diagnostics> {
 }
 
 export async function fetchGoldData(symbol: string = 'BTCUSDT', limit: number = 24): Promise<GoldRecord[]> {
-  const res = await fetch(`${API_BASE}/gold?symbol=${symbol}&limit=${limit}`, {
+  const params = new URLSearchParams({ symbol, limit: limit.toString() });
+  const res = await fetch(`${API_BASE}/gold?${params.toString()}`, {
     headers: getHeaders(),
     cache: 'no-store',
   });

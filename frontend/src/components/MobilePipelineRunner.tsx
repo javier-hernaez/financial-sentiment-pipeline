@@ -11,6 +11,7 @@ import { runStage } from '@/lib/api';
 interface MobilePipelineRunnerProps {
   onSuccess: () => void;
   isDark?: boolean;
+  locale?: 'es' | 'en';
   isExternalRunning?: boolean;
   externalLogs?: LogEntry[];
   onTriggerPipeline?: (stage: 'extract' | 'transform' | 'gold' | 'full', sym: string, hrs: number) => Promise<void>;
@@ -26,10 +27,12 @@ interface LogEntry {
 export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
   onSuccess,
   isDark = true,
+  locale = 'es',
   isExternalRunning,
   externalLogs,
   onTriggerPipeline,
 }) => {
+  const isEn = locale === 'en';
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [hours, setHours] = useState(24);
   const [stage, setStage] = useState<'full' | 'extract' | 'transform' | 'gold'>('full');
@@ -111,7 +114,7 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
       {/* 1. Selectores en 1 sola fila limpia */}
       <div className="flex items-center justify-between gap-3 text-xs font-mono">
         <div className="flex-1">
-          <label className={`text-[10px] uppercase block mb-1 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>Activo</label>
+          <label className={`text-[10px] uppercase block mb-1 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>{isEn ? 'Asset' : 'Activo'}</label>
           <select
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
@@ -129,7 +132,7 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
         </div>
 
         <div className="flex-1">
-          <label className={`text-[10px] uppercase block mb-1 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>Ventana</label>
+          <label className={`text-[10px] uppercase block mb-1 ${isDark ? 'text-[#64748b]' : 'text-slate-500'}`}>{isEn ? 'Window' : 'Ventana'}</label>
           <select
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
@@ -140,9 +143,9 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
                 : 'bg-white border-slate-300 text-slate-900 shadow-xs'
             }`}
           >
-            <option value={12} className={isDark ? 'bg-[#0e1424] text-white' : ''}>12 Horas</option>
-            <option value={24} className={isDark ? 'bg-[#0e1424] text-white' : ''}>24 Horas</option>
-            <option value={48} className={isDark ? 'bg-[#0e1424] text-white' : ''}>48 Horas</option>
+            <option value={12} className={isDark ? 'bg-[#0e1424] text-white' : ''}>{isEn ? '12 Hours' : '12 Horas'}</option>
+            <option value={24} className={isDark ? 'bg-[#0e1424] text-white' : ''}>{isEn ? '24 Hours' : '24 Horas'}</option>
+            <option value={48} className={isDark ? 'bg-[#0e1424] text-white' : ''}>{isEn ? '48 Hours' : '48 Horas'}</option>
           </select>
         </div>
       </div>
@@ -161,7 +164,7 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
                 : `${isDark ? 'text-[#64748b] hover:text-slate-300' : 'text-slate-500 hover:text-slate-800'}`
             }`}
           >
-            {s === 'full' ? 'Full ELT' : s}
+            {s === 'full' ? (isEn ? 'Pipeline' : 'Pipeline') : s}
           </button>
         ))}
       </div>
@@ -180,12 +183,12 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
           {isRunning ? (
             <>
               <IconRefresh className="w-4 h-4 animate-spin text-indigo-200" />
-              <span>Ejecutando...</span>
+              <span>{isEn ? 'Running...' : 'Ejecutando...'}</span>
             </>
           ) : (
             <>
               <IconPlay className="w-3.5 h-3.5 fill-white text-white" />
-              <span>Lanzar {stage.toUpperCase()} ({symbol.replace('USDT', '')})</span>
+              <span>{isEn ? 'Run' : 'Lanzar'} {stage === 'full' ? 'PIPELINE' : stage.toUpperCase()} ({symbol.replace('USDT', '')})</span>
             </>
           )}
         </button>
@@ -194,7 +197,7 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
       {/* 4. Stepper Sutil (Líneas y Puntos sin Cajas) */}
       <div className="flex items-center justify-between text-xs font-mono px-4 text-[#8b95b0]">
         <div className={activeStep >= 1 ? 'text-sky-400 font-bold' : 'text-[#64748b]'}>
-          1. Extracción
+          1. {isEn ? 'Extraction' : 'Extracción'}
         </div>
         <span className="text-white/[0.1]">───</span>
         <div className={activeStep >= 2 ? 'text-purple-400 font-bold' : 'text-[#64748b]'}>
@@ -209,12 +212,12 @@ export const MobilePipelineRunner: React.FC<MobilePipelineRunnerProps> = ({
       {/* 5. Consola Flotante */}
       <div className="space-y-2 pt-2">
         <div className={`flex items-center justify-between text-xs font-mono pb-1 border-b ${isDark ? 'border-white/[0.04] text-[#64748b]' : 'border-slate-200 text-slate-500'}`}>
-          <span>Consola de eventos</span>
+          <span>{isEn ? 'Event Console' : 'Consola de eventos'}</span>
           <button
             onClick={() => setLocalLogs([])}
             className={`flex items-center gap-1 transition ${isDark ? 'hover:text-slate-300' : 'hover:text-slate-900'}`}
           >
-            <IconTrash className="w-3 h-3" /> Limpiar
+            <IconTrash className="w-3 h-3" /> {isEn ? 'Clear' : 'Limpiar'}
           </button>
         </div>
 
