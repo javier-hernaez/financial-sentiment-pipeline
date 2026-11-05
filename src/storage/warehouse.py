@@ -244,7 +244,7 @@ class MarketWarehouse:
             FROM tmp_market_arrow;
         """)
         self.conn.unregister("tmp_market_arrow")
-        count = self.conn.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
+        count = self.conn.execute("SELECT COUNT(*) FROM silver_market_prices").fetchall()[0][0]
         return count
 
     def upsert_social_sentiment(self, df: pl.DataFrame) -> int:
@@ -296,7 +296,7 @@ class MarketWarehouse:
             FROM tmp_social_arrow;
         """)
         self.conn.unregister("tmp_social_arrow")
-        count = self.conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
+        count = self.conn.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchall()[0][0]
         return count
 
     def upsert_fear_greed(self, df: pl.DataFrame) -> int:
@@ -340,17 +340,17 @@ class MarketWarehouse:
             FROM tmp_fg_arrow;
         """)
         self.conn.unregister("tmp_fg_arrow")
-        count = self.conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchone()[0]
+        count = self.conn.execute("SELECT COUNT(*) FROM silver_fear_greed").fetchall()[0][0]
         return count
 
     def query_gold(self, symbol: Optional[str] = None, limit: int = 24) -> pl.DataFrame:
         """Queries the consolidated gold layer dataset, optionally filtered by asset_ticker."""
         if symbol:
             query = "SELECT * FROM gold_hourly_market_sentiment WHERE asset_ticker = ? ORDER BY timestamp_hour DESC LIMIT ?"
-            res = self.conn.execute(query, [symbol.upper(), limit]).arrow()
+            res = self.conn.execute(query, [symbol.upper(), limit]).to_arrow_table()
         else:
             query = "SELECT * FROM gold_hourly_market_sentiment ORDER BY timestamp_hour DESC LIMIT ?"
-            res = self.conn.execute(query, [limit]).arrow()
+            res = self.conn.execute(query, [limit]).to_arrow_table()
         try:
             return pl.from_arrow(res)
         except Exception:
@@ -376,7 +376,7 @@ class MarketWarehouse:
             ORDER BY created_utc DESC
             LIMIT ?
         """
-        res = self.conn.execute(query, [limit]).arrow()
+        res = self.conn.execute(query, [limit]).to_arrow_table()
         try:
             return pl.from_arrow(res)
         except Exception:

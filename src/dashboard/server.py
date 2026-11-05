@@ -413,10 +413,10 @@ async def get_admin_metrics():
         social_files = len(list(bronze_dir.glob("social/**/*.parquet"))) if bronze_dir.exists() else 0
 
         cursor = MarketWarehouse.get_shared_cursor()
-        silver_m = cursor.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
-        silver_s = cursor.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
+        silver_m = cursor.execute("SELECT COUNT(*) FROM silver_market_prices").fetchall()[0][0]
+        silver_s = cursor.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchall()[0][0]
 
-        gold_total = cursor.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchone()[0]
+        gold_total = cursor.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchall()[0][0]
         symbols = [
             r[0]
             for r in cursor.execute("SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment").fetchall()
@@ -550,7 +550,7 @@ async def get_table_data(
             order_by_sql = " ORDER BY date_str DESC"
 
         count_sql = f"SELECT COUNT(*) FROM {table}{where_sql}"
-        total_count = cursor.execute(count_sql, params).fetchone()[0]
+        total_count = cursor.execute(count_sql, params).fetchall()[0][0]
 
         query_sql = f"SELECT * FROM {table}{where_sql}{order_by_sql} LIMIT ? OFFSET ?"
         result = cursor.execute(query_sql, params + [limit, offset])

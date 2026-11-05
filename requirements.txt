@@ -10,7 +10,7 @@ defusedxml>=0.7.1
 # High Performance Data Processing & Storage
 polars>=0.20.0
 pyarrow>=14.0.0
-duckdb>=0.10.0
+duckdb>=1.5.0
 
 # Configuration & Typing
 pydantic>=2.6.0
