@@ -11,7 +11,7 @@ app_port: 7860
 
 [![CI](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml)
 
-Motor de Inteligencia de Mercado diseñado bajo arquitectura **Medallion (Bronze / Silver / Gold)**. Ingiere de forma asíncrona datos de mercado financiero (OHLCV de Binance), sentimiento social (Reddit / Noticias) y macro-sentimiento (Crypto Fear & Greed Index), aplicando modelos **NLP (FinBERT)** para generar un conjunto de datos consolidado en **DuckDB** listo para modelos de Machine Learning y estrategias de trading algorítmico.
+Motor de Inteligencia de Mercado diseñado bajo arquitectura **Medallion (Bronze / Silver / Gold)**. Ingiere de forma asíncrona datos de mercado financiero (OHLCV de Binance), sentimiento social (Reddit / Noticias RSS) y deriva un índice Fear & Greed propio a partir del sentimiento NLP, aplicando modelos **NLP (FinBERT)** para generar un conjunto de datos consolidado en **DuckDB** listo para modelos de Machine Learning y estrategias de trading algorítmico.
 
 ---
 
@@ -31,24 +31,27 @@ Para el informe de diseño profundo y PRD institucional, consultar [docs/PRD.md]
 ### 1. Crear entorno virtual e instalar dependencias
 ```bash
 py -m venv venv
-.\venv\Scripts\pip install -r requirements.txt
+.\venv\Scripts\pip install -r requirements-dev.txt
+cd frontend
+npm install
 ```
 
 ### 2. Configurar variables de entorno
 ```bash
 copy .env.example .env
 ```
+> En producción define un `API_SECRET_KEY` propio: el valor por defecto es público y el servidor avisa al arrancar si se usa.
 
 ### 3. Encender el Servidor y Dashboard Web (1 Clic)
-Puedes iniciar el servidor web interactivo usando los scripts automáticos:
-- **Doble clic en Windows**: `start_dashboard.bat` (inicia el servidor y abre el navegador automáticamente).
+Puedes iniciar backend y frontend usando los scripts automáticos:
+- **Doble clic en Windows**: `start.bat` (inicia ambos servicios y abre el navegador automáticamente).
 - **Desde PowerShell**:
   ```powershell
-  .\start_dashboard.ps1
+  .\start.ps1
   ```
-El terminal estará disponible en:
-* **Terminal Cuantitativo:** `http://localhost:8080`
-* **Panel de Administración & Telemetría:** `http://localhost:8080/admin`
+Servicios disponibles:
+* **Terminal Cuantitativo (frontend Next.js):** `http://localhost:3000`
+* **API FastAPI + Swagger UI:** `http://localhost:8080/docs`
 
 ### 4. Ejecutar el Pipeline ELT
 Puedes ejecutar el pipeline mediante los scripts rápidos o directamente con Python:
@@ -64,6 +67,7 @@ Puedes ejecutar el pipeline mediante los scripts rápidos o directamente con Pyt
 ```bash
 .\venv\Scripts\pytest tests/ -v
 ```
+Sin conexión a internet puedes excluir los tests que llaman a APIs reales con `-m "not network"`.
 
 ---
 
@@ -74,10 +78,13 @@ sentiment-analysis/
 │   └── PRD.md                   # Product Requirements Document & Arquitectura
 ├── src/
 │   ├── configs/                 # Configuración Pydantic & variables de entorno
-│   ├── extractors/              # Extractores asíncronos (Binance, FearGreed, Social)
+│   ├── extractors/              # Extractores asíncronos (Binance, Reddit/RSS)
 │   ├── storage/                 # Data Lake Bronze y Almacén DuckDB
 │   ├── nlp/                     # Limpieza con Polars y motor FinBERT
 │   ├── pipeline/                # Orquestador del ciclo E -> L -> T
+│   ├── analytics/               # Señales cuantitativas (alpha, divergencias)
+│   ├── dashboard/               # API FastAPI
 │   └── main.py                  # CLI ejecutable
+├── frontend/                    # Terminal web Next.js
 └── tests/                       # Suite de pruebas unitarias
 ```

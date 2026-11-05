@@ -70,10 +70,10 @@ def mock_pipeline_network(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_pipeline_stages_modular(mock_pipeline_network):
+async def test_pipeline_stages_modular(mock_pipeline_network, monkeypatch):
     with tempfile.TemporaryDirectory() as tmpdir:
-        settings.duckdb_path = Path(tmpdir) / "test.duckdb"
-        settings.bronze_dir = Path(tmpdir) / "bronze"
+        monkeypatch.setattr(settings, "duckdb_path", Path(tmpdir) / "test.duckdb")
+        monkeypatch.setattr(settings, "bronze_dir", Path(tmpdir) / "bronze")
 
         pipeline = MarketIntelligencePipeline(symbol="BTCUSDT", hours=2, force_mock_nlp=True)
         try:
@@ -111,10 +111,10 @@ async def test_pipeline_stages_modular(mock_pipeline_network):
 
 
 @pytest.mark.asyncio
-async def test_pipeline_run_end_to_end(mock_pipeline_network):
+async def test_pipeline_run_end_to_end(mock_pipeline_network, monkeypatch):
     with tempfile.TemporaryDirectory() as tmpdir:
-        settings.duckdb_path = Path(tmpdir) / "test_e2e.duckdb"
-        settings.bronze_dir = Path(tmpdir) / "bronze_e2e"
+        monkeypatch.setattr(settings, "duckdb_path", Path(tmpdir) / "test_e2e.duckdb")
+        monkeypatch.setattr(settings, "bronze_dir", Path(tmpdir) / "bronze_e2e")
 
         pipeline = MarketIntelligencePipeline(symbol="ETHUSDT", hours=2, force_mock_nlp=True)
         result = await pipeline.run()

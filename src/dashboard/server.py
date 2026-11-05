@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-import csv
 import datetime as dt
 import hmac
 import io
@@ -21,19 +20,18 @@ if sys.platform == "win32":
         pass
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-import duckdb
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Security, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from rich.console import Console
 
 from ..analytics.quant_signals import QuantSignalsEngine
-from ..configs.settings import settings
+from ..configs.settings import INSECURE_DEFAULT_SECRET, settings
 from ..nlp.cleaner import TextCleaner
 from ..nlp.finbert_engine import FinBERTEngine
 from ..pipeline.orchestrator import MarketIntelligencePipeline
@@ -71,6 +69,23 @@ def check_rate_limit(client_id: str, max_requests: int = 120, window_seconds: fl
                 if not _rate_limits[k] or _rate_limits[k][-1] < cutoff:
                     _rate_limits.pop(k, None)
         return False
+
+
+def _client_id(request: Request) -> str:
+    # Behind the Next.js proxy every request comes from loopback, so prefer the forwarded client address
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def enforce_rate_limit(request: Request) -> None:
+    """FastAPI dependency that rejects clients exceeding the request budget with HTTP 429."""
+    if check_rate_limit(_client_id(request)):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded. Please retry in a minute.",
+        )
 
 
 SYMBOL_RE = re.compile(r"^[A-Za-z0-9_-]{2,20}$")
@@ -151,6 +166,16 @@ def verify_admin_token(
 # Lifespan for FastAPI
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.api_secret_key == INSECURE_DEFAULT_SECRET:
+        logger.warning("API_SECRET_KEY is using the insecure default value. Set a strong secret in production.")
+
+    # Create the DuckDB schema up front so admin endpoints work on a fresh install
+    try:
+        settings.setup_directories()
+        MarketWarehouse().close()
+    except Exception as exc:
+        logger.error(f"Warehouse schema initialization failed: {exc}")
+
     # Pre-warm NLP engine in background thread so it boots without blocking API startup
     def _prewarm():
         try:
@@ -174,7 +199,7 @@ app = FastAPI(
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins + ["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -338,7 +363,7 @@ async def export_gold_csv(
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@app.post("/api/analyze-text", tags=["NLP Engine"])
+@app.post("/api/analyze-text", tags=["NLP Engine"], dependencies=[Depends(enforce_rate_limit)])
 async def analyze_text(request: AnalyzeTextRequest):
     """Executes real-time financial sentiment classification using FinBERT."""
     try:
@@ -356,7 +381,8 @@ async def analyze_text(request: AnalyzeTextRequest):
             }
 
         # Run inference in worker thread to prevent GIL event-loop blockage
-        nlp = get_sandbox_nlp()
+        # Loading the model can take a while on first use: keep it off the event loop too
+        nlp = await asyncio.to_thread(get_sandbox_nlp)
         preds = await asyncio.to_thread(nlp.predict_batch, [cleaned])
         return preds[0] if preds else {
             "sentiment_score": 0.0,
@@ -387,10 +413,10 @@ async def get_admin_metrics():
         social_files = len(list(bronze_dir.glob("social/**/*.parquet"))) if bronze_dir.exists() else 0
 
         cursor = MarketWarehouse.get_shared_cursor()
-        silver_m = cursor.execute("SELECT COUNT(*) FROM silver_market_prices").fetchone()[0]
-        silver_s = cursor.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchone()[0]
+        silver_m = cursor.execute("SELECT COUNT(*) FROM silver_market_prices").fetchall()[0][0]
+        silver_s = cursor.execute("SELECT COUNT(*) FROM silver_social_sentiment").fetchall()[0][0]
 
-        gold_total = cursor.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchone()[0]
+        gold_total = cursor.execute("SELECT COUNT(*) FROM gold_hourly_market_sentiment").fetchall()[0][0]
         symbols = [
             r[0]
             for r in cursor.execute("SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment").fetchall()
@@ -524,7 +550,7 @@ async def get_table_data(
             order_by_sql = " ORDER BY date_str DESC"
 
         count_sql = f"SELECT COUNT(*) FROM {table}{where_sql}"
-        total_count = cursor.execute(count_sql, params).fetchone()[0]
+        total_count = cursor.execute(count_sql, params).fetchall()[0][0]
 
         query_sql = f"SELECT * FROM {table}{where_sql}{order_by_sql} LIMIT ? OFFSET ?"
         result = cursor.execute(query_sql, params + [limit, offset])
@@ -600,7 +626,7 @@ async def trigger_pipeline(request: RunPipelineRequest):
             symbol=symbol,
             hours=request.hours,
             force_mock_nlp=False,
-            nlp_engine=get_sandbox_nlp(),
+            nlp_engine=await asyncio.to_thread(get_sandbox_nlp),
         )
         try:
             result = await pipeline.run()
@@ -635,7 +661,7 @@ async def trigger_stage(request: RunStageRequest):
             symbol=symbol,
             hours=request.hours,
             force_mock_nlp=False,
-            nlp_engine=get_sandbox_nlp(),
+            nlp_engine=await asyncio.to_thread(get_sandbox_nlp),
         )
         try:
             if stage == "extract":
@@ -643,7 +669,6 @@ async def trigger_stage(request: RunStageRequest):
                 bronze_res = pipeline.land_bronze(
                     raw_market=extracted["market"],
                     raw_social=extracted["social"],
-                    raw_fear_greed=extracted.get("fear_greed"),
                 )
                 elapsed = round(time.time() - t0, 2)
                 return {
@@ -652,7 +677,6 @@ async def trigger_stage(request: RunStageRequest):
                     "symbol": symbol,
                     "candles": len(extracted["market"]),
                     "social_records": len(extracted["social"]),
-                    "fear_greed_records": len(extracted.get("fear_greed", [])),
                     "bronze_files": bronze_res["files"],
                     "elapsed_seconds": elapsed,
                 }

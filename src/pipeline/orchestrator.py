@@ -70,11 +70,17 @@ class MarketIntelligencePipeline:
         market_task = self.binance_ext.extract(symbol=self.symbol, limit=self.hours)
         social_task = self.social_ext.extract(limit_per_sub=15)
 
-        results = await asyncio.gather(
-            market_task, social_task, return_exceptions=True
-        )
-        raw_market = results[0] if not isinstance(results[0], Exception) else []
-        raw_social = results[1] if not isinstance(results[1], Exception) else []
+        try:
+            results = await asyncio.gather(market_task, social_task, return_exceptions=True)
+        finally:
+            # Release pooled HTTP connections held by the extractors
+            await asyncio.gather(self.binance_ext.close(), self.social_ext.close(), return_exceptions=True)
+
+        for stream, res in zip(("market", "social"), results):
+            if isinstance(res, BaseException):
+                console.print(f"   [bold red][ERROR][/bold red] {stream} extraction failed: {res!r}")
+        raw_market = results[0] if not isinstance(results[0], BaseException) else []
+        raw_social = results[1] if not isinstance(results[1], BaseException) else []
 
         console.print(f"   [green][OK][/green] Extracted {len(raw_market)} market candles for {self.symbol}")
         console.print(f"   [green][OK][/green] Extracted {len(raw_social)} social posts/news headlines")
@@ -176,13 +182,15 @@ class MarketIntelligencePipeline:
             )
 
             # 3. Silver Layer Transformations & NLP Enrichment
-            silver_res = self.transform_silver(
+            # CPU-bound (FinBERT inference): run in a worker thread so the API event loop stays responsive
+            silver_res = await asyncio.to_thread(
+                self.transform_silver,
                 raw_market=extracted["market"],
                 raw_social=extracted["social"],
             )
 
             # 4. Gold Analytics Consolidation & Alpha Signal Generation
-            gold_df = self.aggregate_gold()
+            gold_df = await asyncio.to_thread(self.aggregate_gold)
 
             elapsed_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
             console.print(f"[bold green][OK] Pipeline completed in {elapsed_seconds:.2f}s[/bold green]")
