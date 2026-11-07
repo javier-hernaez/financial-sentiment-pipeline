@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     fear_greed_base_url: str = Field(default="https://api.alternative.me", alias="FEAR_GREED_BASE_URL")
     default_symbol: str = Field(default="BTCUSDT", alias="DEFAULT_SYMBOL")
     default_interval: str = Field(default="1h", alias="DEFAULT_INTERVAL")
+    supported_assets: list[str] = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+    # Public repository, used to report the latest CI run on the project page
+    github_repo: str = Field(default="javier-hernaez/financial-sentiment-pipeline", alias="GITHUB_REPO")
+    github_branch: str = Field(default="main", alias="GITHUB_BRANCH")
 
     # Security & Access Control
     api_secret_key: str = Field(default=INSECURE_DEFAULT_SECRET, alias="API_SECRET_KEY")

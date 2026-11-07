@@ -1,6 +1,7 @@
 """High-End Quant Market Intelligence FastAPI Server with Real-time Candlesticks, FinBERT Sandbox & Alpha Signals."""
 
 import argparse
+import ast
 import asyncio
 import datetime as dt
 import hmac
@@ -32,6 +33,7 @@ from rich.console import Console
 
 from ..analytics.quant_signals import QuantSignalsEngine
 from ..configs.settings import INSECURE_DEFAULT_SECRET, settings
+from ..extractors import SocialRedditExtractor
 from ..nlp.cleaner import TextCleaner
 from ..nlp.finbert_engine import FinBERTEngine
 from ..pipeline.orchestrator import MarketIntelligencePipeline
@@ -292,8 +294,163 @@ async def status_check():
         "server": "online",
         "port": 8080,
         "duckdb_exists": os.path.exists(db_path),
-        "supported_assets": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+        "supported_assets": settings.supported_assets,
     }
+
+
+# ── Project page facts: everything below is read from the repository, the extractors or the GitHub API ──
+
+_ci_cache: Dict[str, Any] = {"at": 0.0, "value": None}
+CI_CACHE_SECONDS = 600
+
+
+def _count_tests(tests_dir: Path) -> Optional[Dict[str, Any]]:
+    """Counts test functions per file by parsing the test modules (no import, no execution)."""
+    if not tests_dir.is_dir():
+        return None
+    files = []
+    for path in sorted(tests_dir.glob("test_*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        count = sum(
+            1
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_")
+        )
+        files.append({"file": path.name, "tests": count})
+    return {"total": sum(f["tests"] for f in files), "files": files}
+
+
+def _read_ci_config(workflow: Path) -> Optional[Dict[str, Any]]:
+    """Extracts what the CI workflow actually runs from .github/workflows/ci.yml."""
+    if not workflow.is_file():
+        return None
+    text = workflow.read_text(encoding="utf-8")
+    matrix = re.search(r"python-version:\s*\[([^\]]+)\]", text)
+    versions = [v.strip().strip("'\"") for v in matrix.group(1).split(",")] if matrix else []
+    return {
+        "python_versions": versions,
+        "lint": "ruff check" in text,
+        "coverage": "--cov" in text,
+        "frontend_build": "npm run build" in text,
+        "docker_publish": "docker/build-push-action" in text or "ghcr.io" in text,
+    }
+
+
+async def _latest_ci_run() -> Optional[Dict[str, Any]]:
+    """Latest GitHub Actions run on the configured branch, cached for 10 minutes. None when unreachable."""
+    now = time.time()
+    if now - _ci_cache["at"] < CI_CACHE_SECONDS:
+        return _ci_cache["value"]
+    value = None
+    url = f"https://api.github.com/repos/{settings.github_repo}/actions/runs"
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            res = await client.get(
+                url,
+                params={"branch": settings.github_branch, "per_page": 1},
+                headers={"Accept": "application/vnd.github+json", "User-Agent": "sentiment-elt-dashboard"},
+            )
+        if res.status_code == 200:
+            runs = res.json().get("workflow_runs", [])
+            if runs:
+                r = runs[0]
+                value = {
+                    "name": r.get("name"),
+                    "status": r.get("status"),
+                    "conclusion": r.get("conclusion"),
+                    "branch": r.get("head_branch"),
+                    "commit": (r.get("head_sha") or "")[:7],
+                    "created_at": r.get("created_at"),
+                    "url": r.get("html_url"),
+                }
+    except httpx.HTTPError as exc:
+        logger.warning(f"GitHub Actions lookup failed: {exc}")
+    _ci_cache.update(at=now, value=value)
+    return value
+
+
+@app.get("/api/project/quality", tags=["General"], dependencies=[Depends(enforce_rate_limit)])
+async def project_quality():
+    """Test inventory, CI configuration and latest CI result, derived from the repository itself."""
+    root = settings.project_root
+    return {
+        "repository": settings.github_repo,
+        "tests": _count_tests(root / "tests"),
+        "ci": _read_ci_config(root / ".github" / "workflows" / "ci.yml"),
+        "latest_ci_run": await _latest_ci_run(),
+    }
+
+
+@app.get("/api/admin/runs", tags=["Pipeline Operations"], dependencies=[Depends(verify_admin_token)])
+async def list_pipeline_runs(limit: int = Query(default=20, ge=1, le=200)):
+    """Recorded pipeline executions (full runs and single stages), newest first."""
+    try:
+        with MarketWarehouse() as warehouse:
+            return {"runs": warehouse.list_runs(limit=limit)}
+    except Exception as exc:
+        logger.error(f"Listing pipeline runs failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/admin/lineage", tags=["Admin & Telemetry"], dependencies=[Depends(verify_admin_token)])
+async def get_lineage():
+    """Sources, Bronze partitions and DuckDB objects as they exist right now."""
+    try:
+        bronze_dir = Path(settings.bronze_dir)
+        bronze_sources = []
+        if bronze_dir.exists():
+            for source_dir in sorted(p for p in bronze_dir.iterdir() if p.is_dir()):
+                files = list(source_dir.glob("**/*.parquet"))
+                if not files:
+                    continue
+                newest = max(files, key=lambda f: f.stat().st_mtime)
+                bronze_sources.append(
+                    {
+                        "source": source_dir.name,
+                        "active": source_dir.name in MarketIntelligencePipeline.BRONZE_SOURCES,
+                        "files": len(files),
+                        "size_kb": round(sum(f.stat().st_size for f in files) / 1024, 1),
+                        "latest_path": str(newest.relative_to(bronze_dir)).replace("\\", "/"),
+                        "latest_modified": dt.datetime.fromtimestamp(
+                            newest.stat().st_mtime, tz=dt.timezone.utc
+                        ).isoformat(),
+                    }
+                )
+
+        with MarketWarehouse() as warehouse:
+            tables = warehouse.describe_tables()
+            assets = warehouse.distinct_assets()
+
+        db_path = settings.duckdb_path
+        return {
+            "sources": {
+                "binance": {
+                    "endpoint": f"{settings.binance_base_url}/api/v3/klines",
+                    "interval": settings.default_interval,
+                    "assets": settings.supported_assets,
+                },
+                "social": {
+                    "subreddits": SocialRedditExtractor.DEFAULT_SUBREDDITS,
+                    "rss_feeds": [name for name, _ in SocialRedditExtractor.RSS_FEEDS],
+                },
+                "retries": {
+                    "max_retries": settings.max_retries,
+                    "base_backoff_seconds": settings.base_backoff_seconds,
+                    "max_backoff_seconds": settings.max_backoff_seconds,
+                },
+            },
+            "bronze": bronze_sources,
+            "tables": tables,
+            "gold_assets": assets,
+            "nlp": {"model": settings.finbert_model_name, "batch_size": settings.nlp_batch_size},
+            "duckdb_size_kb": round(os.path.getsize(db_path) / 1024, 1) if os.path.exists(db_path) else 0,
+        }
+    except Exception as exc:
+        logger.error(f"Lineage inspection failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/gold", tags=["Quant Terminal"])
@@ -505,6 +662,8 @@ async def get_table_data(
         "gold_hourly_market_sentiment",
         "silver_market_prices",
         "silver_social_sentiment",
+        "silver_fear_greed",
+        "pipeline_runs",
     }
     if table not in allowed_tables:
         raise HTTPException(status_code=400, detail=f"Table not allowed: {table}")
@@ -521,7 +680,7 @@ async def get_table_data(
         where_clauses = []
         params = []
 
-        if clean_sym and table in ("gold_hourly_market_sentiment", "silver_market_prices"):
+        if clean_sym and table in ("gold_hourly_market_sentiment", "silver_market_prices", "silver_social_sentiment"):
             where_clauses.append("asset_ticker = ?")
             params.append(clean_sym)
 
@@ -538,6 +697,9 @@ async def get_table_data(
             elif table == "silver_fear_greed":
                 where_clauses.append("(date_str ILIKE ? OR fear_and_greed_classification ILIKE ?)")
                 params.extend([f"%{search_clean}%", f"%{search_clean}%"])
+            elif table == "pipeline_runs":
+                where_clauses.append("(stage ILIKE ? OR status ILIKE ? OR symbol ILIKE ?)")
+                params.extend([f"%{search_clean}%", f"%{search_clean}%", f"%{search_clean}%"])
 
         where_sql = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
@@ -548,6 +710,8 @@ async def get_table_data(
             order_by_sql = " ORDER BY timestamp_hour DESC"
         elif table == "silver_fear_greed":
             order_by_sql = " ORDER BY date_str DESC"
+        elif table == "pipeline_runs":
+            order_by_sql = " ORDER BY started_at DESC"
 
         count_sql = f"SELECT COUNT(*) FROM {table}{where_sql}"
         total_count = cursor.execute(count_sql, params).fetchall()[0][0]
@@ -629,8 +793,9 @@ async def trigger_pipeline(request: RunPipelineRequest):
             nlp_engine=await asyncio.to_thread(get_sandbox_nlp),
         )
         try:
-            result = await pipeline.run()
+            result = await pipeline.run(triggered_by="api")
             return {
+                "run_id": result["run_id"],
                 "symbol": result["symbol"],
                 "candles_processed": result["candles_processed"],
                 "posts_processed": result["posts_processed"],
@@ -653,7 +818,6 @@ async def trigger_stage(request: RunStageRequest):
         )
 
     async with pipeline_lock:
-        t0 = time.time()
         symbol = sanitize_symbol(request.symbol)
         stage = request.stage.lower()
 
@@ -664,61 +828,8 @@ async def trigger_stage(request: RunStageRequest):
             nlp_engine=await asyncio.to_thread(get_sandbox_nlp),
         )
         try:
-            if stage == "extract":
-                extracted = await pipeline.extract()
-                bronze_res = pipeline.land_bronze(
-                    raw_market=extracted["market"],
-                    raw_social=extracted["social"],
-                )
-                elapsed = round(time.time() - t0, 2)
-                return {
-                    "status": "success",
-                    "stage": "extract",
-                    "symbol": symbol,
-                    "candles": len(extracted["market"]),
-                    "social_records": len(extracted["social"]),
-                    "bronze_files": bronze_res["files"],
-                    "elapsed_seconds": elapsed,
-                }
-
-            elif stage == "transform":
-                silver_res = await asyncio.to_thread(pipeline.transform_silver)
-                elapsed = round(time.time() - t0, 2)
-                return {
-                    "status": "success",
-                    "stage": "transform",
-                    "symbol": symbol,
-                    "candles_processed": silver_res["candles_processed"],
-                    "posts_processed": silver_res["posts_processed"],
-                    "total_silver_market": silver_res["total_silver_market"],
-                    "total_silver_social": silver_res["total_silver_social"],
-                    "total_silver_fear_greed": silver_res.get("total_silver_fear_greed", 0),
-                    "elapsed_seconds": elapsed,
-                }
-
-            elif stage == "gold":
-                enriched = await asyncio.to_thread(pipeline.aggregate_gold)
-                elapsed = round(time.time() - t0, 2)
-                return {
-                    "status": "success",
-                    "stage": "gold",
-                    "symbol": symbol,
-                    "consolidated_hours": len(enriched),
-                    "elapsed_seconds": elapsed,
-                }
-
-            else:
-                result = await pipeline.run()
-                return {
-                    "status": "success",
-                    "stage": "full",
-                    "symbol": result["symbol"],
-                    "candles_processed": result["candles_processed"],
-                    "posts_processed": result["posts_processed"],
-                    "total_silver_market": result.get("total_silver_market", 0),
-                    "total_silver_social": result.get("total_silver_social", 0),
-                    "elapsed_seconds": round(result["elapsed_seconds"], 2),
-                }
+            # The orchestrator times each stage and records the execution in pipeline_runs
+            return await pipeline.run_stage(stage, triggered_by="api")
         except Exception as exc:
             logger.error(f"Stage {stage} failed: {exc}")
             raise HTTPException(status_code=500, detail={"error": str(exc), "stage": stage})

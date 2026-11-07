@@ -59,6 +59,9 @@ COPY --from=frontend-builder --chown=user:user /build/.next/static ./frontend/.n
 
 # Copy project source and setup data directory
 COPY --chown=user:user src/ ./src/
+# Tests and CI workflow are read (not run) by /api/project/quality to report test and CI facts
+COPY --chown=user:user tests/ ./tests/
+COPY --chown=user:user .github/workflows/ci.yml ./.github/workflows/ci.yml
 COPY --chown=user:user start.sh ./
 RUN chmod +x start.sh && mkdir -p /app/data/bronze /app/data/silver /app/data/gold
 

@@ -124,3 +124,60 @@ async def test_pipeline_run_end_to_end(mock_pipeline_network, monkeypatch):
         assert result["posts_processed"] > 0
         assert isinstance(result["gold_preview"], pl.DataFrame)
         assert result["elapsed_seconds"] > 0
+
+
+@pytest.mark.asyncio
+async def test_pipeline_run_is_recorded_with_stage_timings(mock_pipeline_network, monkeypatch):
+    from src.storage import MarketWarehouse
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db = Path(tmpdir) / "runs.duckdb"
+        monkeypatch.setattr(settings, "duckdb_path", db)
+        monkeypatch.setattr(settings, "bronze_dir", Path(tmpdir) / "bronze_runs")
+        try:
+            pipeline = MarketIntelligencePipeline(symbol="BTCUSDT", hours=2, force_mock_nlp=True)
+            result = await pipeline.run(triggered_by="test")
+
+            with MarketWarehouse(db_path=db) as warehouse:
+                runs = warehouse.list_runs()
+            assert len(runs) == 1
+            run = runs[0]
+            assert run["run_id"] == result["run_id"]
+            assert run["status"] == "success"
+            assert run["stage"] == "full"
+            assert run["triggered_by"] == "test"
+            assert run["candles"] == 2
+            assert run["bronze_files"] == 2
+            assert run["gold_rows"] > 0
+            for key in ("extract_seconds", "load_seconds", "transform_seconds", "gold_seconds"):
+                assert run[key] is not None and run[key] >= 0
+            assert run["elapsed_seconds"] >= run["transform_seconds"]
+        finally:
+            MarketWarehouse.close_all_shared()
+
+
+@pytest.mark.asyncio
+async def test_failed_stage_is_recorded_with_error(mock_pipeline_network, monkeypatch):
+    from src.storage import MarketWarehouse
+
+    def broken_gold(self):
+        raise RuntimeError("gold view unavailable")
+
+    monkeypatch.setattr(MarketIntelligencePipeline, "aggregate_gold", broken_gold)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db = Path(tmpdir) / "runs_fail.duckdb"
+        monkeypatch.setattr(settings, "duckdb_path", db)
+        monkeypatch.setattr(settings, "bronze_dir", Path(tmpdir) / "bronze_fail")
+        try:
+            pipeline = MarketIntelligencePipeline(symbol="BTCUSDT", hours=2, force_mock_nlp=True)
+            with pytest.raises(RuntimeError):
+                await pipeline.run_stage("gold")
+
+            with MarketWarehouse(db_path=db) as warehouse:
+                runs = warehouse.list_runs()
+            assert len(runs) == 1
+            assert runs[0]["status"] == "failed"
+            assert runs[0]["stage"] == "gold"
+            assert "gold view unavailable" in runs[0]["error"]
+        finally:
+            MarketWarehouse.close_all_shared()

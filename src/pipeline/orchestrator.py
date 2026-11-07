@@ -1,6 +1,8 @@
 """End-to-End Orchestrator for the Market Intelligence ELT Engine."""
 
 import asyncio
+import time
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -18,6 +20,9 @@ console = Console()
 
 class MarketIntelligencePipeline:
     """Coordinates extraction, bronze landing, NLP enrichment, and DuckDB warehousing."""
+
+    # Bronze sources written by land_bronze(); other folders in the lake come from earlier versions
+    BRONZE_SOURCES = ("market", "social")
 
     def __init__(
         self,
@@ -97,8 +102,9 @@ class MarketIntelligencePipeline:
     ) -> Dict[str, Any]:
         """Lands extracted records into the Bronze Data Lake (immutable Parquet)."""
         console.print("[bold blue]2. Storing raw data in Bronze Lake...[/bold blue]")
-        p_market = self.lake.write_raw_records("market", raw_market, symbol=self.symbol) if raw_market else None
-        p_social = self.lake.write_raw_records("social", raw_social) if raw_social else None
+        market_src, social_src = self.BRONZE_SOURCES
+        p_market = self.lake.write_raw_records(market_src, raw_market, symbol=self.symbol) if raw_market else None
+        p_social = self.lake.write_raw_records(social_src, raw_social) if raw_social else None
 
         files = [p.name for p in [p_market, p_social] if p is not None]
         return {
@@ -159,7 +165,35 @@ class MarketIntelligencePipeline:
         gold_df_raw = self.warehouse.query_gold(symbol=self.symbol, limit=self.hours)
         return QuantSignalsEngine.calculate_signals(gold_df_raw)
 
-    async def run(self) -> Dict[str, Any]:
+    # ── Run history ─────────────────────────────────────────────────────
+
+    def _new_run(self, stage: str, triggered_by: str) -> Dict[str, Any]:
+        return {
+            "run_id": uuid.uuid4().hex[:12],
+            "started_at": datetime.now(timezone.utc),
+            "triggered_by": triggered_by,
+            "stage": stage,
+            "symbol": self.symbol,
+            "hours": self.hours,
+            "status": "running",
+        }
+
+    def _finish_run(self, run: Dict[str, Any], error: Optional[BaseException] = None) -> None:
+        """Stamps the outcome and persists it. A failure to record never masks the pipeline result."""
+        run["finished_at"] = datetime.now(timezone.utc)
+        run["elapsed_seconds"] = (run["finished_at"] - run["started_at"]).total_seconds()
+        run["status"] = "failed" if error else "success"
+        run["error"] = str(error)[:500] if error else None
+        try:
+            self.warehouse.record_run(run)
+        except Exception as exc:
+            console.print(f"   [yellow][WARN][/yellow] Could not record run {run['run_id']}: {exc!r}")
+
+    @staticmethod
+    def _timed() -> float:
+        return time.perf_counter()
+
+    async def run(self, triggered_by: str = "cli") -> Dict[str, Any]:
         """
         Executes the full ELT cycle asynchronously.
         1. Async Extraction of Market and Social/News data in parallel.
@@ -167,42 +201,129 @@ class MarketIntelligencePipeline:
         3. Text cleaning (Polars) and NLP Sentiment Scoring (FinBERT).
         4. Upsert into DuckDB Silver Layer.
         5. Consolidation into Gold Layer with pure NLP-derived Fear & Greed consensus.
+        Every execution, successful or not, is recorded in pipeline_runs with per-stage timings.
         """
-        start_time = datetime.now(timezone.utc)
+        run = self._new_run("full", triggered_by)
         console.rule(f"[bold green]Starting Market Intelligence Pipeline ({self.symbol})[/bold green]")
 
         try:
             # 1. Extraction Layer
+            t0 = self._timed()
             extracted = await self.extract()
+            run["extract_seconds"] = self._timed() - t0
 
             # 2. Bronze Data Lake Landing
-            self.land_bronze(
+            t0 = self._timed()
+            bronze_res = self.land_bronze(
                 raw_market=extracted["market"],
                 raw_social=extracted["social"],
             )
+            run["load_seconds"] = self._timed() - t0
+            run["bronze_files"] = len(bronze_res["files"])
 
             # 3. Silver Layer Transformations & NLP Enrichment
             # CPU-bound (FinBERT inference): run in a worker thread so the API event loop stays responsive
+            t0 = self._timed()
             silver_res = await asyncio.to_thread(
                 self.transform_silver,
                 raw_market=extracted["market"],
                 raw_social=extracted["social"],
             )
+            run["transform_seconds"] = self._timed() - t0
+            run["candles"] = silver_res["candles_processed"]
+            run["posts"] = silver_res["posts_processed"]
 
             # 4. Gold Analytics Consolidation & Alpha Signal Generation
+            t0 = self._timed()
             gold_df = await asyncio.to_thread(self.aggregate_gold)
+            run["gold_seconds"] = self._timed() - t0
+            run["gold_rows"] = len(gold_df)
 
-            elapsed_seconds = (datetime.now(timezone.utc) - start_time).total_seconds()
-            console.print(f"[bold green][OK] Pipeline completed in {elapsed_seconds:.2f}s[/bold green]")
+            self._finish_run(run)
+            console.print(f"[bold green][OK] Pipeline completed in {run['elapsed_seconds']:.2f}s[/bold green]")
 
             return {
+                "run_id": run["run_id"],
                 "symbol": self.symbol,
                 "candles_processed": silver_res["candles_processed"],
                 "posts_processed": silver_res["posts_processed"],
                 "total_silver_market": silver_res["total_silver_market"],
                 "total_silver_social": silver_res["total_silver_social"],
                 "gold_preview": gold_df,
-                "elapsed_seconds": elapsed_seconds,
+                "elapsed_seconds": run["elapsed_seconds"],
             }
+        except Exception as exc:
+            self._finish_run(run, exc)
+            raise
+        finally:
+            self.close()
+
+    async def run_stage(self, stage: str, triggered_by: str = "api") -> Dict[str, Any]:
+        """Runs a single stage (extract, transform, gold) or the full pipeline, recording it in pipeline_runs."""
+        stage = (stage or "full").lower()
+        if stage not in ("extract", "transform", "gold"):
+            result = await self.run(triggered_by=triggered_by)
+            return {
+                "status": "success",
+                "stage": "full",
+                "run_id": result["run_id"],
+                "symbol": result["symbol"],
+                "candles_processed": result["candles_processed"],
+                "posts_processed": result["posts_processed"],
+                "total_silver_market": result.get("total_silver_market", 0),
+                "total_silver_social": result.get("total_silver_social", 0),
+                "elapsed_seconds": round(result["elapsed_seconds"], 2),
+            }
+
+        run = self._new_run(stage, triggered_by)
+        try:
+            if stage == "extract":
+                t0 = self._timed()
+                extracted = await self.extract()
+                run["extract_seconds"] = self._timed() - t0
+                t0 = self._timed()
+                bronze_res = self.land_bronze(raw_market=extracted["market"], raw_social=extracted["social"])
+                run["load_seconds"] = self._timed() - t0
+                run.update(
+                    candles=len(extracted["market"]),
+                    posts=len(extracted["social"]),
+                    bronze_files=len(bronze_res["files"]),
+                )
+                result = {
+                    "candles": len(extracted["market"]),
+                    "social_records": len(extracted["social"]),
+                    "bronze_files": bronze_res["files"],
+                }
+            elif stage == "transform":
+                t0 = self._timed()
+                silver_res = await asyncio.to_thread(self.transform_silver)
+                run["transform_seconds"] = self._timed() - t0
+                run.update(candles=silver_res["candles_processed"], posts=silver_res["posts_processed"])
+                result = {
+                    "candles_processed": silver_res["candles_processed"],
+                    "posts_processed": silver_res["posts_processed"],
+                    "total_silver_market": silver_res["total_silver_market"],
+                    "total_silver_social": silver_res["total_silver_social"],
+                    "total_silver_fear_greed": silver_res.get("total_silver_fear_greed", 0),
+                }
+            else:
+                t0 = self._timed()
+                enriched = await asyncio.to_thread(self.aggregate_gold)
+                run["gold_seconds"] = self._timed() - t0
+                run["gold_rows"] = len(enriched)
+                result = {"consolidated_hours": len(enriched)}
+
+            self._finish_run(run)
+            return {
+                "status": "success",
+                "stage": stage,
+                "run_id": run["run_id"],
+                "symbol": self.symbol,
+                **result,
+                "elapsed_seconds": round(run["elapsed_seconds"], 2),
+            }
+        except Exception as exc:
+            self._finish_run(run, exc)
+            raise
         finally:
             self.close()

@@ -55,6 +55,22 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         ("marketwatch", "https://feeds.content.dowjones.io/public/rss/mw_topstories"),
     ]
 
+    DEFAULT_SUBREDDITS: List[str] = [
+        "CryptoCurrency",
+        "wallstreetbets",
+        "Bitcoin",
+        "ethereum",
+        "CryptoMarkets",
+        "Altcoin",
+        "investing",
+        "Finance",
+        "btc",
+        "ethfinance",
+        "solana",
+        "StockMarket",
+        "economics",
+    ]
+
     def __init__(
         self,
         base_url: str = "https://www.reddit.com",
@@ -65,21 +81,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             base_url=base_url,
             headers={"User-Agent": "MarketIntelligenceEngine/1.0"},
         )
-        self.subreddits = subreddits or [
-            "CryptoCurrency",
-            "wallstreetbets",
-            "Bitcoin",
-            "ethereum",
-            "CryptoMarkets",
-            "Altcoin",
-            "investing",
-            "Finance",
-            "btc",
-            "ethfinance",
-            "solana",
-            "StockMarket",
-            "economics",
-        ]
+        self.subreddits = subreddits or list(self.DEFAULT_SUBREDDITS)
 
     async def extract_subreddit(self, subreddit: str, limit: int = 25, category: str = "hot") -> List[Dict[str, Any]]:
         """Extracts posts from a specific subreddit."""

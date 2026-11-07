@@ -114,3 +114,44 @@ async def test_gold_and_csv_export():
         res_csv = await client.get("/api/export-csv?symbol=BTCUSDT")
         assert res_csv.status_code == 200
         assert "text/csv" in res_csv.headers.get("content-type", "")
+
+
+@pytest.mark.asyncio
+async def test_runs_and_lineage_endpoints():
+    headers = {"X-API-Key": settings.api_secret_key}
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        assert (await client.get("/api/admin/runs")).status_code == 401
+
+        runs = await client.get("/api/admin/runs", headers=headers)
+        assert runs.status_code == 200
+        assert runs.json() == {"runs": []}
+
+        lineage = await client.get("/api/admin/lineage", headers=headers)
+        assert lineage.status_code == 200
+        body = lineage.json()
+        assert body["sources"]["social"]["subreddits"]
+        assert body["sources"]["social"]["rss_feeds"]
+        assert body["sources"]["binance"]["assets"] == settings.supported_assets
+        names = {t["name"] for t in body["tables"]}
+        assert {"silver_market_prices", "silver_social_sentiment", "gold_hourly_market_sentiment"} <= names
+
+
+@pytest.mark.asyncio
+async def test_project_quality_reads_repository(monkeypatch):
+    from src.dashboard import server
+
+    async def no_network():
+        return None
+
+    monkeypatch.setattr(server, "_latest_ci_run", no_network)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        res = await client.get("/api/project/quality")
+    assert res.status_code == 200
+    body = res.json()
+    files = {f["file"] for f in body["tests"]["files"]}
+    assert "test_api_fastapi.py" in files
+    assert body["tests"]["total"] == sum(f["tests"] for f in body["tests"]["files"])
+    assert "3.12" in body["ci"]["python_versions"]
+    assert body["latest_ci_run"] is None

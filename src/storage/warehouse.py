@@ -1,6 +1,7 @@
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import duckdb
 import polars as pl
@@ -51,8 +52,18 @@ class MarketWarehouse:
                     self.conn = self._shared_connections[path_resolved].cursor()
                     self._is_cursor = True
 
+        self._force_utc(self.conn)
         if not self.read_only:
             self._init_schema()
+
+    @staticmethod
+    def _force_utc(conn: duckdb.DuckDBPyConnection) -> None:
+        """Pins the session to UTC. TimeZone is per connection/cursor and defaults to the OS zone, which made
+        TIMESTAMPTZ -> TIMESTAMP casts store local time in the *_utc columns."""
+        try:
+            conn.execute("SET TimeZone = 'UTC'")
+        except duckdb.Error:
+            pass
 
     @classmethod
     def get_shared_cursor(cls, db_path: Optional[Path] = None, read_only: bool = False) -> duckdb.DuckDBPyConnection:
@@ -73,7 +84,9 @@ class MarketWarehouse:
             else:
                 cls._shared_connections[path_resolved] = duckdb.connect(path_resolved, read_only=read_only)
                 cls._shared_read_only[path_resolved] = read_only
-            return cls._shared_connections[path_resolved].cursor()
+            cursor = cls._shared_connections[path_resolved].cursor()
+        cls._force_utc(cursor)
+        return cursor
 
     @classmethod
     def close_all_shared(cls) -> None:
@@ -161,6 +174,30 @@ class MarketWarehouse:
             self.conn.execute("UPDATE silver_fear_greed SET date_str = date WHERE date_str IS NULL AND date IS NOT NULL;")
         except Exception:
             pass
+
+        # Run history: one row per pipeline execution (full run or single stage), with per-stage timings
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS pipeline_runs (
+                run_id VARCHAR PRIMARY KEY,
+                started_at TIMESTAMP,
+                finished_at TIMESTAMP,
+                triggered_by VARCHAR,
+                stage VARCHAR,
+                symbol VARCHAR,
+                hours INTEGER,
+                status VARCHAR,
+                candles INTEGER,
+                posts INTEGER,
+                bronze_files INTEGER,
+                gold_rows INTEGER,
+                extract_seconds DOUBLE,
+                load_seconds DOUBLE,
+                transform_seconds DOUBLE,
+                gold_seconds DOUBLE,
+                elapsed_seconds DOUBLE,
+                error VARCHAR
+            );
+        """)
 
         # Gold analytical view: merges hourly candles with asset-specific social sentiment and FinBERT Fear & Greed
         self.conn.execute("""
@@ -381,6 +418,109 @@ class MarketWarehouse:
             return pl.from_arrow(res)
         except Exception:
             return pl.DataFrame()
+
+    RUN_COLUMNS = (
+        "run_id",
+        "started_at",
+        "finished_at",
+        "triggered_by",
+        "stage",
+        "symbol",
+        "hours",
+        "status",
+        "candles",
+        "posts",
+        "bronze_files",
+        "gold_rows",
+        "extract_seconds",
+        "load_seconds",
+        "transform_seconds",
+        "gold_seconds",
+        "elapsed_seconds",
+        "error",
+    )
+
+    def record_run(self, run: Dict[str, Any]) -> None:
+        """Persists one pipeline execution into pipeline_runs (idempotent on run_id)."""
+        cols = ", ".join(self.RUN_COLUMNS)
+        placeholders = ", ".join("?" for _ in self.RUN_COLUMNS)
+        values = []
+        for c in self.RUN_COLUMNS:
+            v = run.get(c)
+            # Stored as naive UTC: DuckDB needs pytz to return TIMESTAMPTZ values to Python
+            if isinstance(v, datetime) and v.tzinfo is not None:
+                v = v.astimezone(timezone.utc).replace(tzinfo=None)
+            values.append(v)
+        self.conn.execute(
+            f"INSERT OR REPLACE INTO pipeline_runs ({cols}) VALUES ({placeholders})",
+            values,
+        )
+
+    def list_runs(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Returns the most recent pipeline executions, newest first."""
+        res = self.conn.execute("SELECT * FROM pipeline_runs ORDER BY started_at DESC LIMIT ?", [limit])
+        columns = [d[0] for d in res.description]
+        return [
+            {c: (v.isoformat() + "Z" if isinstance(v, datetime) else v) for c, v in zip(columns, row)}
+            for row in res.fetchall()
+        ]
+
+    # Event-time column used to report how fresh each table is
+    FRESHNESS_COLUMNS = {
+        "silver_market_prices": "datetime_open_utc",
+        "silver_social_sentiment": "created_utc",
+        "silver_fear_greed": "datetime_utc",
+        "gold_hourly_market_sentiment": "timestamp_hour",
+        "pipeline_runs": "started_at",
+    }
+
+    def describe_tables(self) -> List[Dict[str, Any]]:
+        """Reads the DuckDB catalog: kind, row count, column count, primary key and latest event time per object."""
+        objects = dict(
+            self.conn.execute(
+                "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'main'"
+            ).fetchall()
+        )
+        column_counts = dict(
+            self.conn.execute(
+                "SELECT table_name, COUNT(*) FROM information_schema.columns "
+                "WHERE table_schema = 'main' GROUP BY table_name"
+            ).fetchall()
+        )
+        primary_keys = {
+            name: list(cols)
+            for name, cols in self.conn.execute(
+                "SELECT table_name, constraint_column_names FROM duckdb_constraints() "
+                "WHERE constraint_type = 'PRIMARY KEY'"
+            ).fetchall()
+        }
+
+        described = []
+        for name in sorted(objects):
+            rows = self.conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
+            latest = None
+            fresh_col = self.FRESHNESS_COLUMNS.get(name)
+            if fresh_col and rows:
+                value = self.conn.execute(f'SELECT MAX("{fresh_col}") FROM "{name}"').fetchone()[0]
+                latest = value.isoformat() if hasattr(value, "isoformat") else value
+            described.append(
+                {
+                    "name": name,
+                    "kind": "view" if objects[name] == "VIEW" else "table",
+                    "rows": rows,
+                    "columns": column_counts.get(name, 0),
+                    "primary_key": primary_keys.get(name, []),
+                    "latest": latest,
+                }
+            )
+        return described
+
+    def distinct_assets(self) -> List[str]:
+        """Assets currently present in the Gold view."""
+        rows = self.conn.execute(
+            "SELECT DISTINCT asset_ticker FROM gold_hourly_market_sentiment ORDER BY asset_ticker"
+        ).fetchall()
+        return [r[0] for r in rows]
 
     def close(self) -> None:
         """Closes connection cleanly."""

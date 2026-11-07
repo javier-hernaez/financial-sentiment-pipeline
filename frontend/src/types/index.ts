@@ -1,3 +1,6 @@
+export type Asset = 'BTCUSDT' | 'ETHUSDT' | 'SOLUSDT';
+export type Stage = 'extract' | 'transform' | 'gold' | 'full';
+
 export interface GoldRecord {
   timestamp_hour: string;
   asset_ticker: string;
@@ -14,45 +17,20 @@ export interface GoldRecord {
   neutral_mentions: number;
   fear_and_greed_score: number | null;
   fear_and_greed_classification: string | null;
-  // Dynamic metrics computed for analytics
-  hourly_return?: number;
-  realized_volatility_6h?: number;
-  sentiment_momentum_3h?: number;
+  price_return_pct?: number;
 }
 
 export interface SystemMetrics {
   duckdb_size_kb: number;
-  bronze: {
-    total_files: number;
-    market_files: number;
-    social_files: number;
-    total_size_kb: number;
-  };
-  silver: {
-    market_rows: number;
-    social_rows: number;
-    fear_greed_rows?: number;
-  };
-  gold: {
-    total_rows: number;
-    symbols: string[];
-  };
+  bronze: { total_files: number; market_files: number; social_files: number; total_size_kb: number };
+  silver: { market_rows: number; social_rows: number };
+  gold: { total_rows: number; symbols: string[] };
 }
 
 export interface Diagnostics {
-  binance: {
-    status: number;
-    latency_ms: number;
-    error?: string;
-  };
-  fear_greed: {
-    status: number;
-    latency_ms: number;
-    error?: string;
-  };
-  duckdb: {
-    status: string;
-  };
+  binance: { status: number; latency_ms: number; error?: string };
+  finbert?: { status: string; model?: string; engine_mode?: string; device?: string; error?: string };
+  duckdb: { status: string };
 }
 
 export interface BronzeFile {
@@ -67,7 +45,7 @@ export interface BronzeFile {
 export interface TableDataResponse {
   table: string;
   columns: string[];
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
   total_count: number;
   limit: number;
   offset: number;
@@ -80,20 +58,84 @@ export interface NlpPrediction {
   prob_positive: number;
   prob_negative: number;
   prob_neutral: number;
+  engine_mode?: string;
   latency_ms?: number;
 }
 
-export interface PipelineRunResult {
+export interface StageResult {
   status: string;
-  stage: string;
+  stage: Stage;
+  run_id?: string;
   symbol: string;
-  candles_processed?: number;
-  posts_processed?: number;
-  macro_records?: number;
+  elapsed_seconds: number;
   candles?: number;
   social_records?: number;
+  candles_processed?: number;
+  posts_processed?: number;
   consolidated_hours?: number;
-  elapsed_seconds: number;
-  total_silver_market?: number;
-  total_silver_social?: number;
+}
+
+/** One row of the pipeline_runs table */
+export interface PipelineRun {
+  run_id: string;
+  started_at: string;
+  finished_at: string | null;
+  triggered_by: string;
+  stage: Stage;
+  symbol: string;
+  hours: number;
+  status: 'success' | 'failed' | 'running';
+  candles: number | null;
+  posts: number | null;
+  bronze_files: number | null;
+  gold_rows: number | null;
+  extract_seconds: number | null;
+  load_seconds: number | null;
+  transform_seconds: number | null;
+  gold_seconds: number | null;
+  elapsed_seconds: number | null;
+  error: string | null;
+}
+
+export interface CatalogTable {
+  name: string;
+  kind: 'table' | 'view';
+  rows: number;
+  columns: number;
+  primary_key: string[];
+  latest: string | null;
+}
+
+export interface Lineage {
+  sources: {
+    binance: { endpoint: string; interval: string; assets: string[] };
+    social: { subreddits: string[]; rss_feeds: string[] };
+    retries: { max_retries: number; base_backoff_seconds: number; max_backoff_seconds: number };
+  };
+  bronze: { source: string; active: boolean; files: number; size_kb: number; latest_path: string; latest_modified: string }[];
+  tables: CatalogTable[];
+  gold_assets: string[];
+  nlp: { model: string; batch_size: number };
+  duckdb_size_kb: number;
+}
+
+export interface ProjectQuality {
+  repository: string;
+  tests: { total: number; files: { file: string; tests: number }[] } | null;
+  ci: {
+    python_versions: string[];
+    lint: boolean;
+    coverage: boolean;
+    frontend_build: boolean;
+    docker_publish: boolean;
+  } | null;
+  latest_ci_run: {
+    name: string;
+    status: string;
+    conclusion: string | null;
+    branch: string;
+    commit: string;
+    created_at: string;
+    url: string;
+  } | null;
 }

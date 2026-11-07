@@ -12,6 +12,15 @@ const nextConfig = {
         source: "/api/:path*",
         destination: `http://${backendHost}:${backendPort}/api/:path*`,
       },
+      // Swagger UI and its schema, so the "API" link works from the same origin
+      {
+        source: "/docs",
+        destination: `http://${backendHost}:${backendPort}/docs`,
+      },
+      {
+        source: "/openapi.json",
+        destination: `http://${backendHost}:${backendPort}/openapi.json`,
+      },
     ];
   },
 };
