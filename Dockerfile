@@ -2,7 +2,7 @@
 # Stage 1: build the Next.js frontend as a self-contained "standalone" server.
 # Only the traced runtime files end up in the final image (no npm, no full node_modules).
 # ---------------------------------------------------------------------------
-FROM node:20-bookworm-slim AS frontend-builder
+FROM node:24-bookworm-slim AS frontend-builder
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_STANDALONE=1
@@ -23,6 +23,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     NEXT_TELEMETRY_DISABLED=1 \
+    APP_ENV=production \
     PORT=7860 \
     DEBIAN_FRONTEND=noninteractive
 
@@ -45,10 +46,11 @@ ENV HOME=/home/user \
 
 WORKDIR /app
 
-# Install runtime Python dependencies only (PyTorch CPU build to keep image lean)
-COPY --chown=user:user requirements.txt .
-RUN pip install --user torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --user -r requirements.txt
+# Runtime dependencies at the exact versions the test suite ran on. The extra index offers PyTorch's CPU build,
+# whose "+cpu" version sorts above the same PyPI release, keeping the image lean without any GPU libraries.
+COPY --chown=user:user requirements.txt requirements.lock ./
+RUN pip install --user --constraint requirements.lock --requirement requirements.txt \
+    --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Pre-cache FinBERT weights into image layer so space boots instantly
 RUN python -c "from transformers import AutoTokenizer, AutoModelForSequenceClassification; AutoTokenizer.from_pretrained('ProsusAI/finbert'); AutoModelForSequenceClassification.from_pretrained('ProsusAI/finbert')"
@@ -63,7 +65,7 @@ COPY --chown=user:user src/ ./src/
 COPY --chown=user:user tests/ ./tests/
 COPY --chown=user:user .github/workflows/ci.yml ./.github/workflows/ci.yml
 COPY --chown=user:user start.sh ./
-RUN chmod +x start.sh && mkdir -p /app/data/bronze /app/data/silver /app/data/gold
+RUN chmod +x start.sh && mkdir -p /app/data/bronze
 
 EXPOSE 7860
 

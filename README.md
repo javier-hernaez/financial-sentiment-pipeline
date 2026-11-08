@@ -7,84 +7,137 @@ sdk: docker
 app_port: 7860
 ---
 
-# Market Intelligence Engine: Financial Sentiment ETL
+# Market Intelligence Engine: Financial Sentiment ELT
 
 [![CI](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml)
 
-Motor de Inteligencia de Mercado diseñado bajo arquitectura **Medallion (Bronze / Silver / Gold)**. Ingiere de forma asíncrona datos de mercado financiero (OHLCV de Binance), sentimiento de noticias y comunidades (Google News, RSS, Reddit) y deriva un índice Fear & Greed propio a partir del sentimiento NLP, aplicando modelos **NLP (FinBERT)** para generar un conjunto de datos consolidado en **DuckDB** listo para modelos de Machine Learning y estrategias de trading algorítmico.
+Pipeline ELT con arquitectura **Medallion (Bronze / Silver / Gold)**. Extrae de forma asíncrona velas OHLCV de Binance y noticias de Google News, RSS y Reddit, clasifica cada titular con **FinBERT** y consolida el resultado por horas en **DuckDB**, junto a un índice de miedo y codicia derivado de ese sentimiento.
 
----
+## Arquitectura
 
-## 🏛️ Arquitectura del Sistema
+```mermaid
+flowchart LR
+    B[Binance] --> E
+    N[Google News, RSS, Reddit] --> E
+    E[Extract<br/>asyncio + httpx] --> BZ[(Bronze<br/>Parquet)]
+    BZ --> T[Transform<br/>Polars + FinBERT]
+    T --> S[(Silver<br/>DuckDB)]
+    S --> G[(Gold<br/>vista DuckDB)]
+    G --> A[FastAPI]
+    A --> W[Next.js]
+```
 
-- **Extracción Asíncrona:** Python `asyncio` + `httpx` con reintentos exponenciales (*Exponential Backoff*).
-- **Data Lake (Bronze):** Ingestión de datos crudos inmutables particionados por fecha (`year=YYYY/month=MM/day=DD/`).
-- **Capa Silver (Limpieza & FinBERT):** Limpieza de strings vectorizada con `Polars` e inferencia batch con `ProsusAI/finbert`.
-- **Capa Gold (DuckDB Feature Store):** Vistas y tablas analíticas que unen series temporales financieras con el sentimiento horario agregado.
+- **Extract:** peticiones en paralelo, reintentos con *backoff* exponencial solo para errores transitorios (red, 429, 5xx) y réplica de Binance para regiones bloqueadas. Una fuente que falla no detiene a las demás.
+- **Bronze:** Parquet inmutable particionado por fecha (`year=YYYY/month=MM/day=DD/`), con escritura atómica.
+- **Silver:** limpieza vectorizada con Polars e inferencia por lotes con `ProsusAI/finbert`, ordenada por longitud para reducir el *padding*. Cada historia se puntúa y se cuenta una sola vez.
+- **Gold:** vista de DuckDB que agrega las menciones por hora antes de unirlas con las velas.
 
-Para el informe de diseño profundo y PRD institucional, consultar [docs/PRD.md](docs/PRD.md).
+Más detalle en [docs/PRD.md](docs/PRD.md).
 
----
+### Decisiones de diseño
 
-## 🚀 Inicio Rápido (Setup Básico)
+| Decisión | Motivo |
+| --- | --- |
+| Una conexión DuckDB por proceso, un cursor por petición | DuckDB admite un solo proceso escritor por archivo. El esquema se crea una vez, al abrir la conexión. |
+| Consultas en el *thread pool* de FastAPI | Las consultas y la lectura del lago son bloqueantes: en el *event loop* frenarían a todas las demás peticiones. |
+| Ejecuciones en segundo plano (`202` + `pipeline_runs`) | Con FinBERT en CPU una ejecución dura minutos, más de lo que aguantan proxies y navegadores. El estado sobrevive a recargar la página, y un reinicio marca como fallidas las que quedaron a medias. |
+| La API corre en un único proceso | Por la limitación de DuckDB. El límite de peticiones vive en memoria por el mismo motivo. |
 
-### 1. Crear entorno virtual e instalar dependencias
+### Modelo de seguridad
+
+- La clave `API_SECRET_KEY` **nunca llega al navegador**: solo la conoce el servidor Next.js, en `app/api/admin/[...slug]/route.ts`.
+- Como ese proxy actúa en nombre de visitantes anónimos, lo que deja pasar es público de hecho. Por eso usa una lista cerrada (`lib/adminRoutes.ts`): las vistas de solo lectura y las acciones que ofrece la propia demo.
+- La API solo escucha en `127.0.0.1` dentro del contenedor y solo confía en `X-Forwarded-For` si viene de ese proxy local.
+- En producción la API no arranca con la clave por defecto; `start.sh` genera una aleatoria si no se configura ninguna.
+- Los errores inesperados se registran en el log y el cliente solo recibe un mensaje genérico.
+
+**Límite conocido:** si Next.js se expone directamente sin un proxy inverso delante, un cliente puede falsear `X-Forwarded-For` y evadir el límite de peticiones. Aun así, nunca puede haber más de una ejecución a la vez. Detrás de un proxy inverso (como en Hugging Face Spaces) no ocurre.
+
+## Inicio rápido
+
+### 1. Instalar dependencias
+
+`requirements.lock` fija las versiones exactas con las que se ejecutó la suite de tests.
+
 ```bash
 py -m venv venv
-.\venv\Scripts\pip install -r requirements-dev.txt
+.\venv\Scripts\pip install -c requirements.lock -e ".[ml,dev]"
 cd frontend
-npm install
+npm ci
 ```
 
 ### 2. Configurar variables de entorno
+
 ```bash
 copy .env.example .env
 ```
-> En producción define un `API_SECRET_KEY` propio: el valor por defecto es público y el servidor avisa al arrancar si se usa.
 
-### 3. Encender el Servidor y Dashboard Web (1 Clic)
-Puedes iniciar backend y frontend usando los scripts automáticos:
-- **Doble clic en Windows**: `start.bat` (inicia ambos servicios y abre el navegador automáticamente).
-- **Desde PowerShell**:
-  ```powershell
-  .\start.ps1
-  ```
-Servicios disponibles:
-* **Terminal Cuantitativo (frontend Next.js):** `http://localhost:3000`
-* **API FastAPI + Swagger UI:** `http://localhost:8080/docs`
+La API y el servidor Next.js local leen el mismo archivo.
 
-### 4. Ejecutar el Pipeline ELT
-Puedes ejecutar el pipeline mediante los scripts rápidos o directamente con Python:
+### 3. Arrancar
+
+- **Windows:** doble clic en `start.bat`, o `.\start.ps1` desde PowerShell.
+- **Docker:** `docker compose up`.
+
+| Servicio | URL |
+| --- | --- |
+| Web | `http://localhost:3000` |
+| API y Swagger UI | `http://localhost:8080/docs` |
+
+### 4. Ejecutar el pipeline
+
+Se puede lanzar desde la web o desde la línea de comandos. DuckDB admite un solo proceso escritor, así que la CLI necesita que la API esté parada.
+
 ```powershell
-# Usando script PowerShell
 .\run_pipeline.ps1 -Symbol BTCUSDT -Hours 24
-
-# O directamente con Python
 .\venv\Scripts\python -m src.main --symbol BTCUSDT --hours 24 --mock-nlp
 ```
 
-### 5. Ejecutar Pruebas Unitarias
+## Calidad
+
+Lo mismo que comprueba la CI:
+
 ```bash
-.\venv\Scripts\pytest tests/ -v
+ruff check src tests benchmarks
+ruff format --check src tests benchmarks
+mypy
+pytest -m "not network" --cov=src
+pip-audit --requirement requirements.lock --no-deps --disable-pip
 ```
-Sin conexión a internet puedes excluir los tests que llaman a APIs reales con `-m "not network"`.
 
----
+```bash
+cd frontend
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm audit --omit=dev
+```
 
-## 📂 Estructura del Repositorio
+### Actualizar las versiones fijadas
+
+Tras cambiar `pyproject.toml`, vuelve a generar el lockfile y ejecuta los tests con el resultado:
+
+```bash
+uv pip compile pyproject.toml --extra ml --universal --python-version 3.10 -o requirements.lock
+```
+
+## Estructura del repositorio
+
 ```
 sentiment-analysis/
-├── docs/
-│   └── PRD.md                   # Product Requirements Document & Arquitectura
+├── docs/PRD.md                  # Requisitos y arquitectura
 ├── src/
-│   ├── configs/                 # Configuración Pydantic & variables de entorno
-│   ├── extractors/              # Extractores asíncronos (Binance, Google News, RSS, Reddit)
-│   ├── storage/                 # Data Lake Bronze y Almacén DuckDB
-│   ├── nlp/                     # Limpieza con Polars y motor FinBERT
-│   ├── pipeline/                # Orquestador del ciclo E -> L -> T
-│   ├── analytics/               # Señales cuantitativas (alpha, divergencias)
-│   ├── dashboard/               # API FastAPI
-│   └── main.py                  # CLI ejecutable
-├── frontend/                    # Terminal web Next.js
-└── tests/                       # Suite de pruebas unitarias
+│   ├── configs/                 # Configuración y logging
+│   ├── extractors/              # Binance, Google News, RSS y Reddit
+│   ├── storage/                 # Lago Bronze, esquema y almacén DuckDB
+│   ├── nlp/                     # Limpieza, FinBERT y motor heurístico de respaldo
+│   ├── pipeline/                # Orquestador E -> L -> T
+│   ├── analytics/               # Señales cuantitativas
+│   ├── dashboard/               # API: rutas, seguridad y trabajos en segundo plano
+│   └── main.py                  # CLI
+├── frontend/                    # Web Next.js
+├── tests/                       # Tests de la API, el pipeline y el almacén
+├── requirements.lock            # Versiones exactas probadas
+└── Dockerfile, start.sh         # Imagen y arranque en producción
 ```

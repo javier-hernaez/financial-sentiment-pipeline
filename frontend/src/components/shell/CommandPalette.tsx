@@ -15,8 +15,8 @@ interface Command {
   run: () => void;
 }
 
-export function CommandPalette() {
-  const { paletteOpen, setPaletteOpen, navigate } = useApp();
+function Palette() {
+  const { setPaletteOpen, navigate } = useApp();
   const { t, locale, setLocale } = useLocale();
   const { toggle } = useTheme();
   const [query, setQuery] = useState('');
@@ -35,14 +35,8 @@ export function CommandPalette() {
   const filtered = commands.filter((c) => c.label.toLowerCase().includes(query.trim().toLowerCase()));
 
   useEffect(() => {
-    if (paletteOpen) {
-      setQuery('');
-      setIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [paletteOpen]);
-
-  if (!paletteOpen) return null;
+    inputRef.current?.focus();
+  }, []);
 
   const pick = (c: Command | undefined) => {
     if (!c) return;
@@ -90,4 +84,10 @@ export function CommandPalette() {
       </div>
     </div>
   );
+}
+
+/** Mounted only while open, so every opening starts from an empty search. */
+export function CommandPalette() {
+  const { paletteOpen } = useApp();
+  return paletteOpen ? <Palette /> : null;
 }

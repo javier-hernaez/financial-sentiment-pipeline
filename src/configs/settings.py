@@ -1,12 +1,14 @@
 """Application settings and environment configuration."""
 
+import json
 from pathlib import Path
 from typing import Annotated, Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-INSECURE_DEFAULT_SECRET = "dev-insecure-secret-key"
+INSECURE_DEFAULT_SECRET = "dev-insecure-secret-key"  # noqa: S105 - rejected at startup in production
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -14,20 +16,15 @@ class Settings(BaseSettings):
 
     # Environment
     app_env: str = Field(default="development", alias="APP_ENV")
-    debug: bool = Field(default=True, alias="DEBUG")
 
-    # Project Root and Paths
-    project_root: Path = Path(__file__).resolve().parent.parent.parent
-    data_lake_dir: Path = Path("data")
+    # Paths. Relative values are anchored to the project root, so the working directory never matters.
+    project_root: Path = PROJECT_ROOT
     bronze_dir: Path = Path("data/bronze")
-    silver_dir: Path = Path("data/silver")
-    gold_dir: Path = Path("data/gold")
     duckdb_path: Path = Path("data/warehouse.duckdb")
 
-    # Market Data (Binance & Macro)
+    # Market Data (Binance)
     binance_base_url: str = Field(default="https://api.binance.com", alias="BINANCE_BASE_URL")
     binance_fallback_url: str = Field(default="https://data-api.binance.vision", alias="BINANCE_FALLBACK_URL")
-    fear_greed_base_url: str = Field(default="https://api.alternative.me", alias="FEAR_GREED_BASE_URL")
     default_symbol: str = Field(default="BTCUSDT", alias="DEFAULT_SYMBOL")
     default_interval: str = Field(default="1h", alias="DEFAULT_INTERVAL")
     supported_assets: list[str] = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
@@ -46,17 +43,17 @@ class Settings(BaseSettings):
 
     # NLP / FinBERT
     finbert_model_name: str = Field(default="ProsusAI/finbert", alias="FINBERT_MODEL_NAME")
-    nlp_batch_size: int = Field(default=64, alias="NLP_BATCH_SIZE")
+    nlp_batch_size: int = Field(default=64, gt=0, alias="NLP_BATCH_SIZE")
     use_mock_nlp: bool = Field(default=False, alias="USE_MOCK_NLP")
 
     # HTTP / Resilience
-    max_retries: int = 4
+    max_retries: int = Field(default=4, ge=1)
     base_backoff_seconds: float = 1.0
     max_backoff_seconds: float = 16.0
     request_timeout_seconds: float = 15.0
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -67,23 +64,24 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             raw = value.strip()
             if raw.startswith("["):
-                import json
-
                 return json.loads(raw)
             return [origin.strip() for origin in raw.split(",") if origin.strip()]
         return value
+
+    @model_validator(mode="after")
+    def _anchor_paths(self) -> "Settings":
+        self.bronze_dir = self.project_root / self.bronze_dir
+        self.duckdb_path = self.project_root / self.duckdb_path
+        return self
 
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() in ("production", "prod")
 
     def setup_directories(self) -> None:
-        """Ensure all data lake directories exist."""
-        for path in [self.bronze_dir, self.silver_dir, self.gold_dir]:
-            path.mkdir(parents=True, exist_ok=True)
-            (path / "market").mkdir(parents=True, exist_ok=True)
-            (path / "social").mkdir(parents=True, exist_ok=True)
-            (path / "fear_greed").mkdir(parents=True, exist_ok=True)
+        """Ensures the data lake and the warehouse folder exist."""
+        self.bronze_dir.mkdir(parents=True, exist_ok=True)
+        self.duckdb_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()

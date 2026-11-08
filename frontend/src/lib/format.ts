@@ -71,3 +71,5 @@ export function relative(value: string | null | undefined, locale: Locale, now =
 }
 
 export const assetShort = (ticker: string) => ticker.replace(/USDT$/, '');
+
+export const assetOptions = (assets: string[]) => assets.map((value) => ({ value, label: assetShort(value) }));

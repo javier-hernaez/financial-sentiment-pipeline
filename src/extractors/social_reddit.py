@@ -1,25 +1,27 @@
+"""News and community posts: Google News searches, publisher RSS feeds and Reddit."""
+
 import asyncio
 import email.utils
 import hashlib
 import html
+import logging
 import math
 import re
 from collections import Counter
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 from xml.etree.ElementTree import Element
 
-try:
-    import defusedxml.ElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-
+import defusedxml.ElementTree as ET
 import httpx
-from rich.console import Console
+from defusedxml.common import DefusedXmlException
 
 from .base import BaseAsyncExtractor
 
-console = Console()
+logger = logging.getLogger(__name__)
+
+Post = dict[str, Any]
 
 TAG_RE = re.compile(r"<[^>]+>")
 WHITESPACE_RE = re.compile(r"\s+")
@@ -27,6 +29,11 @@ NON_WORD_RE = re.compile(r"[\W_]+")
 REDDIT_FOOTER_RE = re.compile(r"submitted by\b.*$", re.DOTALL)
 # Google News also indexes quote pages and templated market pages, which are not news about anything
 NOT_NEWS_RE = re.compile(r"crypto prediction market\s*$|\blive chart\b", re.IGNORECASE)
+ASSET_PATTERNS = (
+    ("BTCUSDT", re.compile(r"\b(btc|bitcoin)\b")),
+    ("ETHUSDT", re.compile(r"\b(eth|ethereum|ether)\b")),
+    ("SOLUSDT", re.compile(r"\b(sol|solana)\b")),
+)
 
 ATOM = "{http://www.w3.org/2005/Atom}"
 GOOGLE_NEWS_URL = "https://news.google.com/rss/search"
@@ -37,16 +44,24 @@ PIPELINE_USER_AGENT = "SentimentELT/1.0 (data engineering portfolio pipeline)"
 GOOGLE_CONCURRENCY = 4
 MAX_LOOKBACK_DAYS = 30
 
+# Where RSS, Atom and Dublin Core feeds keep the publication date, most specific first
+DATE_TAGS = (
+    "pubDate",
+    "{http://purl.org/dc/elements/1.1/}date",
+    "published",
+    "updated",
+    f"{ATOM}published",
+    f"{ATOM}updated",
+    "date",
+)
+
 
 def detect_asset_ticker(title: str, text: str = "") -> str:
     """Classifies which crypto asset the post/headline pertains to, or 'ALL' for macro/general market news."""
     combined = f"{title} {text}".lower()
-    if re.search(r"\b(btc|bitcoin)\b", combined):
-        return "BTCUSDT"
-    elif re.search(r"\b(eth|ethereum|ether)\b", combined):
-        return "ETHUSDT"
-    elif re.search(r"\b(sol|solana)\b", combined):
-        return "SOLUSDT"
+    for ticker, pattern in ASSET_PATTERNS:
+        if pattern.search(combined):
+            return ticker
     return "ALL"
 
 
@@ -63,6 +78,15 @@ def _plain_text(raw: str) -> str:
     return WHITESPACE_RE.sub(" ", html.unescape(TAG_RE.sub(" ", raw))).strip()
 
 
+def _parse_iso_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _short_hash(text: str) -> str:
+    """Stable id for a story. Not a security use, and changing it would make known posts look new."""
+    return hashlib.md5(text.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
+
+
 def _post(
     source: str,
     post_id: str,
@@ -70,10 +94,10 @@ def _post(
     asset: str,
     title: str,
     body: str,
-    author: Optional[str],
+    author: str | None,
     published: datetime,
-) -> Dict[str, Any]:
-    """One Bronze record. RSS exposes no votes or comment counts, so those stay at their neutral values."""
+) -> Post:
+    """One Bronze record. RSS and Atom expose no votes or comment counts, so the record has none."""
     return {
         "source": source,
         "post_id": post_id,
@@ -82,9 +106,6 @@ def _post(
         "title": title,
         "text_body": body[:1500],
         "author": author,
-        "upvotes": 0,
-        "upvote_ratio": 1.0,
-        "num_comments": 0,
         "created_utc": published.isoformat(),
         "ingested_at": datetime.now(timezone.utc).isoformat(),
         "timestamp_hour": published.strftime("%Y-%m-%d %H:00:00"),
@@ -96,7 +117,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
 
     detect_asset_ticker = staticmethod(detect_asset_ticker)
 
-    RSS_FEEDS: List[Tuple[str, str]] = [
+    RSS_FEEDS: ClassVar[list[tuple[str, str]]] = [
         ("cointelegraph", "https://cointelegraph.com/rss"),
         ("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
         ("decrypt", "https://decrypt.co/feed"),
@@ -125,7 +146,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
     ]
 
     # Search terms and the asset a result belongs to when its headline does not name one
-    NEWS_SEARCHES: List[Tuple[str, str]] = [
+    NEWS_SEARCHES: ClassVar[list[tuple[str, str]]] = [
         ("bitcoin", "BTCUSDT"),
         ("bitcoin price", "BTCUSDT"),
         ("BTC crypto", "BTCUSDT"),
@@ -159,7 +180,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
     ]
 
     # Crypto communities only: general finance posts would count as mentions of every asset
-    DEFAULT_SUBREDDITS: List[str] = [
+    DEFAULT_SUBREDDITS: ClassVar[list[str]] = [
         "CryptoCurrency",
         "Bitcoin",
         "ethereum",
@@ -173,7 +194,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
     def __init__(
         self,
         base_url: str = REDDIT_URL,
-        subreddits: Optional[List[str]] = None,
+        subreddits: list[str] | None = None,
         lookback_hours: int = 24,
     ):
         super().__init__(
@@ -181,83 +202,30 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             base_url=base_url,
             headers={"User-Agent": PIPELINE_USER_AGENT},
         )
-        self.reddit_url = base_url.rstrip("/")
         self.subreddits = subreddits or list(self.DEFAULT_SUBREDDITS)
         self.lookback_hours = lookback_hours
 
     @staticmethod
     def _parse_feed_datetime(el: Element) -> datetime:
         """
-        Extracts and parses the real publication date/time from standard RSS and Atom feeds.
-        Supports RFC 2822, ISO 8601, and Dublin Core date formats.
+        Reads the real publication time of a feed item, in RFC 2822 or ISO 8601 form.
+        An item without a readable date counts as published now.
         """
-        candidate_tags = [
-            "pubDate",
-            "{http://purl.org/dc/elements/1.1/}date",
-            "published",
-            "updated",
-            "{http://www.w3.org/2005/Atom}published",
-            "{http://www.w3.org/2005/Atom}updated",
-            "date",
-        ]
-        raw_val = None
-        for tag in candidate_tags:
-            node = el.find(tag)
-            if node is not None and node.text and node.text.strip():
-                raw_val = node.text.strip()
-                break
-
+        candidates = ((el.findtext(tag) or "").strip() for tag in DATE_TAGS)
+        raw_val = next((value for value in candidates if value), None)
         if not raw_val:
             return datetime.now(timezone.utc)
 
-        # 1. RFC 2822 standard (e.g. 'Sun, 20 Sep 2026 09:14:27 +0000')
-        try:
-            parsed = email.utils.parsedate_to_datetime(raw_val)
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            return parsed.astimezone(timezone.utc)
-        except Exception:
-            pass
-
-        # 2. ISO 8601 standard (e.g. '2026-09-19T02:59:56Z' or '2026-09-19T02:59:56+00:00')
-        try:
-            clean_iso = raw_val.replace("Z", "+00:00")
-            parsed = datetime.fromisoformat(clean_iso)
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            return parsed.astimezone(timezone.utc)
-        except Exception:
-            pass
-
-        # 3. Fallback dateutil parser if installed
-        try:
-            from dateutil import parser as date_parser
-            parsed = date_parser.parse(raw_val)
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            return parsed.astimezone(timezone.utc)
-        except Exception:
-            pass
-
+        for parse in (email.utils.parsedate_to_datetime, _parse_iso_datetime):
+            try:
+                parsed = parse(raw_val)
+            except (TypeError, ValueError):
+                continue
+            return (parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
         return datetime.now(timezone.utc)
 
-    @staticmethod
-    async def _fetch_feed(
-        client: httpx.AsyncClient, url: str, label: str, params: Optional[Dict[str, Any]] = None
-    ) -> Optional[str]:
-        """Returns the feed body, or None after logging why. One failing source never stops the others."""
-        try:
-            res = await client.get(url, params=params)
-        except httpx.RequestError as exc:
-            console.print(f"   [yellow][WARN][/yellow] {label}: {type(exc).__name__}")
-            return None
-        if res.status_code != 200:
-            console.print(f"   [yellow][WARN][/yellow] {label}: HTTP {res.status_code}")
-            return None
-        return res.text
-
     @classmethod
-    def parse_rss(cls, xml_text: str, source_name: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def parse_rss(cls, xml_text: str, source_name: str, limit: int | None = None) -> list[Post]:
         """Parses a publisher's RSS or Atom feed, keeping its genuine publication dates."""
         root = ET.fromstring(xml_text)
         if root.tag == f"{ATOM}feed":
@@ -283,7 +251,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             author = (author_el.text or "").strip() or None if author_el is not None else None
 
             guid = el.findtext("guid") or title
-            post_hash = hashlib.md5(guid.encode("utf-8")).hexdigest()[:12]
+            post_hash = _short_hash(guid)
             items.append(
                 _post(
                     source_name,
@@ -299,7 +267,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         return items
 
     @classmethod
-    def _parse_atom(cls, root: Element, source_name: str, limit: Optional[int]) -> List[Dict[str, Any]]:
+    def _parse_atom(cls, root: Element, source_name: str, limit: int | None) -> list[Post]:
         items = []
         for el in root.findall(f"{ATOM}entry")[:limit]:
             title = html.unescape((el.findtext(f"{ATOM}title") or "").strip())
@@ -307,7 +275,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
                 continue
             body = _plain_text(el.findtext(f"{ATOM}content") or el.findtext(f"{ATOM}summary") or "")
             guid = el.findtext(f"{ATOM}id") or title
-            post_hash = hashlib.md5(guid.encode("utf-8")).hexdigest()[:12]
+            post_hash = _short_hash(guid)
             items.append(
                 _post(
                     source_name,
@@ -323,7 +291,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         return items
 
     @classmethod
-    def parse_google_news(cls, xml_text: str, fallback_asset: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def parse_google_news(cls, xml_text: str, fallback_asset: str, limit: int | None = None) -> list[Post]:
         """Parses a Google News search feed. It carries the headline and publisher, but no article text."""
         items = []
         for el in ET.fromstring(xml_text).findall("./channel/item")[:limit]:
@@ -333,7 +301,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             if not title:
                 continue
             detected = detect_asset_ticker(title)
-            post_hash = hashlib.md5(normalize_title(title).encode("utf-8")).hexdigest()[:12]
+            post_hash = _short_hash(normalize_title(title))
             items.append(
                 _post(
                     "googlenews",
@@ -349,7 +317,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         return items
 
     @classmethod
-    def parse_reddit(cls, xml_text: str) -> List[Dict[str, Any]]:
+    def parse_reddit(cls, xml_text: str) -> list[Post]:
         """Parses Reddit's Atom feed. Unlike its JSON listing, it exposes no scores or comment counts."""
         items = []
         for el in ET.fromstring(xml_text).findall(f"{ATOM}entry"):
@@ -363,7 +331,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
             items.append(
                 _post(
                     "reddit",
-                    el.findtext(f"{ATOM}id") or hashlib.md5(title.encode("utf-8")).hexdigest()[:12],
+                    el.findtext(f"{ATOM}id") or _short_hash(title),
                     subreddit,
                     detect_asset_ticker(f"{title} {subreddit}", body),
                     title,
@@ -375,30 +343,44 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         return items
 
     @staticmethod
-    def deduplicate(posts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def deduplicate(posts: list[Post]) -> list[Post]:
         """Keeps the first post of each story, so list the sources that carry article text first."""
-        unique: Dict[str, Dict[str, Any]] = {}
+        unique: dict[str, Post] = {}
         for post in posts:
             unique.setdefault(normalize_title(post["title"]) or post["post_id"], post)
         return list(unique.values())
 
-    def _search_windows(self) -> List[Optional[datetime]]:
+    def _search_windows(self) -> list[datetime | None]:
         """None is the last 24 h; each date is one whole past day, which is how older news is backfilled."""
         days = min(math.ceil(self.lookback_hours / 24), MAX_LOOKBACK_DAYS)
         today = datetime.now(timezone.utc)
         return [None] + ([today - timedelta(days=i) for i in range(1, days + 1)] if days > 1 else [])
 
-    async def _extract_rss(
-        self, client: httpx.AsyncClient, url: str, source_name: str, limit: Optional[int]
-    ) -> List[Dict[str, Any]]:
-        text = await self._fetch_feed(client, url, source_name)
-        if text is None:
+    @staticmethod
+    async def _fetch_posts(
+        client: httpx.AsyncClient,
+        url: str,
+        label: str,
+        parse: Callable[[str], list[Post]],
+        params: dict[str, Any] | None = None,
+    ) -> list[Post]:
+        """Fetches and parses one feed. A failing source is logged and skipped, never stopping the others."""
+        try:
+            res = await client.get(url, params=params)
+        except httpx.RequestError as exc:
+            logger.warning("%s: %s", label, type(exc).__name__)
+            return []
+        if res.status_code != 200:
+            logger.warning("%s: HTTP %d", label, res.status_code)
             return []
         try:
-            return self.parse_rss(text, source_name, limit)
-        except ET.ParseError as exc:
-            console.print(f"   [yellow][WARN][/yellow] {source_name}: invalid XML ({exc})")
+            return parse(res.text)
+        except (ET.ParseError, DefusedXmlException) as exc:
+            logger.warning("%s: invalid XML (%s)", label, exc)
             return []
+
+    async def _extract_rss(self, client: httpx.AsyncClient, url: str, name: str, limit: int | None) -> list[Post]:
+        return await self._fetch_posts(client, url, name, lambda text: self.parse_rss(text, name, limit))
 
     async def _extract_google_news(
         self,
@@ -406,74 +388,62 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         semaphore: asyncio.Semaphore,
         query: str,
         fallback_asset: str,
-        day: Optional[datetime],
-        limit: Optional[int],
-    ) -> List[Dict[str, Any]]:
-        if day is None:
-            window = "when:1d"
-        else:
-            window = f"after:{day:%Y-%m-%d} before:{day + timedelta(days=1):%Y-%m-%d}"
-        params = {"q": f"{query} {window}", "hl": "en-US", "gl": "US", "ceid": "US:en"}
+        day: datetime | None,
+        limit: int | None,
+    ) -> list[Post]:
+        window = "when:1d" if day is None else f"after:{day:%Y-%m-%d} before:{day + timedelta(days=1):%Y-%m-%d}"
         async with semaphore:
-            text = await self._fetch_feed(client, GOOGLE_NEWS_URL, f"google news '{query}'", params)
-        if text is None:
-            return []
-        try:
-            return self.parse_google_news(text, fallback_asset, limit)
-        except ET.ParseError as exc:
-            console.print(f"   [yellow][WARN][/yellow] google news '{query}': invalid XML ({exc})")
-            return []
+            return await self._fetch_posts(
+                client,
+                GOOGLE_NEWS_URL,
+                f"google news '{query}'",
+                lambda text: self.parse_google_news(text, fallback_asset, limit),
+                {"q": f"{query} {window}", "hl": "en-US", "gl": "US", "ceid": "US:en"},
+            )
 
-    async def _extract_reddit(self, client: httpx.AsyncClient) -> List[Dict[str, Any]]:
+    async def _extract_reddit(self, client: httpx.AsyncClient) -> list[Post]:
         """
         One request for all subreddits: without authentication Reddit allows very few per minute,
         so a request per community would return 429 after the first. Its JSON listing answers 403.
         """
-        url = f"{self.reddit_url}/r/{'+'.join(self.subreddits)}/new/.rss"
-        text = await self._fetch_feed(client, url, "reddit", {"limit": 100})
-        if text is None:
-            return []
-        try:
-            return self.parse_reddit(text)
-        except ET.ParseError as exc:
-            console.print(f"   [yellow][WARN][/yellow] reddit: invalid XML ({exc})")
-            return []
+        url = f"{self.base_url}/r/{'+'.join(self.subreddits)}/new/.rss"
+        return await self._fetch_posts(client, url, "reddit", self.parse_reddit, {"limit": 100})
 
-    async def extract(self, limit_per_sub: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def extract(self, limit_per_sub: int | None = None) -> list[Post]:
         """
         Extracts news and community posts in parallel and returns each story once.
         limit_per_sub caps the items read per feed; by default every item is kept.
         """
         semaphore = asyncio.Semaphore(GOOGLE_CONCURRENCY)
-        async with httpx.AsyncClient(
-            headers={"User-Agent": PIPELINE_USER_AGENT}, follow_redirects=True, timeout=15.0
-        ) as client:
-            # Publisher feeds go first: they carry article text, which improves the FinBERT input
-            results = await asyncio.gather(
-                *[self._extract_rss(client, url, name, limit_per_sub) for name, url in self.RSS_FEEDS],
-                self._extract_reddit(client),
-                *[
-                    self._extract_google_news(client, semaphore, query, asset, day, limit_per_sub)
-                    for query, asset in self.NEWS_SEARCHES
-                    for day in self._search_windows()
-                ],
-                return_exceptions=True,
-            )
+        client = await self.get_client()
+        # Publisher feeds go first: they carry article text, which improves the FinBERT input
+        results = await asyncio.gather(
+            *[self._extract_rss(client, url, name, limit_per_sub) for name, url in self.RSS_FEEDS],
+            self._extract_reddit(client),
+            *[
+                self._extract_google_news(client, semaphore, query, asset, day, limit_per_sub)
+                for query, asset in self.NEWS_SEARCHES
+                for day in self._search_windows()
+            ],
+            return_exceptions=True,
+        )
 
-        all_posts: List[Dict[str, Any]] = []
+        all_posts: list[Post] = []
         for res in results:
             if isinstance(res, BaseException):
-                console.print(f"   [yellow][WARN][/yellow] news source failed: {res!r}")
+                logger.warning("News source failed: %r", res)
             else:
                 all_posts.extend(res)
 
         posts = self.deduplicate(all_posts)
-        if not posts:
-            console.print("[yellow][SocialNews] No se pudieron extraer noticias en este ciclo.[/yellow]")
-        else:
+        if posts:
             by_source = Counter(p["source"] for p in posts)
-            console.print(
-                f"[green][OK][/green] {len(posts)} historias únicas de {len(all_posts)} artículos · "
-                + ", ".join(f"{name} {n}" for name, n in by_source.most_common())
+            logger.info(
+                "%d unique stories from %d articles: %s",
+                len(posts),
+                len(all_posts),
+                ", ".join(f"{name} {n}" for name, n in by_source.most_common()),
             )
+        else:
+            logger.warning("No news could be extracted in this cycle")
         return posts

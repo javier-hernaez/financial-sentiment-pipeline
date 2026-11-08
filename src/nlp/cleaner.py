@@ -1,69 +1,50 @@
-"""Text cleaning and normalization module using Polars and Regex."""
+"""Text cleaning and normalization, for one string or a whole Polars column with the same rules."""
 
 import re
 
 import polars as pl
 
+URL_PATTERN = r"https?://\S+|www\.\S+"
+REDDIT_MENTION_PATTERN = r"/?(?:r|u)/[A-Za-z0-9_-]+"
+SPECIAL_CHARS_PATTERN = r"[^\w\s\$\%\.\,\!\?\-]"  # keeps financial punctuation, drops emoji and the like
+WHITESPACE_PATTERN = r"\s+"
+MAX_CHARS = 280
+
 
 class TextCleaner:
-    """High-performance text sanitizer for social media and financial news."""
+    """Sanitizer for social media and financial news."""
 
-    # Regex patterns compiled once
-    URL_PATTERN = re.compile(r"https?://\S+|www\.\S+")
-    REDDIT_USER_SUB_PATTERN = re.compile(r"/?(?:r|u)/[A-Za-z0-9_-]+")
-    TICKER_PATTERN = re.compile(r"\$([A-Za-z]{2,6})")
-    SPECIAL_CHARS = re.compile(r"[^\w\s\$\%\.\,\!\?\-]")
-    EXTRA_WHITESPACE = re.compile(r"\s+")
+    _URL = re.compile(URL_PATTERN)
+    _REDDIT_MENTION = re.compile(REDDIT_MENTION_PATTERN)
+    _SPECIAL_CHARS = re.compile(SPECIAL_CHARS_PATTERN)
+    _WHITESPACE = re.compile(WHITESPACE_PATTERN)
 
     @classmethod
-    def clean_string(cls, text: str, max_chars: int = 280) -> str:
-        """Cleans a single string and limits length to relevant financial headline/summary context."""
+    def clean_string(cls, text: str, max_chars: int = MAX_CHARS) -> str:
+        """Cleans a single string and limits it to headline length, cutting at a word boundary."""
         if not text or not isinstance(text, str):
             return ""
-
-        # Remove URLs
-        text = cls.URL_PATTERN.sub("", text)
-        # Remove subreddit / user tags
-        text = cls.REDDIT_USER_SUB_PATTERN.sub("", text)
-        # Clean special emojis/characters while preserving financial punctuation
-        text = cls.SPECIAL_CHARS.sub(" ", text)
-        # Normalize whitespace
-        text = cls.EXTRA_WHITESPACE.sub(" ", text).strip()
+        text = cls._URL.sub("", text)
+        text = cls._REDDIT_MENTION.sub("", text)
+        text = cls._SPECIAL_CHARS.sub(" ", text)
+        text = cls._WHITESPACE.sub(" ", text).strip()
         if max_chars and len(text) > max_chars:
             text = text[:max_chars].rsplit(" ", 1)[0]
         return text
 
-    @classmethod
-    def clean_polars_column(
-        cls, df: pl.DataFrame, title_col: str = "title", body_col: str = "text_body"
-    ) -> pl.DataFrame:
-        """
-        Cleans and unifies title and body in a Polars DataFrame using vectorized string operations.
-        """
+    @staticmethod
+    def clean_polars_column(df: pl.DataFrame, title_col: str = "title", body_col: str = "text_body") -> pl.DataFrame:
+        """Unifies title and body into a cleaned_text column using vectorized string operations."""
         if df.is_empty():
             return df.with_columns(pl.lit("").alias("cleaned_text"))
 
-        # Combine title and text_body
-        df_combined = df.with_columns(
-            pl.concat_str(
-                [
-                    pl.col(title_col).fill_null(""),
-                    pl.lit(". "),
-                    pl.col(body_col).fill_null(""),
-                ]
-            ).alias("raw_text")
-        )
-
-        # Apply vectorized cleaning expressions directly in Polars Rust engine
-        cleaned_expr = (
-            pl.col("raw_text")
-            .str.replace_all(r"https?://\S+|www\.\S+", "")
-            .str.replace_all(r"/?(?:r|u)/[A-Za-z0-9_-]+", "")
-            .str.replace_all(r"[^\w\s\$\%\.\,\!\?\-]", " ")
-            .str.replace_all(r"\s+", " ")
+        cleaned = (
+            pl.concat_str([pl.col(title_col).fill_null(""), pl.lit(". "), pl.col(body_col).fill_null("")])
+            .str.replace_all(URL_PATTERN, "")
+            .str.replace_all(REDDIT_MENTION_PATTERN, "")
+            .str.replace_all(SPECIAL_CHARS_PATTERN, " ")
+            .str.replace_all(WHITESPACE_PATTERN, " ")
             .str.strip_chars()
-            .str.slice(0, 280)
+            .str.slice(0, MAX_CHARS)
         )
-
-        return df_combined.with_columns(cleaned_expr.alias("cleaned_text"))
-
+        return df.with_columns(cleaned.alias("cleaned_text"))

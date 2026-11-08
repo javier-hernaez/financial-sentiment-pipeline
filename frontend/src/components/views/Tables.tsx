@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useApp } from '../AppContext';
+import { useState } from 'react';
+import { useApp, useAssets } from '../AppContext';
 import { Button, Empty, ErrorNote, PageHeader, Segmented, Skeleton, cx } from '../ui';
 import { fetchBronzeTree, fetchTableData } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { useLocale } from '@/lib/i18n';
-import { dateTime, num, relative, size } from '@/lib/format';
+import { assetOptions, dateTime, num, relative, size } from '@/lib/format';
 
 const PAGE = 25;
 const ASSET_FILTERABLE = new Set(['gold_hourly_market_sentiment', 'silver_market_prices']);
@@ -31,16 +31,10 @@ function TableData({ name }: { name: string }) {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [asset, setAsset] = useState('');
+  const assets = useAssets();
   const [offset, setOffset] = useState(0);
 
-  useEffect(() => {
-    setSearch('');
-    setQuery('');
-    setAsset('');
-    setOffset(0);
-  }, [name]);
-
-  const data = useApi(() => fetchTableData(name, PAGE, offset, query, asset), [name, offset, query, asset]);
+  const data = useApi((signal) => fetchTableData(name, PAGE, offset, query, asset, signal), [name, offset, query, asset]);
   const d = data.data;
 
   return (
@@ -66,7 +60,7 @@ function TableData({ name }: { name: string }) {
             label={t('Activo', 'Asset')}
             value={asset}
             onChange={(v) => { setAsset(v); setOffset(0); }}
-            options={[{ value: '', label: t('Todos', 'All') }, { value: 'BTCUSDT', label: 'BTC' }, { value: 'ETHUSDT', label: 'ETH' }, { value: 'SOLUSDT', label: 'SOL' }]}
+            options={[{ value: '', label: t('Todos', 'All') }, ...assetOptions(assets)]}
           />
         )}
       </form>
@@ -124,8 +118,8 @@ function TableData({ name }: { name: string }) {
 
 function BronzeFiles({ source }: { source: string }) {
   const { t, locale } = useLocale();
-  const tree = useApi(fetchBronzeTree);
-  const files = useMemo(() => (tree.data?.files ?? []).filter((f) => f.source === source), [tree.data, source]);
+  const tree = useApi((signal) => fetchBronzeTree(source, signal), [source]);
+  const files = tree.data?.files ?? [];
 
   if (tree.error) return <ErrorNote message={tree.error} onRetry={tree.reload} />;
   if (!tree.data) return <Skeleton className="h-60 w-full" />;
@@ -133,7 +127,7 @@ function BronzeFiles({ source }: { source: string }) {
   return (
     <div className="min-w-0">
       <p className="mb-2 text-xs text-ink-3">
-        {t('Los 100 archivos más recientes del lago; aquí los de', 'The lake’s 100 most recent files; showing')} <code>{source}</code>.
+        {t(`${num(files.length, locale)} archivos más recientes de ${num(tree.data.total_files, locale)} en`, `${num(files.length, locale)} most recent files of ${num(tree.data.total_files, locale)} in`)} <code>{source}</code>.
       </p>
       <ul className="divide-y divide-rule rounded-xl border border-rule">
         {files.map((f) => (
@@ -220,7 +214,7 @@ export function Tables() {
 
         <div className="min-w-0 rounded-2xl border border-rule bg-surface p-4">
           <h2 className="mb-3 break-all font-mono text-sm font-medium">{sel.kind === 'bronze' ? `bronze/${sel.source}` : sel.name}</h2>
-          {sel.kind === 'bronze' ? <BronzeFiles source={sel.source} /> : <TableData name={sel.name} />}
+          {sel.kind === 'bronze' ? <BronzeFiles source={sel.source} /> : <TableData key={sel.name} name={sel.name} />}
         </div>
       </div>
     </>

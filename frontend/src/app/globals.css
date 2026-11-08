@@ -6,8 +6,8 @@
    Dark by default: layered graphite cards, hairline borders and one lime accent.
    Light only changes the variables. */
 :root {
-  --font-sans: 'Geist';
-  --font-mono: 'Geist Mono';
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
   --bg: #0a0b0d;
   --surface: #121317;
   --sunken: #191b20;

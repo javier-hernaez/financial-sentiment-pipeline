@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { IconRefresh } from './Icons';
 import { useLocale } from '@/lib/i18n';
 
@@ -131,6 +131,16 @@ export function Segmented<T extends string>({
 }
 
 /* ── States ─────────────────────────────────────────────────────────── */
+
+/** Seconds since a moment, ticking on its own so only this text re-renders. */
+export function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{Math.max(0, Math.round((now - since) / 1000))} s</>;
+}
 
 export function StatusDot({ tone }: { tone: 'ok' | 'bad' | 'warn' | 'idle' }) {
   const color = { ok: 'bg-ok', bad: 'bg-bad', warn: 'bg-warn', idle: 'bg-ink-3' }[tone];

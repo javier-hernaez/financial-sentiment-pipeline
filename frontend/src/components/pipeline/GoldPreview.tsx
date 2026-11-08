@@ -20,7 +20,7 @@ export const GOLD_PREVIEW_SQL = (limit: number) =>
 
 export function GoldPreview({ limit = 5 }: { limit?: number }) {
   const { t } = useLocale();
-  const gold = useApi(() => fetchGold(undefined, limit), [limit]);
+  const gold = useApi((signal) => fetchGold(undefined, limit, signal), [limit]);
 
   if (gold.error) return <ErrorNote message={gold.error} onRetry={gold.reload} />;
   if (!gold.data) return <Skeleton className="h-40 w-full" />;
@@ -45,7 +45,7 @@ export function GoldPreview({ limit = 5 }: { limit?: number }) {
               <td className="whitespace-nowrap px-3 py-2">{row.timestamp_hour}</td>
               <td className="px-3 py-2">{row.asset_ticker}</td>
               <td className="px-3 py-2 text-right">{row.close_price.toFixed(2)}</td>
-              <td className="px-3 py-2 text-right">{row.avg_hourly_sentiment.toFixed(3)}</td>
+              <td className="px-3 py-2 text-right">{row.avg_hourly_sentiment?.toFixed(3) ?? 'NULL'}</td>
               <td className="px-3 py-2 text-right">{row.social_volume_mentions}</td>
               <td className="px-3 py-2 text-right">{row.fear_and_greed_score ?? 'NULL'}</td>
             </tr>
