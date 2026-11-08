@@ -4,7 +4,7 @@ import asyncio
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import polars as pl
 from rich.console import Console
@@ -12,6 +12,7 @@ from rich.console import Console
 from ..analytics.quant_signals import QuantSignalsEngine
 from ..configs.settings import settings
 from ..extractors import BinanceKlinesExtractor, SocialRedditExtractor
+from ..extractors.social_reddit import is_news, normalize_title
 from ..nlp import FinBERTEngine, TextCleaner
 from ..storage import BronzeDataLake, MarketWarehouse
 
@@ -43,7 +44,7 @@ class MarketIntelligencePipeline:
 
         # Extractors
         self.binance_ext = BinanceKlinesExtractor(symbol=self.symbol)
-        self.social_ext = SocialRedditExtractor()
+        self.social_ext = SocialRedditExtractor(lookback_hours=hours)
 
     @property
     def nlp_engine(self) -> FinBERTEngine:
@@ -73,7 +74,7 @@ class MarketIntelligencePipeline:
         """
         console.print("[bold blue]1. Extracting parallel data streams...[/bold blue]")
         market_task = self.binance_ext.extract(symbol=self.symbol, limit=self.hours)
-        social_task = self.social_ext.extract(limit_per_sub=15)
+        social_task = self.social_ext.extract()
 
         try:
             results = await asyncio.gather(market_task, social_task, return_exceptions=True)
@@ -113,6 +114,21 @@ class MarketIntelligencePipeline:
             "files": files,
         }
 
+    @staticmethod
+    def _only_new_posts(df: pl.DataFrame, known_posts: List[Tuple[str, Optional[str]]]) -> pl.DataFrame:
+        """
+        Drops posts already in Silver, repeated in the batch or that are not news. Each story is scored
+        once and counted once, including when it reaches a later run through a different outlet.
+        """
+        known_ids = {post_id for post_id, _ in known_posts}
+        seen = {normalize_title(title) for _, title in known_posts if title}
+        keep = []
+        for post_id, title in zip(df["post_id"].to_list(), df["title"].to_list()):
+            key = normalize_title(title or "") or post_id
+            keep.append(post_id not in known_ids and key not in seen and is_news(title or ""))
+            seen.add(key)
+        return df.filter(pl.Series(keep, dtype=pl.Boolean))
+
     def transform_silver(
         self,
         raw_market: Optional[Any] = None,
@@ -136,15 +152,26 @@ class MarketIntelligencePipeline:
 
         # 3b. Social NLP Enrichment with Polars & FinBERT
         if raw_social is not None:
-            df_social_raw = pl.DataFrame(raw_social) if not isinstance(raw_social, pl.DataFrame) else raw_social
+            df_social_raw = (
+                pl.DataFrame(raw_social, infer_schema_length=None)
+                if not isinstance(raw_social, pl.DataFrame)
+                else raw_social
+            )
         else:
             df_social_raw = self.lake.read_partitions("social")
 
         if df_social_raw is not None and not df_social_raw.is_empty():
-            df_social_cleaned = TextCleaner.clean_polars_column(df_social_raw, title_col="title", body_col="text_body")
-            console.print("   -> Running batch sentiment inference (FinBERT)...")
-            df_social_scored = self.nlp_engine.score_dataframe(df_social_cleaned)
-            total_social = self.warehouse.upsert_social_sentiment(df_social_scored)
+            known_posts = self.warehouse.known_social_posts()
+            df_social_new = self._only_new_posts(df_social_raw, known_posts)
+            if df_social_new.is_empty():
+                total_social = len(known_posts)
+            else:
+                df_social_cleaned = TextCleaner.clean_polars_column(
+                    df_social_new, title_col="title", body_col="text_body"
+                )
+                console.print(f"   -> Running batch sentiment inference (FinBERT) on {len(df_social_new)} new posts...")
+                df_social_scored = self.nlp_engine.score_dataframe(df_social_cleaned)
+                total_social = self.warehouse.upsert_social_sentiment(df_social_scored)
             posts_processed = len(df_social_raw)
         else:
             total_social = 0

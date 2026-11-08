@@ -81,7 +81,7 @@ export function Lineage() {
         swatch="var(--ink-2)"
         how={
           <>
-            {t('asyncio + httpx en paralelo. Hasta', 'asyncio + httpx in parallel. Up to')} {r.max_retries}{' '}
+            {t('asyncio + httpx en paralelo. Binance, hasta', 'asyncio + httpx in parallel. Binance, up to')} {r.max_retries}{' '}
             {t('reintentos con backoff de', 'retries with backoff from')} {num(r.base_backoff_seconds, locale)}{' '}
             {t('a', 'to')} {num(r.max_backoff_seconds, locale)} s {t('y', 'and')} <Code>Retry-After</Code>.
           </>
@@ -91,9 +91,10 @@ export function Lineage() {
           <Row left={t('Velas OHLCV', 'OHLCV candles')} right={d.sources.binance.interval} />
           <Row left={t('Activos', 'Assets')} right={d.sources.binance.assets.map(assetShort).join(', ')} />
         </Node>
-        <Node name="Reddit + RSS">
+        <Node name={t('Noticias y Reddit', 'News and Reddit')}>
+          <Row left={t('Búsquedas en Google News', 'Google News searches')} right={d.sources.social.news_searches.length} />
+          <Row left={t('Feeds de medios', 'Publisher feeds')} right={d.sources.social.rss_feeds.length} />
           <Row left="Subreddits" right={d.sources.social.subreddits.length} />
-          <Row left={t('Feeds de noticias', 'News feeds')} right={d.sources.social.rss_feeds.length} />
         </Node>
       </Stage>
       <Flow active={flowing} />

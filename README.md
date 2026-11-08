@@ -11,7 +11,7 @@ app_port: 7860
 
 [![CI](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml)
 
-Motor de Inteligencia de Mercado diseñado bajo arquitectura **Medallion (Bronze / Silver / Gold)**. Ingiere de forma asíncrona datos de mercado financiero (OHLCV de Binance), sentimiento social (Reddit / Noticias RSS) y deriva un índice Fear & Greed propio a partir del sentimiento NLP, aplicando modelos **NLP (FinBERT)** para generar un conjunto de datos consolidado en **DuckDB** listo para modelos de Machine Learning y estrategias de trading algorítmico.
+Motor de Inteligencia de Mercado diseñado bajo arquitectura **Medallion (Bronze / Silver / Gold)**. Ingiere de forma asíncrona datos de mercado financiero (OHLCV de Binance), sentimiento de noticias y comunidades (Google News, RSS, Reddit) y deriva un índice Fear & Greed propio a partir del sentimiento NLP, aplicando modelos **NLP (FinBERT)** para generar un conjunto de datos consolidado en **DuckDB** listo para modelos de Machine Learning y estrategias de trading algorítmico.
 
 ---
 
@@ -78,7 +78,7 @@ sentiment-analysis/
 │   └── PRD.md                   # Product Requirements Document & Arquitectura
 ├── src/
 │   ├── configs/                 # Configuración Pydantic & variables de entorno
-│   ├── extractors/              # Extractores asíncronos (Binance, Reddit/RSS)
+│   ├── extractors/              # Extractores asíncronos (Binance, Google News, RSS, Reddit)
 │   ├── storage/                 # Data Lake Bronze y Almacén DuckDB
 │   ├── nlp/                     # Limpieza con Polars y motor FinBERT
 │   ├── pipeline/                # Orquestador del ciclo E -> L -> T

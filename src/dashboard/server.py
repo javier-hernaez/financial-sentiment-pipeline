@@ -435,6 +435,7 @@ async def get_lineage():
                 "social": {
                     "subreddits": SocialRedditExtractor.DEFAULT_SUBREDDITS,
                     "rss_feeds": [name for name, _ in SocialRedditExtractor.RSS_FEEDS],
+                    "news_searches": [query for query, _ in SocialRedditExtractor.NEWS_SEARCHES],
                 },
                 "retries": {
                     "max_retries": settings.max_retries,

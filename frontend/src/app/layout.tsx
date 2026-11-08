@@ -7,7 +7,7 @@ const FONTS_URL =
   'https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap';
 
 const description =
-  'Pipeline ELT de Javier Hernáez: extrae precios de Binance y titulares de Reddit/RSS, los guarda en Parquet, los clasifica con FinBERT y los consolida en DuckDB.';
+  'Pipeline ELT de Javier Hernáez: extrae precios de Binance y titulares de Google News, RSS y Reddit, los guarda en Parquet, los clasifica con FinBERT y los consolida en DuckDB.';
 
 export const metadata: Metadata = {
   title: `${PROJECT.name} · ${PROJECT.author.name}`,

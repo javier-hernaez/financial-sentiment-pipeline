@@ -13,8 +13,8 @@ export function Architecture() {
     {
       name: 'Extract',
       text: t(
-        'Velas de Binance y titulares de Reddit y RSS a la vez, con reintentos, backoff exponencial con jitter y Retry-After.',
-        'Binance candles and Reddit/RSS headlines at the same time, with retries, exponential backoff with jitter and Retry-After.'
+        'Velas de Binance y titulares de Google News, RSS y Reddit a la vez. Binance reintenta con backoff exponencial con jitter y Retry-After; una fuente de noticias que falla se registra y las demás siguen.',
+        'Binance candles and headlines from Google News, RSS and Reddit at the same time. Binance retries with exponential backoff with jitter and Retry-After; a failing news source is logged and the rest carry on.'
       ),
     },
     {

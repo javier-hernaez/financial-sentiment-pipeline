@@ -109,7 +109,7 @@ export interface CatalogTable {
 export interface Lineage {
   sources: {
     binance: { endpoint: string; interval: string; assets: string[] };
-    social: { subreddits: string[]; rss_feeds: string[] };
+    social: { subreddits: string[]; rss_feeds: string[]; news_searches: string[] };
     retries: { max_retries: number; base_backoff_seconds: number; max_backoff_seconds: number };
   };
   bronze: { source: string; active: boolean; files: number; size_kb: number; latest_path: string; latest_modified: string }[];

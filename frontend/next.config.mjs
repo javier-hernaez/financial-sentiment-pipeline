@@ -6,6 +6,10 @@ const nextConfig = {
   // The Docker build sets NEXT_STANDALONE=1 to emit a minimal self-contained server (.next/standalone).
   // Local `next start` keeps the default output. Rewrites below are resolved at build time.
   output: process.env.NEXT_STANDALONE === "1" ? "standalone" : undefined,
+  experimental: {
+    // Rewrites drop a request after 30 s by default, but a run answers when it ends and can take minutes
+    proxyTimeout: 30 * 60 * 1000,
+  },
   async rewrites() {
     return [
       {

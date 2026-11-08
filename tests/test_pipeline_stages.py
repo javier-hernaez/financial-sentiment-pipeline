@@ -181,3 +181,31 @@ async def test_failed_stage_is_recorded_with_error(mock_pipeline_network, monkey
             assert "gold view unavailable" in runs[0]["error"]
         finally:
             MarketWarehouse.close_all_shared()
+
+
+def test_only_new_posts_skips_known_ids_known_stories_and_batch_repeats():
+    df = pl.DataFrame(
+        {
+            "post_id": ["seen_id", "other_outlet", "new_1", "new_1_copy", "new_2"],
+            "title": ["Old story", "Known Story!", "Fresh story", "Fresh Story", "Another story"],
+        }
+    )
+    known = [("seen_id", "Old story"), ("known_id", "known story")]
+
+    new = MarketIntelligencePipeline._only_new_posts(df, known)
+
+    assert new["post_id"].to_list() == ["new_1", "new_2"]
+
+
+def test_only_new_posts_drops_pages_that_are_not_news():
+    titles = [
+        "XRP price at Nov 7, 2026 at 4pm EST Crypto Prediction Market",
+        "Howmet xStock Price | HWMX Price Today, Live Chart",
+        "Prediction market volume hits a record",
+        "Bitcoin price today: BTC falls below support",
+    ]
+    df = pl.DataFrame({"post_id": [str(i) for i in range(len(titles))], "title": titles})
+
+    new = MarketIntelligencePipeline._only_new_posts(df, [])
+
+    assert new["title"].to_list() == titles[2:]

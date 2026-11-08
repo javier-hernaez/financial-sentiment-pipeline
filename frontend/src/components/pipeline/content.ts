@@ -69,12 +69,12 @@ export const DECISIONS: Decision[] = [
     es: {
       title: 'Extracción concurrente y tolerante',
       short: 'asyncio.gather con return_exceptions: una fuente caída no tumba la ejecución.',
-      long: 'Binance y Reddit/RSS se extraen a la vez. Cada petición reintenta con backoff exponencial con jitter y respeta Retry-After. Si una fuente falla del todo, se registra el error y la otra se carga igualmente.',
+      long: 'Binance y las fuentes de noticias se extraen a la vez. Binance reintenta con backoff exponencial con jitter y respeta Retry-After. Si una fuente de noticias falla, se registra el motivo y las demás se cargan igualmente.',
     },
     en: {
       title: 'Concurrent, fault-tolerant extraction',
       short: 'asyncio.gather with return_exceptions: one source going down does not fail the run.',
-      long: 'Binance and Reddit/RSS are extracted at the same time. Each request retries with exponential backoff plus jitter and honours Retry-After. If one source fails entirely the error is logged and the other is still loaded.',
+      long: 'Binance and the news sources are extracted at the same time. Binance retries with exponential backoff plus jitter and honours Retry-After. If a news source fails the reason is logged and the rest are still loaded.',
     },
   },
   {

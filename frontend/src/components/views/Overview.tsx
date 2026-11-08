@@ -95,8 +95,8 @@ function Hero() {
           </h1>
           <p className="mt-4 max-w-[54ch] text-[15.5px] text-ink-2 lg:text-base">
             {t(
-              'Un pipeline ELT que extrae de Binance, Reddit y RSS, clasifica cada titular con FinBERT y consolida el resultado por horas en DuckDB.',
-              'An ELT pipeline that extracts from Binance, Reddit and RSS, scores every headline with FinBERT and consolidates the result per hour in DuckDB.'
+              'Un pipeline ELT que extrae de Binance, Google News, RSS y Reddit, clasifica cada titular con FinBERT y consolida el resultado por horas en DuckDB.',
+              'An ELT pipeline that extracts from Binance, Google News, RSS and Reddit, scores every headline with FinBERT and consolidates the result per hour in DuckDB.'
             )}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">

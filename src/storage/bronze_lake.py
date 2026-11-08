@@ -59,7 +59,7 @@ class BronzeDataLake:
         file_path = target_dir / f"{file_prefix}_{timestamp_str}.parquet"
         temp_file = target_dir / f".{file_prefix}_{timestamp_str}.parquet.tmp"
 
-        df = pl.DataFrame(records)
+        df = pl.DataFrame(records, infer_schema_length=None)
         # Write to temporary file first then atomically replace
         df.write_parquet(temp_file)
         temp_file.replace(file_path)

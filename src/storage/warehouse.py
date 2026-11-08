@@ -1,7 +1,7 @@
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import duckdb
 import polars as pl
@@ -392,6 +392,10 @@ class MarketWarehouse:
             return pl.from_arrow(res)
         except Exception:
             return pl.DataFrame()
+
+    def known_social_posts(self) -> List[Tuple[str, Optional[str]]]:
+        """Id and title of every post in Silver, used to score only the new ones."""
+        return self.conn.execute("SELECT post_id, title FROM silver_social_sentiment").fetchall()
 
     def query_social_posts(self, limit: int = 20) -> pl.DataFrame:
         """Queries the latest enriched social sentiment posts from silver layer."""

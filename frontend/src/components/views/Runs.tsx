@@ -77,8 +77,8 @@ export function Runs() {
 
   const stages: { stage: Stage; label: string; what: string }[] = [
     { stage: 'full', label: t('Pipeline completo', 'Full pipeline'), what: t('Las cuatro etapas seguidas.', 'All four stages in a row.') },
-    { stage: 'extract', label: 'Extract + load', what: t('Llama a Binance y Reddit/RSS y escribe Parquet en Bronze.', 'Calls Binance and Reddit/RSS and writes Parquet to Bronze.') },
-    { stage: 'transform', label: 'Transform', what: t('Relee Bronze, limpia, puntúa con FinBERT y hace upsert en Silver.', 'Re-reads Bronze, cleans, scores with FinBERT and upserts into Silver.') },
+    { stage: 'extract', label: 'Extract + load', what: t('Llama a Binance y a las fuentes de noticias y escribe Parquet en Bronze.', 'Calls Binance and the news sources and writes Parquet to Bronze.') },
+    { stage: 'transform', label: 'Transform', what: t('Relee Bronze, limpia, puntúa con FinBERT lo nuevo y hace upsert en Silver.', 'Re-reads Bronze, cleans, scores new posts with FinBERT and upserts into Silver.') },
     { stage: 'gold', label: 'Gold', what: t('Consulta la vista Gold y calcula señales por hora.', 'Queries the Gold view and computes hourly signals.') },
   ];
 
