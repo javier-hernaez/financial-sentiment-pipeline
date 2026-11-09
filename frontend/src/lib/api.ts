@@ -1,136 +1,112 @@
 import {
-  GoldRecord,
-  SystemMetrics,
-  Diagnostics,
   BronzeFile,
-  TableDataResponse,
+  Diagnostics,
+  GoldRecord,
+  Lineage,
   NlpPrediction,
-  PipelineRunResult,
+  PipelineRun,
+  ProjectQuality,
+  Stage,
+  StageAccepted,
+  SystemMetrics,
+  TableDataResponse,
 } from '@/types';
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== 'undefined'
-    ? '/api'
-    : 'http://127.0.0.1:8080/api');
+// Same origin. Admin calls go through app/api/admin/[...slug]/route.ts, which holds the secret on the
+// server: nothing the browser downloads may contain it.
+const API_BASE = '/api';
 
-const API_SECRET_KEY =
-  process.env.NEXT_PUBLIC_API_SECRET_KEY || 'dev-insecure-secret-key';
+const RUN_POLL_MS = 2000;
+// A run takes minutes, so a few failed polls (a backend restart, a network blip) should not abandon it
+const RUN_POLL_MAX_FAILURES = 5;
 
-function getHeaders(customHeaders: Record<string, string> = {}): Record<string, string> {
-  return {
-    Authorization: `Bearer ${API_SECRET_KEY}`,
-    'X-API-Key': API_SECRET_KEY,
-    ...customHeaders,
-  };
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
-async function handleResponse<T>(res: Response): Promise<T> {
+async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    let errorMsg = `HTTP ${res.status}`;
+    let message = `HTTP ${res.status}`;
     try {
       const data = await res.json();
-      // FastAPI reports errors as { detail: string | { error } }; the Next.js proxy uses { error }
       const detail = data?.detail;
-      if (data?.error) {
-        errorMsg = data.error;
-      } else if (typeof detail === 'string') {
-        errorMsg = detail;
-      } else if (detail?.error) {
-        errorMsg = detail.error;
-      }
+      if (data?.error) message = data.error;
+      else if (typeof detail === 'string') message = detail;
+      else if (Array.isArray(detail) && detail[0]?.msg) message = detail[0].msg;
     } catch {
-      // response was not JSON
+      // body was not JSON
     }
-    throw new Error(errorMsg);
+    throw new ApiError(message, res.status);
   }
   return res.json();
 }
 
-export async function fetchMetrics(): Promise<SystemMetrics> {
-  const res = await fetch(`${API_BASE}/admin/metrics`, {
-    headers: getHeaders(),
-    cache: 'no-store',
-  });
-  return handleResponse<SystemMetrics>(res);
+function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return fetch(`${API_BASE}${path}`, { cache: 'no-store', signal }).then((r) => handle<T>(r));
 }
 
-export async function fetchDiagnostics(): Promise<Diagnostics> {
-  const res = await fetch(`${API_BASE}/admin/diagnostics`, {
-    headers: getHeaders(),
-    cache: 'no-store',
-  });
-  return handleResponse<Diagnostics>(res);
-}
-
-export async function fetchGoldData(symbol: string = 'BTCUSDT', limit: number = 24): Promise<GoldRecord[]> {
-  const params = new URLSearchParams({ symbol, limit: limit.toString() });
-  const res = await fetch(`${API_BASE}/gold?${params.toString()}`, {
-    headers: getHeaders(),
-    cache: 'no-store',
-  });
-  return handleResponse<GoldRecord[]>(res);
-}
-
-export async function fetchTableData(
-  table: string,
-  limit: number = 25,
-  offset: number = 0,
-  search: string = '',
-  symbol: string = ''
-): Promise<TableDataResponse> {
-  const params = new URLSearchParams({
-    table,
-    limit: limit.toString(),
-    offset: offset.toString(),
-    search,
-    symbol,
-  });
-  const res = await fetch(`${API_BASE}/admin/table-data?${params.toString()}`, {
-    headers: getHeaders(),
-    cache: 'no-store',
-  });
-  return handleResponse<TableDataResponse>(res);
-}
-
-export async function fetchBronzeTree(): Promise<{ total_files: number; files: BronzeFile[] }> {
-  const res = await fetch(`${API_BASE}/admin/bronze-tree`, {
-    headers: getHeaders(),
-    cache: 'no-store',
-  });
-  return handleResponse<{ total_files: number; files: BronzeFile[] }>(res);
-}
-
-export async function runStage(
-  stage: 'extract' | 'transform' | 'gold' | 'full',
-  symbol: string = 'BTCUSDT',
-  hours: number = 24
-): Promise<PipelineRunResult> {
-  const res = await fetch(`${API_BASE}/admin/run-stage`, {
+function post<T>(path: string, body: unknown): Promise<T> {
+  return fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ stage, symbol, hours }),
-  });
-  return handleResponse<PipelineRunResult>(res);
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((r) => handle<T>(r));
 }
 
-export async function runWarehouseOp(action: 'vacuum' | 'checkpoint' | 'refresh_views' | 'clear_table', table?: string): Promise<{ status: string; message: string }> {
-  const res = await fetch(`${API_BASE}/admin/warehouse-ops`, {
-    method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ action, table }),
-  });
-  return handleResponse<{ status: string; message: string }>(res);
+export const fetchMetrics = (signal?: AbortSignal) => get<SystemMetrics>('/admin/metrics', signal);
+export const fetchDiagnostics = (signal?: AbortSignal) => get<Diagnostics>('/admin/diagnostics', signal);
+export const fetchLineage = (signal?: AbortSignal) => get<Lineage>('/admin/lineage', signal);
+export const fetchQuality = (signal?: AbortSignal) => get<ProjectQuality>('/project/quality', signal);
+
+export const fetchRuns = (limit = 20, signal?: AbortSignal) =>
+  get<{ runs: PipelineRun[] }>(`/admin/runs?limit=${limit}`, signal).then((r) => r.runs);
+
+export const fetchBronzeTree = (source: string, signal?: AbortSignal) =>
+  get<{ total_files: number; files: BronzeFile[] }>(`/admin/bronze-tree?source=${encodeURIComponent(source)}`, signal);
+
+export function fetchGold(symbol?: string, limit = 24, signal?: AbortSignal): Promise<GoldRecord[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (symbol) params.set('symbol', symbol);
+  return get<GoldRecord[]>(`/gold?${params}`, signal);
 }
+
+export function fetchTableData(table: string, limit = 25, offset = 0, search = '', symbol = '', signal?: AbortSignal) {
+  const params = new URLSearchParams({ table, limit: String(limit), offset: String(offset), search, symbol });
+  return get<TableDataResponse>(`/admin/table-data?${params}`, signal);
+}
+
+/** Starts a run in the background. includeSocial is for the news feeds, which every asset shares. */
+export const runStage = (stage: Stage, symbol: string, hours: number, includeSocial: boolean) =>
+  post<StageAccepted>('/admin/run-stage', { stage, symbol, hours, include_social: includeSocial });
+
+/** Follows a run until it ends, however long it takes. */
+export async function waitForRun(runId: string): Promise<PipelineRun> {
+  let failures = 0;
+  for (;;) {
+    await new Promise((resolve) => setTimeout(resolve, RUN_POLL_MS));
+    try {
+      const run = await get<PipelineRun>(`/admin/runs/${runId}`);
+      failures = 0;
+      if (run.status !== 'running') return run;
+    } catch (err) {
+      failures += 1;
+      if (failures >= RUN_POLL_MAX_FAILURES) throw err;
+    }
+  }
+}
+
+export const runWarehouseOp = (action: 'vacuum' | 'checkpoint' | 'refresh_views') =>
+  post<{ status: string; message: string }>('/admin/warehouse-ops', { action });
 
 export async function analyzeText(text: string): Promise<NlpPrediction> {
   const t0 = performance.now();
-  const res = await fetch(`${API_BASE}/analyze-text`, {
-    method: 'POST',
-    headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ text }),
-  });
-  const data = await handleResponse<NlpPrediction>(res);
+  const data = await post<NlpPrediction>('/analyze-text', { text });
   data.latency_ms = Math.round(performance.now() - t0);
   return data;
 }
+
+export const csvExportUrl = (symbol: string) => `${API_BASE}/export-csv?symbol=${encodeURIComponent(symbol)}`;

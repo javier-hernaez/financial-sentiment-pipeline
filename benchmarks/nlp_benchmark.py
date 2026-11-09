@@ -10,7 +10,6 @@ Contains 60+ curated financial assertions across 6 distinct market domains and l
 """
 
 import time
-from typing import Dict, List, Tuple
 
 from rich.console import Console
 from rich.table import Table
@@ -20,7 +19,7 @@ from src.nlp.finbert_engine import FinBERTEngine
 console = Console()
 
 # Curated dataset of 60 institutional-grade test cases
-EVALUATION_CORPUS: List[Tuple[str, str, str]] = [
+EVALUATION_CORPUS: list[tuple[str, str, str]] = [
     # --- Category 1: Institutional Earnings & Financial Reports (EN) ---
     (
         "Quarterly revenue exceeded market projections by 14% with strong operating cash flow expansion.",
@@ -275,7 +274,7 @@ EVALUATION_CORPUS: List[Tuple[str, str, str]] = [
 ]
 
 
-def run_benchmark(force_mock: bool = False) -> Dict[str, any]:
+def run_benchmark(force_mock: bool = False) -> dict[str, any]:
     """Runs a complete rigorous statistical benchmark on the FinBERT engine."""
     mode_str = "High-Speed Fallback (Heuristic)" if force_mock else "Deep Learning (Transformers + FinBERT)"
     console.print(
@@ -302,13 +301,13 @@ def run_benchmark(force_mock: bool = False) -> Dict[str, any]:
 
     labels = ["bullish", "bearish", "neutral"]
 
-    conf_matrix = {act: {pred: 0 for pred in labels} for act in labels}
-    for act, pred_dict in zip(ground_truth, predictions):
+    conf_matrix = {act: dict.fromkeys(labels, 0) for act in labels}
+    for act, pred_dict in zip(ground_truth, predictions, strict=False):
         p_label = pred_dict["sentiment_label"]
         conf_matrix[act][p_label] = conf_matrix[act].get(p_label, 0) + 1
 
     total_samples = len(ground_truth)
-    correct_samples = sum(1 for act, p in zip(ground_truth, predictions) if act == p["sentiment_label"])
+    correct_samples = sum(1 for act, p in zip(ground_truth, predictions, strict=False) if act == p["sentiment_label"])
     accuracy = correct_samples / total_samples
 
     class_metrics = {}
@@ -336,7 +335,7 @@ def run_benchmark(force_mock: bool = False) -> Dict[str, any]:
     brier_score = (
         sum(
             (1.0 - p["confidence"]) ** 2 if p["sentiment_label"] == act else (p["confidence"]) ** 2
-            for act, p in zip(ground_truth, predictions)
+            for act, p in zip(ground_truth, predictions, strict=False)
         )
         / total_samples
     )
@@ -359,7 +358,7 @@ def run_benchmark(force_mock: bool = False) -> Dict[str, any]:
     }
 
 
-def display_results(res: Dict[str, any]):
+def display_results(res: dict[str, any]):
     """Renders professional rich tables and confusion matrix."""
     summary_tbl = Table(title=f"Resultados de Validación Cuantitativa • {res['mode']}", header_style="bold blue")
     summary_tbl.add_column("Métrica Institucional", style="cyan", justify="left")

@@ -124,3 +124,88 @@ async def test_pipeline_run_end_to_end(mock_pipeline_network, monkeypatch):
         assert result["posts_processed"] > 0
         assert isinstance(result["gold_preview"], pl.DataFrame)
         assert result["elapsed_seconds"] > 0
+
+
+@pytest.mark.asyncio
+async def test_pipeline_run_is_recorded_with_stage_timings(mock_pipeline_network, monkeypatch):
+    from src.storage import MarketWarehouse
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db = Path(tmpdir) / "runs.duckdb"
+        monkeypatch.setattr(settings, "duckdb_path", db)
+        monkeypatch.setattr(settings, "bronze_dir", Path(tmpdir) / "bronze_runs")
+        try:
+            pipeline = MarketIntelligencePipeline(symbol="BTCUSDT", hours=2, force_mock_nlp=True)
+            result = await pipeline.run(triggered_by="test")
+
+            with MarketWarehouse(db_path=db) as warehouse:
+                runs = warehouse.list_runs()
+            assert len(runs) == 1
+            run = runs[0]
+            assert run["run_id"] == result["run_id"]
+            assert run["status"] == "success"
+            assert run["stage"] == "full"
+            assert run["triggered_by"] == "test"
+            assert run["candles"] == 2
+            assert run["bronze_files"] == 2
+            assert run["gold_rows"] > 0
+            for key in ("extract_seconds", "load_seconds", "transform_seconds", "gold_seconds"):
+                assert run[key] is not None and run[key] >= 0
+            assert run["elapsed_seconds"] >= run["transform_seconds"]
+        finally:
+            MarketWarehouse.close_all_shared()
+
+
+@pytest.mark.asyncio
+async def test_failed_stage_is_recorded_with_error(mock_pipeline_network, monkeypatch):
+    from src.storage import MarketWarehouse
+
+    def broken_gold(self):
+        raise RuntimeError("gold view unavailable")
+
+    monkeypatch.setattr(MarketIntelligencePipeline, "aggregate_gold", broken_gold)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db = Path(tmpdir) / "runs_fail.duckdb"
+        monkeypatch.setattr(settings, "duckdb_path", db)
+        monkeypatch.setattr(settings, "bronze_dir", Path(tmpdir) / "bronze_fail")
+        try:
+            pipeline = MarketIntelligencePipeline(symbol="BTCUSDT", hours=2, force_mock_nlp=True)
+            with pytest.raises(RuntimeError):
+                await pipeline.run_stage("gold")
+
+            with MarketWarehouse(db_path=db) as warehouse:
+                runs = warehouse.list_runs()
+            assert len(runs) == 1
+            assert runs[0]["status"] == "failed"
+            assert runs[0]["stage"] == "gold"
+            assert "gold view unavailable" in runs[0]["error"]
+        finally:
+            MarketWarehouse.close_all_shared()
+
+
+def test_only_new_posts_skips_known_ids_known_stories_and_batch_repeats():
+    df = pl.DataFrame(
+        {
+            "post_id": ["seen_id", "other_outlet", "new_1", "new_1_copy", "new_2"],
+            "title": ["Old story", "Known Story!", "Fresh story", "Fresh Story", "Another story"],
+        }
+    )
+    known = [("seen_id", "Old story"), ("known_id", "known story")]
+
+    new = MarketIntelligencePipeline._only_new_posts(df, known)
+
+    assert new["post_id"].to_list() == ["new_1", "new_2"]
+
+
+def test_only_new_posts_drops_pages_that_are_not_news():
+    titles = [
+        "XRP price at Nov 7, 2026 at 4pm EST Crypto Prediction Market",
+        "Howmet xStock Price | HWMX Price Today, Live Chart",
+        "Prediction market volume hits a record",
+        "Bitcoin price today: BTC falls below support",
+    ]
+    df = pl.DataFrame({"post_id": [str(i) for i in range(len(titles))], "title": titles})
+
+    new = MarketIntelligencePipeline._only_new_posts(df, [])
+
+    assert new["title"].to_list() == titles[2:]

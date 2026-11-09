@@ -1,614 +1,206 @@
-"""FinBERT Financial Sentiment Engine with Batch Inference and Resilient Fallback."""
+"""FinBERT financial sentiment engine with batch inference and a heuristic fallback."""
 
+import logging
+import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, TypedDict
 
 import polars as pl
-from rich.console import Console
 
 from ..configs.settings import settings
+from .lexicon import BEARISH_LEXICON, BULLISH_LEXICON, NEUTRAL_LEXICON
 
-console = Console()
+logger = logging.getLogger(__name__)
 
 _WORD_RE = re.compile(r"\b[\w-]+\b")
 
-# Financial lexicons (English + Spanish) for the heuristic fallback, built once at import time
-_BULLISH_LEXICON = frozenset({
-    # English
-    "surge",
-    "surges",
-    "surging",
-    "surged",
-    "rally",
-    "rallies",
-    "rallying",
-    "rallied",
-    "bullish",
-    "bull",
-    "bulls",
-    "inflow",
-    "inflows",
-    "high",
-    "highs",
-    "record",
-    "records",
-    "ath",
-    "all-time-high",
-    "profit",
-    "profits",
-    "profitable",
-    "gain",
-    "gains",
-    "gaining",
-    "long",
-    "longs",
-    "optimistic",
-    "optimism",
-    "growth",
-    "growing",
-    "breakout",
-    "breakouts",
-    "breaking",
-    "accumulate",
-    "accumulation",
-    "accumulating",
-    "buy",
-    "buying",
-    "buyer",
-    "buyers",
-    "bought",
-    "up",
-    "pump",
-    "pumping",
-    "pumped",
-    "soar",
-    "soaring",
-    "soared",
-    "skyrocket",
-    "skyrocketing",
-    "skyrocketed",
-    "moon",
-    "mooning",
-    "adoption",
-    "outperform",
-    "outperforming",
-    "dividend",
-    "boost",
-    "rebound",
-    "rebounds",
-    "rebounding",
-    "green",
-    "strong",
-    "strength",
-    # Spanish
-    "sube",
-    "suben",
-    "subio",
-    "subió",
-    "subida",
-    "subidas",
-    "subiendo",
-    "subir",
-    "subira",
-    "subirá",
-    "alcista",
-    "alcistas",
-    "alza",
-    "alzas",
-    "repunta",
-    "repunte",
-    "repuntes",
-    "ganancia",
-    "ganancias",
-    "compras",
-    "compra",
-    "comprando",
-    "compradores",
-    "comprar",
-    "acumular",
-    "acumulacion",
-    "acumulación",
-    "acumulando",
-    "maximo",
-    "maximos",
-    "máximo",
-    "máximos",
-    "record",
-    "récord",
-    "positivo",
-    "positivos",
-    "positiva",
-    "positivas",
-    "optimismo",
-    "optimista",
-    "optimistas",
-    "crecimiento",
-    "crece",
-    "crecen",
-    "crecer",
-    "crecera",
-    "crecerá",
-    "dispara",
-    "disparan",
-    "disparado",
-    "disparada",
-    "disparandose",
-    "disparar",
-    "disparara",
-    "disparará",
-    "explota",
-    "explotando",
-    "supera",
-    "superando",
-    "flujo",
-    "flujos",
-    "entradas",
-    "recupera",
-    "recuperacion",
-    "recuperación",
-    "rebote",
-    "verde",
-    "verdes",
-    "fuerte",
-    "fortaleza",
-    "historico",
-    "histórico",
-    "historicos",
-    "históricos",
-})
+MAX_TOKENS = 96
+TRANSFORMER = "transformer"
+HEURISTIC = "heuristic"
+FINANCIAL_LABELS = {"positive": "bullish", "negative": "bearish", "neutral": "neutral"}
 
-_BEARISH_LEXICON = frozenset({
-    # English
-    "drop",
-    "drops",
-    "dropping",
-    "dropped",
-    "plunge",
-    "plunges",
-    "plunging",
-    "plunged",
-    "bearish",
-    "bear",
-    "bears",
-    "crash",
-    "crashes",
-    "crashing",
-    "crashed",
-    "fall",
-    "falls",
-    "falling",
-    "fell",
-    "down",
-    "correction",
-    "corrections",
-    "dip",
-    "dips",
-    "liquidate",
-    "liquidates",
-    "liquidated",
-    "liquidation",
-    "liquidations",
-    "probe",
-    "probes",
-    "investigation",
-    "sec",
-    "fear",
-    "panic",
-    "panics",
-    "dump",
-    "dumps",
-    "dumping",
-    "dumped",
-    "ban",
-    "bans",
-    "banned",
-    "banning",
-    "loss",
-    "losses",
-    "losing",
-    "lost",
-    "risk-off",
-    "short",
-    "shorts",
-    "shorting",
-    "pullback",
-    "pullbacks",
-    "slump",
-    "slumps",
-    "tumble",
-    "tumbles",
-    "bleeding",
-    "bleed",
-    "bleeds",
-    "fud",
-    "scam",
-    "hack",
-    "hacked",
-    "lawsuit",
-    "sued",
-    "fraud",
-    "insolvency",
-    "insolvent",
-    "bankrupt",
-    "bankruptcy",
-    "red",
-    "selloff",
-    "sell-off",
-    "selling",
-    "sell",
-    "collapse",
-    "collapsing",
-    # Spanish
-    "cae",
-    "caen",
-    "caida",
-    "caída",
-    "caidas",
-    "caídas",
-    "cayendo",
-    "cayo",
-    "cayó",
-    "caer",
-    "caera",
-    "caerá",
-    "baja",
-    "bajan",
-    "bajada",
-    "bajadas",
-    "bajando",
-    "bajo",
-    "bajó",
-    "bajar",
-    "bajara",
-    "bajará",
-    "bajista",
-    "bajistas",
-    "desploma",
-    "desploman",
-    "desplome",
-    "desplomes",
-    "desplomandose",
-    "desplomar",
-    "colapso",
-    "colapsa",
-    "colapsan",
-    "perdida",
-    "perdidas",
-    "pérdida",
-    "pérdidas",
-    "quiebra",
-    "quiebran",
-    "quiebras",
-    "panico",
-    "pánico",
-    "miedo",
-    "venta",
-    "ventas",
-    "vendiendo",
-    "vendedores",
-    "vender",
-    "liquidacion",
-    "liquidaciones",
-    "liquidación",
-    "pesimismo",
-    "pesimista",
-    "pesimistas",
-    "negativo",
-    "negativos",
-    "negativa",
-    "negativas",
-    "correccion",
-    "corrección",
-    "correcciones",
-    "sancion",
-    "sanciones",
-    "sanción",
-    "demanda",
-    "demandas",
-    "fraude",
-    "estafa",
-    "hackeo",
-    "hackeado",
-    "riesgo",
-    "sangria",
-    "sangría",
-    "rojo",
-    "rojos",
-    "roja",
-    "rojas",
-    "hundimiento",
-    "hunde",
-    "hunden",
-    "hundir",
-    "hundira",
-    "hundirá",
-})
 
-_NEUTRAL_LEXICON = frozenset({
-    # English
-    "sideways",
-    "consolidation",
-    "consolidating",
-    "consolidates",
-    "consolidate",
-    "range",
-    "range-bound",
-    "flat",
-    "neutral",
-    "stable",
-    "stability",
-    "steady",
-    "unchanged",
-    "waiting",
-    "pause",
-    "paused",
-    "low-volatility",
-    # Spanish
-    "lateral",
-    "laterales",
-    "consolidacion",
-    "consolidación",
-    "consolida",
-    "consolidando",
-    "estable",
-    "estabilidad",
-    "espera",
-    "neutro",
-    "neutral",
-    "calma",
-    "pausa",
-    "plano",
-    "tranquilidad",
-    "indecision",
-    "indecisión",
-})
+class Prediction(TypedDict):
+    sentiment_score: float | None
+    sentiment_label: str | None
+    confidence: float | None
+    prob_positive: float | None
+    prob_negative: float | None
+    prob_neutral: float | None
+    engine_mode: str
+
+
+def unscored_prediction(engine_mode: str) -> Prediction:
+    """The answer for text with nothing to classify: no score, rather than one nobody measured."""
+    return {
+        "sentiment_score": None,
+        "sentiment_label": None,
+        "confidence": None,
+        "prob_positive": None,
+        "prob_negative": None,
+        "prob_neutral": None,
+        "engine_mode": engine_mode,
+    }
 
 
 class FinBERTEngine:
     """
-    Inference Engine using ProsusAI/finbert for financial sentiment quantification.
-    Includes an intelligent heuristic mode for environments without PyTorch/GPU.
+    Inference engine using ProsusAI/finbert for financial sentiment quantification.
+    Falls back to a word-list engine where PyTorch or the weights are not available.
     """
 
-    def __init__(
-        self,
-        model_name: Optional[str] = None,
-        batch_size: Optional[int] = None,
-        force_mock: bool = False,
-    ):
+    device = "CPU"
+
+    def __init__(self, model_name: str | None = None, batch_size: int | None = None, force_mock: bool = False):
         self.model_name = model_name or settings.finbert_model_name
         self.batch_size = batch_size or settings.nlp_batch_size
         self.force_mock = force_mock or settings.use_mock_nlp
 
-        self.tokenizer = None
-        self.model = None
-        self._is_transformer_ready = False
+        self.tokenizer: Any = None
+        self.model: Any = None
+        self._label_indices: dict[str, int] = {}
         self._fallback_warned = False
 
         if not self.force_mock:
             self._try_load_model()
 
-    def _try_load_model(self) -> None:
-        """Attempts to load HuggingFace Transformers and FinBERT weights."""
-        try:
-            import logging
-            import os
-            import warnings
+    @property
+    def is_transformer_ready(self) -> bool:
+        return self.model is not None and not self.force_mock
 
-            os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-            warnings.filterwarnings("ignore")
-            logging.getLogger("transformers").setLevel(logging.ERROR)
-            logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
-            import torch  # noqa: F401
+    @property
+    def engine_mode(self) -> str:
+        return TRANSFORMER if self.is_transformer_ready else HEURISTIC
+
+    def _try_load_model(self) -> None:
+        """Loads the tokenizer and weights. Any failure (no torch, no network, bad cache) means the fallback."""
+        os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+        logging.getLogger("transformers").setLevel(logging.ERROR)
+        logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+        try:
             from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-            console.print(f"[cyan][FinBERT] Loading tokenizer and weights for '{self.model_name}'...[/cyan]")
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
-            self.model.eval()
-            self._is_transformer_ready = True
-            console.print("[green][FinBERT] Model loaded successfully.[/green]")
-        except (ImportError, Exception) as exc:
-            console.print(
-                f"[yellow][FinBERT] Notice: Transformers/Torch not available ({exc}). "
-                f"Falling back to high-speed financial heuristic engine.[/yellow]"
-            )
-            self._is_transformer_ready = False
+            logger.info("Loading tokenizer and weights for %s", self.model_name)
+            tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+            model.eval()
+        except Exception as exc:
+            logger.warning("FinBERT unavailable (%s); using the heuristic engine", exc)
+            return
 
-    def predict_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
-        """
-        Executes batch inference over a list of texts.
-        Returns sentiment_score [-1.0, 1.0], sentiment_label, and confidence.
-        """
+        # Class order comes from the model config instead of assuming ProsusAI/finbert's
+        id2label = {int(k): str(v).lower() for k, v in (getattr(model.config, "id2label", None) or {}).items()}
+        by_label = {label: idx for idx, label in id2label.items()}
+        self._label_indices = (
+            {label: by_label[label] for label in FINANCIAL_LABELS}
+            if FINANCIAL_LABELS.keys() <= by_label.keys()
+            else {"positive": 0, "negative": 1, "neutral": 2}
+        )
+        self.tokenizer = tokenizer
+        self.model = model
+        logger.info("FinBERT model loaded")
+
+    def predict_batch(self, texts: list[str]) -> list[Prediction]:
+        """Classifies texts, returning results in input order. Score is in [-1.0, 1.0]."""
         if not texts:
             return []
-
-        if self._is_transformer_ready and not self.force_mock:
+        if self.is_transformer_ready:
             return self._predict_transformers(texts)
-        else:
-            if not self.force_mock and not self._fallback_warned:
-                self._fallback_warned = True
-                console.print(
-                    "[yellow][FinBERTEngine] Advertencia: Modelo transformer no disponible. "
-                    "Usando motor heurístico de respaldo.[/yellow]"
-                )
-            return self._predict_heuristic(texts)
+        if not self.force_mock and not self._fallback_warned:
+            self._fallback_warned = True
+            logger.warning("Transformer model not available: scoring with the heuristic engine")
+        return self._predict_heuristic(texts)
 
-    def _predict_transformers(self, texts: List[str]) -> List[Dict[str, Any]]:
-        """Batch inference using PyTorch and HuggingFace FinBERT with multilingual translation and prior calibration."""
-
+    def _predict_transformers(self, texts: list[str]) -> list[Prediction]:
+        """
+        Batch inference. Blank texts skip the model, whose output for them means nothing. The rest run sorted
+        by length: every batch pads to its longest text, so similar lengths waste far less CPU on padding.
+        """
         import torch
 
-        # Preprocess texts locally without blocking network calls
-        prepared_texts: List[str] = [t.strip() if t else "" for t in texts]
+        prepared = [t.strip() if t else "" for t in texts]
+        results = [unscored_prediction(TRANSFORMER) for _ in prepared]
+        order = sorted((i for i, text in enumerate(prepared) if text), key=lambda i: len(prepared[i]))
 
-        results: List[Dict[str, Any]] = []
-        # Resolve class indices from the model config instead of assuming ProsusAI/finbert's ordering
-        id2label = {int(k): str(v).lower() for k, v in (getattr(self.model.config, "id2label", None) or {}).items()}
-        if set(id2label.values()) >= {"positive", "negative", "neutral"}:
-            label_to_idx = {label: idx for idx, label in id2label.items()}
-        else:
-            label_to_idx = {"positive": 0, "negative": 1, "neutral": 2}
-        pos_idx, neg_idx, neu_idx = label_to_idx["positive"], label_to_idx["negative"], label_to_idx["neutral"]
-
-        for i in range(0, len(prepared_texts), self.batch_size):
-            batch_texts = prepared_texts[i : i + self.batch_size]
-
-            # Handle empty texts gracefully
-            if all(not txt.strip() for txt in batch_texts):
-                for _ in batch_texts:
-                    results.append(
-                        {
-                            "sentiment_score": 0.0,
-                            "sentiment_label": "neutral",
-                            "confidence": 0.70,
-                            "prob_positive": 0.15,
-                            "prob_negative": 0.15,
-                            "prob_neutral": 0.70,
-                            "engine_mode": "transformer",
-                        }
-                    )
-                continue
-
+        pos_idx = self._label_indices["positive"]
+        neg_idx = self._label_indices["negative"]
+        neu_idx = self._label_indices["neutral"]
+        for start in range(0, len(order), self.batch_size):
+            indices = order[start : start + self.batch_size]
             inputs = self.tokenizer(
-                batch_texts,
+                [prepared[i] for i in indices],
                 padding=True,
                 truncation=True,
-                max_length=96,
+                max_length=MAX_TOKENS,
                 return_tensors="pt",
             )
+            with torch.inference_mode():
+                probabilities = torch.nn.functional.softmax(self.model(**inputs).logits, dim=-1).tolist()
 
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                probabilities = torch.nn.functional.softmax(outputs.logits, dim=-1)
-
-            for idx, probs in enumerate(probabilities):
-                pos = float(probs[pos_idx].item())
-                neg = float(probs[neg_idx].item())
-                neu = float(probs[neu_idx].item())
-
-                # Composite score from -1.0 (bearish) to +1.0 (bullish)
-                score = round(pos - neg, 4)
-
-                probs_by_label = {"positive": pos, "negative": neg, "neutral": neu}
-                raw_label = max(probs_by_label, key=probs_by_label.get)
-                max_val = probs_by_label[raw_label]
-
-                # Normalize label to financial terminology
-                if raw_label == "positive":
-                    fin_label = "bullish"
-                elif raw_label == "negative":
-                    fin_label = "bearish"
-                else:
-                    fin_label = "neutral"
-
-                results.append(
-                    {
-                        "sentiment_score": score,
-                        "sentiment_label": fin_label,
-                        "confidence": round(float(max_val), 4),
-                        "prob_positive": round(pos, 4),
-                        "prob_negative": round(neg, 4),
-                        "prob_neutral": round(neu, 4),
-                        "engine_mode": "transformer",
-                    }
-                )
-
-        return results
-
-    def _predict_heuristic(self, texts: List[str]) -> List[Dict[str, Any]]:
-        """
-        Deterministic, rule-based financial lexicon engine with English and Spanish coverage.
-        Used as zero-dependency fallback for rapid testing and lightweight environments.
-        """
-        results: List[Dict[str, Any]] = []
-
-        for text in texts:
-            if not text or not text.strip():
-                results.append(
-                    {
-                        "sentiment_score": 0.0,
-                        "sentiment_label": "neutral",
-                        "confidence": 0.70,
-                        "prob_positive": 0.15,
-                        "prob_negative": 0.15,
-                        "prob_neutral": 0.70,
-                        "engine_mode": "heuristic",
-                    }
-                )
-                continue
-
-            words = set(_WORD_RE.findall(text.lower()))
-            bull_hits = len(words.intersection(_BULLISH_LEXICON))
-            bear_hits = len(words.intersection(_BEARISH_LEXICON))
-            neu_hits = len(words.intersection(_NEUTRAL_LEXICON))
-
-            total_directional = bull_hits + bear_hits
-
-            # Neutral priority if explicit neutral terms exist and balance or dominate
-            if (
-                total_directional == 0
-                or (neu_hits > 0 and neu_hits >= total_directional)
-                or (neu_hits > 0 and bull_hits == bear_hits)
-            ):
-                pos, neg, neu = 0.15, 0.15, 0.70
-                fin_label = "neutral"
-                score = 0.0
-                confidence = round(min(0.95, 0.70 + (neu_hits * 0.10)), 2)
-            elif bull_hits > bear_hits:
-                margin = (bull_hits - bear_hits) / total_directional
-                pos = round(0.55 + (0.35 * margin), 4)
-                neg = round(0.08 * (1.0 - margin), 4)
-                neu = round(max(0.0, 1.0 - pos - neg), 4)
-                fin_label = "bullish"
-                score = round(pos - neg, 4)
-                confidence = round(pos, 4)
-            elif bear_hits > bull_hits:
-                margin = (bear_hits - bull_hits) / total_directional
-                neg = round(0.55 + (0.35 * margin), 4)
-                pos = round(0.08 * (1.0 - margin), 4)
-                neu = round(max(0.0, 1.0 - pos - neg), 4)
-                fin_label = "bearish"
-                score = round(-(neg - pos), 4)
-                confidence = round(neg, 4)
-            else:
-                pos, neg, neu = 0.35, 0.35, 0.30
-                fin_label = "neutral"
-                score = 0.0
-                confidence = 0.50
-
-            results.append(
-                {
-                    "sentiment_score": score,
-                    "sentiment_label": fin_label,
-                    "confidence": confidence,
-                    "prob_positive": round(pos, 4),
-                    "prob_negative": round(neg, 4),
-                    "prob_neutral": round(neu, 4),
-                    "engine_mode": "heuristic",
+            for i, probs in zip(indices, probabilities, strict=True):
+                by_label = {"positive": probs[pos_idx], "negative": probs[neg_idx], "neutral": probs[neu_idx]}
+                top = max(by_label, key=lambda label: by_label[label])
+                results[i] = {
+                    "sentiment_score": round(by_label["positive"] - by_label["negative"], 4),
+                    "sentiment_label": FINANCIAL_LABELS[top],
+                    "confidence": round(by_label[top], 4),
+                    "prob_positive": round(by_label["positive"], 4),
+                    "prob_negative": round(by_label["negative"], 4),
+                    "prob_neutral": round(by_label["neutral"], 4),
+                    "engine_mode": TRANSFORMER,
                 }
-            )
-
         return results
+
+    @staticmethod
+    def _heuristic_one(text: str) -> Prediction:
+        words = set(_WORD_RE.findall(text.lower()))
+        bull_hits = len(words & BULLISH_LEXICON)
+        bear_hits = len(words & BEARISH_LEXICON)
+        neu_hits = len(words & NEUTRAL_LEXICON)
+        directional = bull_hits + bear_hits
+
+        # Explicit neutral terms win when they balance or dominate the directional ones
+        if directional == 0 or (neu_hits > 0 and (neu_hits >= directional or bull_hits == bear_hits)):
+            pos, neg, neu = 0.15, 0.15, 0.70
+            label, score = "neutral", 0.0
+            confidence = round(min(0.95, 0.70 + neu_hits * 0.10), 2)
+        elif bull_hits == bear_hits:
+            pos, neg, neu = 0.35, 0.35, 0.30
+            label, score, confidence = "neutral", 0.0, 0.50
+        else:
+            margin = abs(bull_hits - bear_hits) / directional
+            winner = round(0.55 + 0.35 * margin, 4)
+            loser = round(0.08 * (1.0 - margin), 4)
+            neu = round(max(0.0, 1.0 - winner - loser), 4)
+            confidence = winner
+            if bull_hits > bear_hits:
+                pos, neg, label, score = winner, loser, "bullish", round(winner - loser, 4)
+            else:
+                pos, neg, label, score = loser, winner, "bearish", round(loser - winner, 4)
+
+        return {
+            "sentiment_score": score,
+            "sentiment_label": label,
+            "confidence": confidence,
+            "prob_positive": round(pos, 4),
+            "prob_negative": round(neg, 4),
+            "prob_neutral": round(neu, 4),
+            "engine_mode": HEURISTIC,
+        }
+
+    def _predict_heuristic(self, texts: list[str]) -> list[Prediction]:
+        """Deterministic word-list engine with English and Spanish coverage."""
+        return [self._heuristic_one(t) if t and t.strip() else unscored_prediction(HEURISTIC) for t in texts]
 
     def score_dataframe(self, df: pl.DataFrame, text_column: str = "cleaned_text") -> pl.DataFrame:
-        """
-        Appends sentiment_score, sentiment_label, and confidence columns to a Polars DataFrame.
-        """
+        """Appends sentiment_score, sentiment_label, confidence and nlp_engine columns to a Polars DataFrame."""
         if df.is_empty() or text_column not in df.columns:
             return df
 
-        texts = df[text_column].to_list()
-        predictions = self.predict_batch(texts)
-
-        scores = [p["sentiment_score"] for p in predictions]
-        labels = [p["sentiment_label"] for p in predictions]
-        confidences = [p["confidence"] for p in predictions]
-
+        predictions = self.predict_batch(df[text_column].to_list())
         return df.with_columns(
-            [
-                pl.Series("sentiment_score", scores, dtype=pl.Float64),
-                pl.Series("sentiment_label", labels, dtype=pl.String),
-                pl.Series("confidence", confidences, dtype=pl.Float64),
-            ]
+            pl.Series("sentiment_score", [p["sentiment_score"] for p in predictions], dtype=pl.Float64),
+            pl.Series("sentiment_label", [p["sentiment_label"] for p in predictions], dtype=pl.String),
+            pl.Series("confidence", [p["confidence"] for p in predictions], dtype=pl.Float64),
+            pl.Series("nlp_engine", [p["engine_mode"] for p in predictions], dtype=pl.String),
         )

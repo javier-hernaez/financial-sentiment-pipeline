@@ -1,26 +1,24 @@
-"""CLI Entrypoint for Market Intelligence Engine."""
+"""CLI entrypoint for the Market Intelligence Engine."""
 
 import argparse
 import asyncio
+import logging
 import sys
 
+import polars as pl
 from rich.console import Console
 from rich.table import Table
 
-if sys.platform == "win32":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
-
+from src.configs.log_setup import configure_logging
+from src.configs.settings import settings
 from src.pipeline.orchestrator import MarketIntelligencePipeline
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
-def display_gold_table(df) -> None:
-    """Renders the Gold Layer time-series dataset as a formatted terminal table."""
+def display_gold_table(df: pl.DataFrame | None) -> None:
+    """Renders the Gold time series as a terminal table."""
     if df is None or df.is_empty():
         console.print("[yellow]No gold records found to display.[/yellow]")
         return
@@ -30,7 +28,6 @@ def display_gold_table(df) -> None:
         header_style="bold magenta",
         border_style="cyan",
     )
-
     table.add_column("Hour (UTC)", style="bold white", justify="center")
     table.add_column("Ticker", style="cyan", justify="center")
     table.add_column("Close Price", style="green", justify="right")
@@ -41,72 +38,53 @@ def display_gold_table(df) -> None:
     table.add_column("Fear & Greed", style="bold red", justify="center")
 
     for row in df.iter_rows(named=True):
-        hour = str(row.get("timestamp_hour", ""))
-        ticker = str(row.get("asset_ticker", ""))
-        close = f"${row.get('close_price', 0.0):,.2f}"
-        vol = f"{row.get('volume', 0.0):,.1f}"
-        sent = f"{row.get('avg_hourly_sentiment', 0.0):+.3f}"
-        mentions = str(row.get("social_volume_mentions", 0))
-        bull = row.get("bullish_mentions", 0)
-        bear = row.get("bearish_mentions", 0)
-        neut = row.get("neutral_mentions", 0)
-        signals = f"{bull} Bull / {bear} Bear / {neut} Neut"
-        fg_score = row.get("fear_and_greed_score")
-        fg_class = row.get("fear_and_greed_classification", "")
-        fg_display = f"{fg_score} ({fg_class})" if fg_score is not None else "N/A"
-
-        table.add_row(hour, ticker, close, vol, sent, mentions, signals, fg_display)
-
+        score = row.get("fear_and_greed_score")
+        sentiment = row.get("avg_hourly_sentiment")
+        table.add_row(
+            str(row.get("timestamp_hour", "")),
+            str(row.get("asset_ticker", "")),
+            f"${row.get('close_price', 0.0):,.2f}",
+            f"{row.get('volume', 0.0):,.1f}",
+            f"{sentiment:+.3f}" if sentiment is not None else "N/A",
+            str(row.get("social_volume_mentions", 0)),
+            f"{row.get('bullish_mentions', 0)} Bull / {row.get('bearish_mentions', 0)} Bear"
+            f" / {row.get('neutral_mentions', 0)} Neut",
+            f"{score} ({row.get('fear_and_greed_classification', '')})" if score is not None else "N/A",
+        )
     console.print(table)
 
 
-async def main_async() -> int:
-    parser = argparse.ArgumentParser(
-        description="Market Intelligence Engine: High-Frequency Financial & Sentiment ELT Pipeline"
-    )
-    parser.add_argument(
-        "--symbol",
-        type=str,
-        default="BTCUSDT",
-        help="Target trading pair symbol (e.g., BTCUSDT, ETHUSDT)",
-    )
-    parser.add_argument(
-        "--hours",
-        type=int,
-        default=24,
-        help="Historical candle hours to fetch (default: 24)",
-    )
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Market Intelligence Engine: financial and sentiment ELT pipeline")
+    parser.add_argument("--symbol", default=settings.default_symbol, help="Trading pair (e.g. BTCUSDT, ETHUSDT)")
+    parser.add_argument("--hours", type=int, default=24, help="Hourly candles to fetch (default: 24)")
     parser.add_argument(
         "--mock-nlp",
         action="store_true",
-        help="Use deterministic heuristic NLP instead of downloading full PyTorch FinBERT weights",
+        help="Use the deterministic heuristic engine instead of loading the FinBERT weights",
     )
+    return parser.parse_args(argv)
 
-    args = parser.parse_args()
 
-    pipeline = MarketIntelligencePipeline(
-        symbol=args.symbol,
-        hours=args.hours,
-        force_mock_nlp=args.mock_nlp,
-    )
-
+async def main_async(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    pipeline = MarketIntelligencePipeline(symbol=args.symbol, hours=args.hours, force_mock_nlp=args.mock_nlp)
     try:
         results = await pipeline.run()
-        display_gold_table(results.get("gold_preview"))
-        console.print(
-            f"\n[bold green]Success![/bold green] Processed [cyan]{results['candles_processed']}[/cyan] candles, "
-            f"[cyan]{results['posts_processed']}[/cyan] social posts into DuckDB in [bold]{results['elapsed_seconds']:.2f}s[/bold]."
-        )
-        return 0
-    except Exception as exc:
-        console.print(f"[bold red]Pipeline failed with error:[/bold red] {exc}")
-        console.print_exception()
+    except Exception:
+        logger.exception("Pipeline failed")
         return 1
-    finally:
-        pipeline.close()
+    display_gold_table(results["gold_preview"])
+    console.print(
+        f"\n[bold green]Success![/bold green] Processed [cyan]{results['candles_processed']}[/cyan] candles and "
+        f"[cyan]{results['posts_processed']}[/cyan] posts into DuckDB in "
+        f"[bold]{results['elapsed_seconds']:.2f}s[/bold]."
+    )
+    return 0
 
 
 def main() -> None:
+    configure_logging(rich=True)
     sys.exit(asyncio.run(main_async()))
 
 
