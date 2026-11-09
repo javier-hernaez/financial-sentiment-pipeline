@@ -1,0 +1,12 @@
+# Everything is stored with LF. A CRLF start.sh stops the container with "bad interpreter",
+# which a Windows checkout with core.autocrlf would otherwise cause.
+* text=auto eol=lf
+*.sh text eol=lf
+
+# Windows scripts expect CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+*.ico binary
+*.png binary
+*.woff2 binary

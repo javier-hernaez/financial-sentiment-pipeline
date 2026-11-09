@@ -1,5 +1,6 @@
 .git
-.github
+.github/*
+!.github/workflows/
 .agents
 .claude
 .codex
@@ -20,7 +21,7 @@ data
 *.log
 .env
 .env.local
-tests
+tests/__pycache__
 benchmarks
 docs
 internal

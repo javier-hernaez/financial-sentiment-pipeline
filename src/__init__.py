@@ -1,3 +1,3 @@
-"""Market Intelligence Engine Package."""
+"""Market Intelligence Engine: financial sentiment and market data ELT."""
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
