@@ -21,7 +21,7 @@ def test_bronze_data_lake_write_and_read():
         assert file_path.suffix == ".parquet"
         assert "BTCUSDT" in str(file_path)
 
-        df = lake.read_latest_partition("test_source", symbol="BTCUSDT")
+        df = lake.read_partitions("test_source", symbol="BTCUSDT", max_files=1)
         assert df is not None
         assert len(df) == 2
         assert df["ticker"][0] == "BTCUSDT"
@@ -161,11 +161,9 @@ def test_quant_signals_multi_asset_isolation():
     assert eth_h13["sentiment_momentum"] == pytest.approx(-0.20, 0.01)
 
 
-
 def test_describe_tables_reads_catalog():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        with MarketWarehouse(db_path=Path(tmpdir) / "catalog.duckdb") as warehouse:
-            described = {t["name"]: t for t in warehouse.describe_tables()}
+    with tempfile.TemporaryDirectory() as tmpdir, MarketWarehouse(db_path=Path(tmpdir) / "catalog.duckdb") as warehouse:
+        described = {t["name"]: t for t in warehouse.describe_tables()}
 
     assert described["silver_market_prices"]["primary_key"] == ["asset_ticker", "timestamp_open_ms"]
     assert described["silver_social_sentiment"]["primary_key"] == ["post_id"]
@@ -177,28 +175,27 @@ def test_describe_tables_reads_catalog():
 
 def test_utc_columns_store_utc_regardless_of_os_timezone():
     """*_utc columns used to store the OS local time because DuckDB casts TIMESTAMPTZ with the session zone."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        with MarketWarehouse(db_path=Path(tmpdir) / "tz.duckdb") as warehouse:
-            df = pl.DataFrame(
-                {
-                    "source": ["rss"],
-                    "post_id": ["tz1"],
-                    "subreddit": ["coindesk"],
-                    "asset_ticker": ["BTCUSDT"],
-                    "title": ["t"],
-                    "cleaned_text": ["t"],
-                    "author": ["a"],
-                    "upvotes": [0],
-                    "upvote_ratio": [0.0],
-                    "num_comments": [0],
-                    "created_utc": ["2026-11-05T19:00:00+00:00"],
-                    "timestamp_hour": ["2026-11-05 19:00:00"],
-                    "sentiment_score": [0.0],
-                    "sentiment_label": ["neutral"],
-                    "confidence": [0.9],
-                    "ingested_at": ["2026-11-05T19:05:00+00:00"],
-                }
-            )
-            warehouse.upsert_social_sentiment(df)
-            stored = warehouse.conn.execute("SELECT created_utc FROM silver_social_sentiment").fetchone()[0]
+    with tempfile.TemporaryDirectory() as tmpdir, MarketWarehouse(db_path=Path(tmpdir) / "tz.duckdb") as warehouse:
+        df = pl.DataFrame(
+            {
+                "source": ["rss"],
+                "post_id": ["tz1"],
+                "subreddit": ["coindesk"],
+                "asset_ticker": ["BTCUSDT"],
+                "title": ["t"],
+                "cleaned_text": ["t"],
+                "author": ["a"],
+                "upvotes": [0],
+                "upvote_ratio": [0.0],
+                "num_comments": [0],
+                "created_utc": ["2026-11-05T19:00:00+00:00"],
+                "timestamp_hour": ["2026-11-05 19:00:00"],
+                "sentiment_score": [0.0],
+                "sentiment_label": ["neutral"],
+                "confidence": [0.9],
+                "ingested_at": ["2026-11-05T19:05:00+00:00"],
+            }
+        )
+        warehouse.upsert_social_sentiment(df)
+        stored = warehouse.conn.execute("SELECT created_utc FROM silver_social_sentiment").fetchall()[0][0]
     assert stored.hour == 19

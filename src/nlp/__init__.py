@@ -3,4 +3,4 @@
 from .cleaner import TextCleaner
 from .finbert_engine import FinBERTEngine
 
-__all__ = ["TextCleaner", "FinBERTEngine"]
+__all__ = ["FinBERTEngine", "TextCleaner"]

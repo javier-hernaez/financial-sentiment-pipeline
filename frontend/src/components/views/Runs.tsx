@@ -1,24 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useApp } from '../AppContext';
+import { useState } from 'react';
+import { useApp, useAssets } from '../AppContext';
 import { IconPlay, IconRefresh } from '../Icons';
 import { RunStatus, RunSummary, stageLabel } from '../pipeline/RunSummary';
-import { Button, Empty, ErrorNote, PageHeader, Section, Segmented, Skeleton, cx } from '../ui';
+import { Button, Elapsed, Empty, ErrorNote, PageHeader, Section, Segmented, Skeleton, cx } from '../ui';
 import { useLocale } from '@/lib/i18n';
-import { assetShort, dateTime, num, relative, seconds } from '@/lib/format';
+import { assetOptions, assetShort, dateTime, num, relative, seconds } from '@/lib/format';
 import { PipelineRun, Stage } from '@/types';
 
 const ALL = 'ALL';
-
-export function Elapsed({ since }: { since: number }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return <>{Math.round((now - since) / 1000)} s</>;
-}
 
 function History({ runs }: { runs: PipelineRun[] }) {
   const { t, locale } = useLocale();
@@ -67,12 +58,13 @@ function History({ runs }: { runs: PipelineRun[] }) {
 }
 
 export function Runs() {
-  const { runs, running, events, runPipeline } = useApp();
+  const { runs, running, busy, events, runPipeline } = useApp();
   const { t, locale } = useLocale();
   const [asset, setAsset] = useState<string>(ALL);
   const [hours, setHours] = useState('24');
 
-  const assets = asset === ALL ? ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'] : [asset];
+  const allAssets = useAssets();
+  const assets = asset === ALL ? allAssets : [asset];
   const start = (stage: Stage) => runPipeline(stage, assets, Number(hours));
 
   const stages: { stage: Stage; label: string; what: string }[] = [
@@ -100,7 +92,7 @@ export function Runs() {
               label={t('Activo', 'Asset')}
               value={asset}
               onChange={setAsset}
-              options={[{ value: ALL, label: t('Los tres', 'All three') }, { value: 'BTCUSDT', label: 'BTC' }, { value: 'ETHUSDT', label: 'ETH' }, { value: 'SOLUSDT', label: 'SOL' }]}
+              options={[{ value: ALL, label: t('Todos', 'All') }, ...assetOptions(allAssets)]}
             />
           </div>
           <div>
@@ -114,7 +106,7 @@ export function Runs() {
             <li key={s.stage} className="flex flex-col gap-2 rounded-xl border border-rule bg-sunken p-4">
               <p className="font-semibold tracking-[-0.01em]">{s.label}</p>
               <p className="flex-1 text-xs text-ink-2">{s.what}</p>
-              <Button variant={s.stage === 'full' ? 'primary' : 'secondary'} disabled={!!running} onClick={() => start(s.stage)}>
+              <Button variant={s.stage === 'full' ? 'primary' : 'secondary'} disabled={busy || assets.length === 0} onClick={() => start(s.stage)}>
                 <IconPlay className="h-3.5 w-3.5" />
                 {t('Ejecutar', 'Run')}
               </Button>

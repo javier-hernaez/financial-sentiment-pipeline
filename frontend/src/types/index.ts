@@ -1,4 +1,3 @@
-export type Asset = 'BTCUSDT' | 'ETHUSDT' | 'SOLUSDT';
 export type Stage = 'extract' | 'transform' | 'gold' | 'full';
 
 export interface GoldRecord {
@@ -10,7 +9,8 @@ export interface GoldRecord {
   close_price: number;
   volume: number;
   trades_count: number;
-  avg_hourly_sentiment: number;
+  /** Null for an hour without scored headlines, like the index and its classification */
+  avg_hourly_sentiment: number | null;
   social_volume_mentions: number;
   bullish_mentions: number;
   bearish_mentions: number;
@@ -62,17 +62,12 @@ export interface NlpPrediction {
   latency_ms?: number;
 }
 
-export interface StageResult {
-  status: string;
+/** Answer to starting a run, which then goes on in the background */
+export interface StageAccepted {
+  run_id: string;
+  status: 'running';
   stage: Stage;
-  run_id?: string;
   symbol: string;
-  elapsed_seconds: number;
-  candles?: number;
-  social_records?: number;
-  candles_processed?: number;
-  posts_processed?: number;
-  consolidated_hours?: number;
 }
 
 /** One row of the pipeline_runs table */
@@ -115,7 +110,8 @@ export interface Lineage {
   bronze: { source: string; active: boolean; files: number; size_kb: number; latest_path: string; latest_modified: string }[];
   tables: CatalogTable[];
   gold_assets: string[];
-  nlp: { model: string; batch_size: number };
+  /** engines: Silver rows per NLP engine ('transformer', 'heuristic', 'unknown') */
+  nlp: { model: string; batch_size: number; engines: Record<string, number> };
   duckdb_size_kb: number;
 }
 

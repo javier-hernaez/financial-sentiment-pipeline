@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from 'next';
+import { GeistMono } from 'geist/font/mono';
+import { GeistSans } from 'geist/font/sans';
 import { PROJECT } from '@/lib/project';
 import './globals.css';
-
-// Loaded by the browser (not at build time) so builds work without network access
-const FONTS_URL =
-  'https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap';
 
 const description =
   'Pipeline ELT de Javier Hernáez: extrae precios de Binance y titulares de Google News, RSS y Reddit, los guarda en Parquet, los clasifica con FinBERT y los consolida en DuckDB.';
@@ -39,13 +37,9 @@ const themeScript = `try{var t=localStorage.getItem('theme');document.documentEl
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" data-theme="dark" suppressHydrationWarning>
+    <html lang="es" data-theme="dark" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link rel="stylesheet" href={FONTS_URL} />
       </head>
       <body>{children}</body>
     </html>

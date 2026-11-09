@@ -89,11 +89,17 @@ def test_finbert_adversarial_and_empty_inputs():
     """Ensures stability and graceful fallback on empty, whitespace, and noisy inputs."""
     engine = FinBERTEngine(force_mock=True)
 
-    edge_cases = ["", "   ", "\n\t", "!@#$%^&*()", "12345 67890"]
-    preds = engine.predict_batch(edge_cases)
+    blank = ["", "   ", "\n\t"]
+    noise = ["!@#$%^&*()", "12345 67890"]
+    preds = engine.predict_batch(blank + noise)
 
-    assert len(preds) == len(edge_cases)
-    for p in preds:
+    assert len(preds) == len(blank) + len(noise)
+    # Nothing to classify means no score, not a neutral one nobody measured
+    for p in preds[: len(blank)]:
+        assert p["sentiment_label"] is None
+        assert p["sentiment_score"] is None
+        assert p["confidence"] is None
+    for p in preds[len(blank) :]:
         assert p["sentiment_label"] == "neutral"
         assert p["sentiment_score"] == 0.0
         assert p["confidence"] > 0.0
@@ -112,6 +118,6 @@ def test_finbert_batch_throughput_consistency():
     batch_res = engine.predict_batch(samples)
     indiv_res = [engine.predict_batch([s])[0] for s in samples]
 
-    for b, i in zip(batch_res, indiv_res):
+    for b, i in zip(batch_res, indiv_res, strict=False):
         assert b["sentiment_label"] == i["sentiment_label"]
         assert abs(b["sentiment_score"] - i["sentiment_score"]) < 1e-4

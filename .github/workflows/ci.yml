@@ -14,47 +14,76 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
 
   test:
-    name: Tests & Coverage (Python ${{ matrix.python-version }})
+    name: Tests & Coverage
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: "pip"
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install .[dev]
+          pip install ".[dev]"
 
       - name: Lint with Ruff
         run: |
           ruff check src tests benchmarks
+          ruff format --check src tests benchmarks
 
+      - name: Typecheck with mypy
+        run: mypy
+
+      # The NLP tests that need PyTorch skip themselves here; they run wherever torch is installed
       - name: Run Pytest with Coverage
         run: |
-          pytest --cov=src --cov-report=term --cov-report=xml:coverage.xml --cov-report=html:htmlcov
+          pytest -m "not network" --cov=src --cov-report=term --cov-report=xml:coverage.xml --cov-report=html:htmlcov
 
       - name: Upload Coverage HTML Artifact
-        if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-py312
+          name: coverage-report
           path: htmlcov/
 
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Audit Python dependencies
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit --requirement requirements.lock --no-deps --disable-pip
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Audit frontend production dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev
+
   frontend:
-    name: Frontend Typecheck & Build
+    name: Frontend Lint, Tests & Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -65,18 +94,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck
+
+      - name: Unit Tests
+        run: npm test
 
       - name: Production Build
         run: npm run build
@@ -117,7 +152,7 @@ jobs:
   deploy:
     name: Build & Push Docker Image (Deploy)
     runs-on: ubuntu-latest
-    needs: [test, frontend, build]
+    needs: [test, audit, frontend, build]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read

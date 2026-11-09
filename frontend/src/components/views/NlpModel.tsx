@@ -66,7 +66,7 @@ export function NlpModel() {
   const [result, setResult] = useState<NlpPrediction | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Real headlines already in Silver, to try the model with
-  const samples = useApi(() => fetchTableData('silver_social_sentiment', 4, 0));
+  const samples = useApi((signal) => fetchTableData('silver_social_sentiment', 4, 0, '', '', signal));
 
   const analyze = async (value = text) => {
     if (!value.trim()) return;
@@ -105,7 +105,7 @@ export function NlpModel() {
               onChange={(e) => setText(e.target.value)}
               rows={4}
               maxLength={5000}
-              placeholder="Bitcoin ETF inflows hit a monthly record as institutions add exposure"
+              placeholder={t('Escribe un titular financiero en inglés…', 'Type a financial headline in English…')}
               className="w-full resize-y rounded-lg border border-rule bg-sunken px-3 py-2.5 text-base placeholder:text-ink-3"
             />
             <div className="mt-2 flex items-center gap-3">

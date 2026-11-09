@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useAssets } from '../AppContext';
 import { IconDownload } from '../Icons';
 import { Empty, ErrorNote, Figure, FigureGrid, LinkButton, PageHeader, Section, Segmented, Skeleton } from '../ui';
 import { csvExportUrl, fetchGold, fetchTableData } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { useLocale } from '@/lib/i18n';
-import { assetShort, dateTime, hourLabel, num, relative, signed } from '@/lib/format';
+import { assetOptions, assetShort, dateTime, hourLabel, num, relative, signed } from '@/lib/format';
 import { GoldRecord } from '@/types';
 
 function Summary({ rows }: { rows: GoldRecord[] }) {
@@ -16,7 +17,10 @@ function Summary({ rows }: { rows: GoldRecord[] }) {
   const last = rows[rows.length - 1];
   const change = ((last.close_price - first.close_price) / first.close_price) * 100;
   const mentions = rows.reduce((s, r) => s + r.social_volume_mentions, 0);
-  const weighted = mentions ? rows.reduce((s, r) => s + r.avg_hourly_sentiment * r.social_volume_mentions, 0) / mentions : null;
+  // Only hours with a score count: an hour without headlines has no sentiment, not a neutral one
+  const scored = rows.filter((r) => r.avg_hourly_sentiment !== null);
+  const scoredMentions = scored.reduce((s, r) => s + r.social_volume_mentions, 0);
+  const weighted = scoredMentions ? scored.reduce((s, r) => s + (r.avg_hourly_sentiment ?? 0) * r.social_volume_mentions, 0) / scoredMentions : null;
 
   return (
     <FigureGrid className="grid-cols-2 lg:grid-cols-4">
@@ -61,7 +65,7 @@ function Charts({ rows }: { rows: GoldRecord[] }) {
               <XAxis dataKey="label" hide />
               <YAxis orientation="right" domain={['auto', 'auto']} tick={tick} tickLine={false} axisLine={false} width={AXIS_WIDTH} tickFormatter={(v) => num(v, locale)} />
               <Area type="monotone" dataKey="close_price" name={t('Cierre', 'Close')} stroke="var(--line)" strokeWidth={2} fill="url(#price-fill)" activeDot={{ r: 4, fill: 'var(--line)', stroke: 'var(--surface)', strokeWidth: 2 }} isAnimationActive={false} />
-              <Tooltip {...TOOLTIP} cursor={{ stroke: 'var(--ink-3)' }} formatter={(value: number, name: string) => [num(value, locale, 2), name]} />
+              <Tooltip {...TOOLTIP} cursor={{ stroke: 'var(--ink-3)' }} formatter={(value, name) => [num(Number(value), locale, 2), name]} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -84,10 +88,10 @@ function Charts({ rows }: { rows: GoldRecord[] }) {
               <ReferenceLine y={0} stroke="var(--ink-3)" />
               <Bar radius={2} dataKey="avg_hourly_sentiment" name={t('Sentimiento', 'Sentiment')} isAnimationActive={false}>
                 {data.map((d) => (
-                  <Cell key={d.timestamp_hour} fill={d.avg_hourly_sentiment >= 0 ? 'var(--pos)' : 'var(--neg)'} />
+                  <Cell key={d.timestamp_hour} fill={(d.avg_hourly_sentiment ?? 0) >= 0 ? 'var(--pos)' : 'var(--neg)'} />
                 ))}
               </Bar>
-              <Tooltip {...TOOLTIP} cursor={{ fill: 'var(--sunken)' }} formatter={(value: number, name: string) => [signed(value, locale, 3), name]} />
+              <Tooltip {...TOOLTIP} cursor={{ fill: 'var(--sunken)' }} formatter={(value, name) => [value === null || value === undefined ? t('Sin titulares', 'No headlines') : signed(Number(value), locale, 3), name]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -98,7 +102,7 @@ function Charts({ rows }: { rows: GoldRecord[] }) {
 
 function Headlines({ asset }: { asset: string }) {
   const { t, locale } = useLocale();
-  const res = useApi(() => fetchTableData('silver_social_sentiment', 12, 0, '', asset), [asset]);
+  const res = useApi((signal) => fetchTableData('silver_social_sentiment', 12, 0, '', asset, signal), [asset]);
   if (res.error) return <ErrorNote message={res.error} onRetry={res.reload} />;
   if (!res.data) return <Skeleton className="h-60 w-full" />;
   if (res.data.rows.length === 0) return <Empty title={t(`No hay titulares etiquetados como ${assetShort(asset)}.`, `No headlines tagged ${assetShort(asset)}.`)} />;
@@ -140,8 +144,9 @@ function Headlines({ asset }: { asset: string }) {
 export function Results() {
   const { t, locale } = useLocale();
   const [asset, setAsset] = useState('BTCUSDT');
+  const assets = useAssets();
   const [hours, setHours] = useState('48');
-  const gold = useApi(() => fetchGold(asset, Number(hours)), [asset, hours]);
+  const gold = useApi((signal) => fetchGold(asset, Number(hours), signal), [asset, hours]);
   const rows = useMemo(() => (gold.data ? [...gold.data].reverse() : []), [gold.data]);
   const latest = rows[rows.length - 1];
 
@@ -155,7 +160,7 @@ export function Results() {
         )}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Segmented label={t('Activo', 'Asset')} value={asset} onChange={setAsset} options={[{ value: 'BTCUSDT', label: 'BTC' }, { value: 'ETHUSDT', label: 'ETH' }, { value: 'SOLUSDT', label: 'SOL' }]} />
+          <Segmented label={t('Activo', 'Asset')} value={asset} onChange={setAsset} options={assetOptions(assets)} />
           <Segmented label={t('Ventana', 'Window')} value={hours} onChange={setHours} options={[{ value: '24', label: '24 h' }, { value: '48', label: '48 h' }, { value: '168', label: '7 d' }]} />
           <LinkButton href={csvExportUrl(asset)} size="sm">
             <IconDownload className="h-3.5 w-3.5" /> CSV

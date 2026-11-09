@@ -8,7 +8,7 @@ import { LocaleSwitch } from './TopNav';
 import { VIEWS, ViewId } from './views';
 import { useLocale } from '@/lib/i18n';
 
-const TABS: { id: ViewId; icon: (p: { className?: string }) => JSX.Element }[] = [
+const TABS: { id: ViewId; icon: (p: { className?: string }) => React.JSX.Element }[] = [
   { id: 'overview', icon: IconOverview },
   { id: 'runs', icon: IconRuns },
   { id: 'tables', icon: IconTables },

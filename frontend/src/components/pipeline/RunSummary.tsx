@@ -47,7 +47,6 @@ export function RunSummary({ run }: { run: PipelineRun }) {
   const { t, locale } = useLocale();
   const rows = useStageRows(run);
   const total = rows.reduce((sum, r) => sum + r.secs, 0) || 0.001;
-  let elapsed = 0;
 
   return (
     <div>
@@ -76,9 +75,8 @@ export function RunSummary({ run }: { run: PipelineRun }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
-              const left = (elapsed / total) * 100;
-              elapsed += r.secs;
+            {rows.map((r, index) => {
+              const left = (rows.slice(0, index).reduce((sum, previous) => sum + previous.secs, 0) / total) * 100;
               return (
                 <tr key={r.key} className="border-b border-rule align-top last:border-b-0">
                   <td className="py-2.5 pr-3 font-medium">{r.label}</td>
