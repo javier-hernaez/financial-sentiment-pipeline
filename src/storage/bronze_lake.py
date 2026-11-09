@@ -2,7 +2,7 @@
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +40,7 @@ class BronzeDataLake:
             logger.warning("Bronze: no records received for source %s", source)
             return None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         partition = Path(f"year={now.year:04d}", f"month={now.month:02d}", f"day={now.day:02d}")
         if symbol:
             target_dir = self.base_dir / source / symbol.upper() / partition
@@ -98,7 +98,7 @@ class BronzeDataLake:
                     "filename": path.name,
                     "path": "/".join(parts),
                     "size_kb": round(stat.st_size / 1024, 2),
-                    "modified_utc": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+                    "modified_utc": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
                 }
             )
         files.sort(key=lambda f: f["modified_utc"], reverse=True)

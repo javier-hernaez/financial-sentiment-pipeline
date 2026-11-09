@@ -6,7 +6,7 @@ import time
 import uuid
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import polars as pl
@@ -190,7 +190,7 @@ class MarketIntelligencePipeline:
         """Records the execution as running right away, so it can be followed while it works."""
         run: Run = {
             "run_id": uuid.uuid4().hex[:12],
-            "started_at": datetime.now(timezone.utc),
+            "started_at": datetime.now(UTC),
             "triggered_by": triggered_by,
             "stage": stage,
             "symbol": self.symbol,
@@ -202,7 +202,7 @@ class MarketIntelligencePipeline:
 
     def _finish_run(self, run: Run, error: BaseException | None = None) -> None:
         """Stamps the outcome and persists it. A failure to record never masks the pipeline result."""
-        run["finished_at"] = datetime.now(timezone.utc)
+        run["finished_at"] = datetime.now(UTC)
         run["elapsed_seconds"] = (run["finished_at"] - run["started_at"]).total_seconds()
         run["status"] = "failed" if error else "success"
         run["error"] = (str(error) or type(error).__name__)[:500] if error else None

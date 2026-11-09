@@ -119,7 +119,7 @@ npm audit --omit=dev
 Tras cambiar `pyproject.toml`, vuelve a generar el lockfile y ejecuta los tests con el resultado:
 
 ```bash
-uv pip compile pyproject.toml --extra ml --universal --python-version 3.10 -o requirements.lock
+uv pip compile pyproject.toml --extra ml --universal --python-version 3.12 -o requirements.lock
 ```
 
 ## Estructura del repositorio

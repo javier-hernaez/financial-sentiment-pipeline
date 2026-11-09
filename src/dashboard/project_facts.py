@@ -87,8 +87,8 @@ def read_ci_config(workflow: Path) -> dict[str, Any] | None:
     if not workflow.is_file():
         return None
     text = workflow.read_text(encoding="utf-8")
-    matrix = re.search(r"python-version:\s*\[([^\]]+)\]", text)
-    versions = [v.strip().strip("'\"") for v in matrix.group(1).split(",")] if matrix else []
+    declared = re.findall(r"python-version:(.*)", text)
+    versions = list(dict.fromkeys(v for line in declared for v in re.findall(r"\d+\.\d+", line)))
     return {
         "python_versions": versions,
         "lint": "ruff check" in text,

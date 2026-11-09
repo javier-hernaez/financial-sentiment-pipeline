@@ -4,7 +4,7 @@ import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, ClassVar, cast
 
@@ -76,7 +76,7 @@ def _force_utc(conn: duckdb.DuckDBPyConnection) -> None:
 def _as_naive_utc(value: Any) -> Any:
     """Timestamps are stored as naive UTC: DuckDB needs pytz to return TIMESTAMPTZ values to Python."""
     if isinstance(value, datetime) and value.tzinfo is not None:
-        return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value.astimezone(UTC).replace(tzinfo=None)
     return value
 
 

@@ -9,7 +9,7 @@ import math
 import re
 from collections import Counter
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, ClassVar
 from xml.etree.ElementTree import Element
 
@@ -107,7 +107,7 @@ def _post(
         "text_body": body[:1500],
         "author": author,
         "created_utc": published.isoformat(),
-        "ingested_at": datetime.now(timezone.utc).isoformat(),
+        "ingested_at": datetime.now(UTC).isoformat(),
         "timestamp_hour": published.strftime("%Y-%m-%d %H:00:00"),
     }
 
@@ -214,15 +214,15 @@ class SocialRedditExtractor(BaseAsyncExtractor):
         candidates = ((el.findtext(tag) or "").strip() for tag in DATE_TAGS)
         raw_val = next((value for value in candidates if value), None)
         if not raw_val:
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
         for parse in (email.utils.parsedate_to_datetime, _parse_iso_datetime):
             try:
                 parsed = parse(raw_val)
             except (TypeError, ValueError):
                 continue
-            return (parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
-        return datetime.now(timezone.utc)
+            return (parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)).astimezone(UTC)
+        return datetime.now(UTC)
 
     @classmethod
     def parse_rss(cls, xml_text: str, source_name: str, limit: int | None = None) -> list[Post]:
@@ -353,7 +353,7 @@ class SocialRedditExtractor(BaseAsyncExtractor):
     def _search_windows(self) -> list[datetime | None]:
         """None is the last 24 h; each date is one whole past day, which is how older news is backfilled."""
         days = min(math.ceil(self.lookback_hours / 24), MAX_LOOKBACK_DAYS)
-        today = datetime.now(timezone.utc)
+        today = datetime.now(UTC)
         return [None] + ([today - timedelta(days=i) for i in range(1, days + 1)] if days > 1 else [])
 
     @staticmethod

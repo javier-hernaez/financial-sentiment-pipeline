@@ -1,7 +1,7 @@
 """Binance REST API Kline (OHLCV) Extractor."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -68,8 +68,8 @@ class BinanceKlinesExtractor(BaseAsyncExtractor):
         for kline in await self._fetch_klines(params):
             open_ms = int(kline[0])
             close_ms = int(kline[6])
-            dt_open = datetime.fromtimestamp(open_ms / 1000.0, tz=timezone.utc)
-            dt_close = datetime.fromtimestamp(close_ms / 1000.0, tz=timezone.utc)
+            dt_open = datetime.fromtimestamp(open_ms / 1000.0, tz=UTC)
+            dt_close = datetime.fromtimestamp(close_ms / 1000.0, tz=UTC)
             normalized.append(
                 {
                     "source": "binance",

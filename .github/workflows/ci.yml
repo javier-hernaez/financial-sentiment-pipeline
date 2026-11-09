@@ -20,20 +20,16 @@ permissions:
 jobs:
 
   test:
-    name: Tests & Coverage (Python ${{ matrix.python-version }})
+    name: Tests & Coverage
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: "pip"
 
       - name: Install Dependencies
@@ -55,10 +51,9 @@ jobs:
           pytest -m "not network" --cov=src --cov-report=term --cov-report=xml:coverage.xml --cov-report=html:htmlcov
 
       - name: Upload Coverage HTML Artifact
-        if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-py312
+          name: coverage-report
           path: htmlcov/
 
   audit:
