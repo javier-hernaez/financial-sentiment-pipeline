@@ -23,6 +23,10 @@ export interface RunningState {
   assets: string[];
   current: string;
   startedAt: number;
+  /** When the asset being processed started: the run's own clock */
+  assetStartedAt: number;
+  /** Latest snapshot of the asset being processed: stages fill in as they finish. Null until the first poll. */
+  run: PipelineRun | null;
 }
 
 interface AppValue {
@@ -34,6 +38,8 @@ interface AppValue {
   quality: ApiState<ProjectQuality>;
   /** A run started from this page */
   running: RunningState | null;
+  /** The last run started from this page, while it works and after it ends. Null before the first one. */
+  liveRun: PipelineRun | null;
   /** Any run in progress, wherever it was started. The API allows one at a time. */
   busy: boolean;
   /** Goes up each time a run finishes while the page is open: data that depends on the pipeline reloads with it */
@@ -50,6 +56,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { t, locale } = useLocale();
   const [view, setView] = useState<ViewId>('overview');
   const [running, setRunning] = useState<RunningState | null>(null);
+  const [liveRun, setLiveRun] = useState<PipelineRun | null>(null);
   const [events, setEvents] = useState<SessionEvent[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const eventId = useRef(0);
@@ -109,12 +116,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const startedAt = Date.now();
       try {
         for (const [index, asset] of assets.entries()) {
-          setRunning({ stage, assets, current: asset, startedAt });
+          setRunning({ stage, assets, current: asset, startedAt, assetStartedAt: Date.now(), run: null });
+          setLiveRun(null);
           log('info', t(`${assetShort(asset)}: ejecutando ${stageName} (${hours} h)…`, `${assetShort(asset)}: running ${stageName} (${hours} h)…`));
           // The news feeds are shared by all assets, so only the first run needs to download them
           const { run_id } = await runStage(stage, asset, hours, index === 0);
           await reloadRuns();
-          const run = await waitForRun(run_id);
+          const run = await waitForRun(run_id, (snapshot) => {
+            setLiveRun(snapshot);
+            setRunning((prev) => (prev ? { ...prev, run: snapshot } : prev));
+          });
           if (run.status === 'failed') throw new Error(run.error ?? t('La ejecución falló', 'The run failed'));
           await reloadRuns();
           log(
@@ -139,8 +150,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const busy = !!running || foreignRun;
   const value = useMemo<AppValue>(
-    () => ({ view, navigate, diagnostics, lineage, runs, quality, running, busy, dataVersion, events, runPipeline, paletteOpen, setPaletteOpen }),
-    [view, navigate, diagnostics, lineage, runs, quality, running, busy, dataVersion, events, runPipeline, paletteOpen]
+    () => ({ view, navigate, diagnostics, lineage, runs, quality, running, liveRun, busy, dataVersion, events, runPipeline, paletteOpen, setPaletteOpen }),
+    [view, navigate, diagnostics, lineage, runs, quality, running, liveRun, busy, dataVersion, events, runPipeline, paletteOpen]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

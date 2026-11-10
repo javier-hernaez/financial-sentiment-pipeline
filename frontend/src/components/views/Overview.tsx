@@ -6,6 +6,7 @@ import { useApp } from '../AppContext';
 import { IconArrowRight, IconPlay } from '../Icons';
 import { Lineage } from '../pipeline/Lineage';
 import { RunSummary } from '../pipeline/RunSummary';
+import { RunProgress } from '../pipeline/RunProgress';
 import { QualityList } from '../pipeline/QualityList';
 import { GoldPreview } from '../pipeline/GoldPreview';
 import { STACK } from '../pipeline/content';
@@ -13,11 +14,13 @@ import { Button, Elapsed, Empty, ErrorNote, Figure, FigureGrid, Section, Skeleto
 import { fetchGold } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { useLocale } from '@/lib/i18n';
-import { assetShort, hourLabel, num, relative, signed, size } from '@/lib/format';
+import { assetShort, hourLabel, num, parseUtc, relative, signed, size, weightedSentiment } from '@/lib/format';
 import { PROJECT } from '@/lib/project';
 
 const DEMO_ASSET = 'BTCUSDT';
 const DEMO_HOURS = 24;
+// The hero shows the same window as the results view opens with, so both quote the same figures
+const HERO_HOURS = 48;
 const DEMO_NAME = assetShort(DEMO_ASSET);
 
 // The charting library is the heaviest dependency: the page shows up first and the line follows
@@ -30,7 +33,7 @@ const PriceChart = dynamic(() => import('../pipeline/PriceChart').then((m) => m.
 function LivePanel() {
   const { dataVersion } = useApp();
   const { t, locale } = useLocale();
-  const gold = useApi((signal) => fetchGold(DEMO_ASSET, 48, signal), [dataVersion]);
+  const gold = useApi((signal) => fetchGold(DEMO_ASSET, HERO_HOURS, signal), [dataVersion]);
   const rows = useMemo(() => (gold.data ? [...gold.data].reverse() : []), [gold.data]);
   const data = useMemo(() => rows.map((r) => ({ ...r, label: hourLabel(r.timestamp_hour, locale) })), [rows, locale]);
 
@@ -40,6 +43,9 @@ function LivePanel() {
 
   const last = rows[rows.length - 1];
   const change = ((last.close_price - rows[0].close_price) / rows[0].close_price) * 100;
+  const sentiment = weightedSentiment(rows);
+  const mentions = rows.reduce((sum, r) => sum + r.social_volume_mentions, 0);
+  const window = t(`${rows.length} h`, `${rows.length} h`);
 
   return (
     <div className="rounded-2xl border border-rule bg-sunken p-4">
@@ -48,26 +54,49 @@ function LivePanel() {
           <p className="label text-ink-2">{t(`${DEMO_NAME}, salida en Gold`, `${DEMO_NAME}, Gold output`)}</p>
           <p className="display mt-1 text-[30px]">{num(last.close_price, locale, 0)} $</p>
           <p className="mt-0.5 text-xs text-ink-3">
-            {signed(change, locale, 2)} % {t(`en ${rows.length} h`, `in ${rows.length} h`)} · {relative(last.timestamp_hour, locale)}
+            {signed(change, locale, 2)} % · {relative(last.timestamp_hour, locale)}
           </p>
         </div>
         <div className="shrink-0 text-right">
           <p className="label text-ink-2">{t('Sentimiento', 'Sentiment')}</p>
-          <p className="mt-1 text-lg font-semibold tracking-[-0.02em]">{signed(last.avg_hourly_sentiment, locale, 2)}</p>
-          <p className="mt-0.5 text-xs text-ink-3">{num(last.social_volume_mentions, locale)} {t('menciones', 'mentions')}</p>
+          <p className={cx('mt-1 text-lg font-semibold tracking-[-0.02em]', sentiment === null ? 'text-ink-3' : sentiment >= 0 ? 'text-pos' : 'text-neg')}>
+            {sentiment === null ? '—' : signed(sentiment, locale, 2)}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-3">{num(mentions, locale)} {t('titulares', 'headlines')}</p>
         </div>
       </div>
-      <div className="mt-3 h-[150px] lg:h-[170px]" role="img" aria-label={t(`Precio de cierre de ${DEMO_NAME} en las últimas ${rows.length} horas`, `${DEMO_NAME} closing price over the last ${rows.length} hours`)}>
+      <div
+        className="mt-3 h-[190px] lg:h-[210px]"
+        role="img"
+        aria-label={t(
+          `Precio de cierre de ${DEMO_NAME} y sentimiento medio por hora en las últimas ${rows.length} horas`,
+          `${DEMO_NAME} closing price and mean sentiment per hour over the last ${rows.length} hours`
+        )}
+      >
         <PriceChart data={data} />
       </div>
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-3">
+        <span>{t(`Últimas ${window}, por hora`, `Last ${window}, per hour`)}</span>
+        <span className="flex items-center gap-1.5"><i aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-pos" />{t('positivo', 'positive')}</span>
+        <span className="flex items-center gap-1.5"><i aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-neg" />{t('negativo', 'negative')}</span>
+      </p>
     </div>
   );
 }
 
 function Hero() {
-  const { running, busy, events, runPipeline, navigate } = useApp();
+  const { running, liveRun, runs, busy, events, runPipeline, navigate } = useApp();
   const { t } = useLocale();
   const latestEvent = events[0];
+  // A run started elsewhere (another tab or visitor) is followed through the run history, which polls while it lasts
+  const foreign = running ? undefined : runs.data?.find((r) => r.status === 'running');
+  const progress = running
+    ? { run: running.run, stage: running.stage, symbol: running.current, hours: running.run?.hours ?? DEMO_HOURS, active: true, since: running.assetStartedAt }
+    : foreign
+      ? { run: foreign, stage: foreign.stage, symbol: foreign.symbol, hours: foreign.hours, active: true, since: parseUtc(foreign.started_at)?.getTime() ?? 0 }
+      : liveRun
+        ? { run: liveRun, stage: liveRun.stage, symbol: liveRun.symbol, hours: liveRun.hours, active: false, since: 0 }
+        : null;
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-rule bg-surface p-5 lg:p-9">
@@ -102,9 +131,15 @@ function Hero() {
               {t('Ver resultados', 'See the results')} <IconArrowRight className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <p role="status" className={cx('mt-3 min-h-[20px] text-xs', latestEvent?.tone === 'bad' ? 'text-bad' : 'text-ink-3')}>
-            {latestEvent ? latestEvent.text : t(`Procesa ${DEMO_NAME} con una ventana de ${DEMO_HOURS} h.`, `Processes ${DEMO_NAME} with a ${DEMO_HOURS} h window.`)}
-          </p>
+          {progress ? (
+            <div className="mt-4 max-w-[520px]">
+              <RunProgress {...progress} />
+            </div>
+          ) : (
+            <p role="status" className={cx('mt-3 min-h-[20px] text-xs', latestEvent?.tone === 'bad' ? 'text-bad' : 'text-ink-3')}>
+              {latestEvent ? latestEvent.text : t(`Procesa ${DEMO_NAME} con una ventana de ${DEMO_HOURS} h.`, `Processes ${DEMO_NAME} with a ${DEMO_HOURS} h window.`)}
+            </p>
+          )}
           <p className="mt-4 text-sm text-ink-2">
             {t('Un proyecto de', 'A project by')} <b className="font-semibold text-ink">{PROJECT.author.name}</b>, {PROJECT.author.role}
           </p>

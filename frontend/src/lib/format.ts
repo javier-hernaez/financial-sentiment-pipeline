@@ -1,4 +1,5 @@
 import type { Locale } from './i18n';
+import type { GoldRecord } from '@/types';
 
 const tag = (l: Locale) => (l === 'es' ? 'es-ES' : 'en-GB');
 
@@ -73,3 +74,13 @@ export function relative(value: string | null | undefined, locale: Locale, now =
 export const assetShort = (ticker: string) => ticker.replace(/USDT$/, '');
 
 export const assetOptions = (assets: string[]) => assets.map((value) => ({ value, label: assetShort(value) }));
+
+/**
+ * Mean sentiment over a window, weighted by how many headlines each hour had. Hours without
+ * headlines are left out: they have no sentiment, not a neutral one. Null when no hour has a score.
+ */
+export function weightedSentiment(rows: Pick<GoldRecord, 'avg_hourly_sentiment' | 'social_volume_mentions'>[]): number | null {
+  const scored = rows.filter((r) => r.avg_hourly_sentiment !== null);
+  const mentions = scored.reduce((s, r) => s + r.social_volume_mentions, 0);
+  return mentions ? scored.reduce((s, r) => s + (r.avg_hourly_sentiment ?? 0) * r.social_volume_mentions, 0) / mentions : null;
+}

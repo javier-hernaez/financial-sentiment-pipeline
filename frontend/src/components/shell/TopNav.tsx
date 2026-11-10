@@ -3,7 +3,6 @@
 import { useApp } from '../AppContext';
 import { IconMoon, IconSearch, IconSun } from '../Icons';
 import { cx } from '../ui';
-import { HealthInline } from './Health';
 import { VIEWS } from './views';
 import { useLocale } from '@/lib/i18n';
 import { useTheme } from '@/lib/theme';
@@ -92,9 +91,6 @@ export function TopNav() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
-          <span className="mr-1">
-            <HealthInline />
-          </span>
           <span className="hidden lg:block">
             <LocaleSwitch />
           </span>

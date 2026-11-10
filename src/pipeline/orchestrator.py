@@ -211,6 +211,13 @@ class MarketIntelligencePipeline:
         except Exception:
             logger.exception("Could not record run %s", run["run_id"])
 
+    async def _save_progress(self, run: Run) -> None:
+        """Persists the stages finished so far, so a client following the run sees each one as it ends."""
+        try:
+            await asyncio.to_thread(self.warehouse.record_run, run)
+        except Exception:
+            logger.warning("Could not record the progress of run %s", run["run_id"], exc_info=True)
+
     async def _execute(self, stage: str, run: Run) -> dict[str, Any]:
         """Runs the stages one after another. Blocking work goes to worker threads to keep the event loop free."""
         extracted: dict[str, Any] = {}
@@ -220,11 +227,12 @@ class MarketIntelligencePipeline:
         if stage in ("full", "extract"):
             with _timed(run, "extract_seconds"):
                 extracted = await self.extract()
+            run.update(candles=len(extracted["market"]), posts=len(extracted["social"]))
+            await self._save_progress(run)
             with _timed(run, "load_seconds"):
                 bronze = await asyncio.to_thread(self.land_bronze, extracted["market"], extracted["social"])
-            run.update(
-                candles=len(extracted["market"]), posts=len(extracted["social"]), bronze_files=len(bronze["files"])
-            )
+            run["bronze_files"] = len(bronze["files"])
+            await self._save_progress(run)
 
         if stage in ("full", "transform"):
             with _timed(run, "transform_seconds"):
@@ -232,6 +240,8 @@ class MarketIntelligencePipeline:
                     self.transform_silver, extracted.get("market"), extracted.get("social")
                 )
             run.update(candles=silver["candles_processed"], posts=silver["posts_processed"])
+            if stage == "full":
+                await self._save_progress(run)
 
         if stage in ("full", "gold"):
             with _timed(run, "gold_seconds"):

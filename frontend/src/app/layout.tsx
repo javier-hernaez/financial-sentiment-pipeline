@@ -11,10 +11,8 @@ export const metadata: Metadata = {
   title: `${PROJECT.name} · ${PROJECT.author.name}`,
   description,
   authors: [{ name: PROJECT.author.name, url: PROJECT.author.github }],
-  icons: {
-    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/favicon.ico' }],
-    apple: '/icon.svg',
-  },
+  // No `icons` here: Next links app/icon.svg itself with a hash of its content in the URL,
+  // so a browser holding an earlier icon fetches the new one instead of reusing its cache.
   openGraph: {
     title: `${PROJECT.name} · ${PROJECT.author.name}`,
     description,
