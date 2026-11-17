@@ -2,6 +2,7 @@
 
 import { useApp } from '../AppContext';
 import { DECISIONS } from '../pipeline/content';
+import { Lineage } from '../pipeline/Lineage';
 import { PageHeader, Section, Skeleton } from '../ui';
 import { useLocale } from '@/lib/i18n';
 
@@ -58,6 +59,10 @@ export function Architecture() {
             </li>
           ))}
         </ol>
+      </Section>
+
+      <Section id="lineage" title={t('Qué hay en cada capa', 'What each layer holds')}>
+        <Lineage />
       </Section>
 
       <Section id="decisions" title={t('Decisiones', 'Decisions')}>

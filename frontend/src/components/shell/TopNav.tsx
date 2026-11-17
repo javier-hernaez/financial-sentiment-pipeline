@@ -111,12 +111,11 @@ export function TopNav() {
 }
 
 export function SiteFooter() {
-  const { t } = useLocale();
   return (
     <footer className="pb-tabbar px-4 pt-8 lg:px-6">
       <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-rule pt-4 text-xs text-ink-3">
         <span>
-          {t('Diseñado y construido por', 'Designed and built by')} <b className="font-medium text-ink">{PROJECT.author.name}</b>, {PROJECT.author.role}
+          <b className="font-medium text-ink">{PROJECT.author.name}</b> · {PROJECT.author.role}
         </span>
         <a href={PROJECT.author.github} target="_blank" rel="noreferrer" className="py-1 hover:text-ink">
           github.com/{PROJECT.author.githubHandle}
