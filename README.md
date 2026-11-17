@@ -1,5 +1,5 @@
 ---
-title: Market Intelligence Terminal
+title: Sentiment ELT
 emoji: 📊
 colorFrom: blue
 colorTo: slate
@@ -7,13 +7,15 @@ sdk: docker
 app_port: 7860
 ---
 
-# Market Intelligence Engine: Financial Sentiment ELT
+# Sentiment ELT
 
 [![CI](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/javier-hernaez/financial-sentiment-pipeline/actions/workflows/ci.yml)
 
-Pipeline ELT con arquitectura **Medallion (Bronze / Silver / Gold)**. Extrae de forma asíncrona velas OHLCV de Binance y noticias de Google News, RSS y Reddit, clasifica cada titular con **FinBERT** y consolida el resultado por horas en **DuckDB**, junto a un índice de miedo y codicia derivado de ese sentimiento.
+Proyecto personal de ingeniería de datos. Un pipeline ELT descarga velas horarias de Binance y titulares de Google News, RSS y Reddit, puntúa cada titular con FinBERT y deja en DuckDB una tabla por hora con el precio y el sentimiento de las noticias de esa hora.
 
-## Arquitectura
+Incluye una web desde la que cualquiera puede lanzar el pipeline, ver cómo avanza etapa por etapa y explorar las tablas que genera.
+
+## Cómo funciona
 
 ```mermaid
 flowchart LR
@@ -27,37 +29,47 @@ flowchart LR
     A --> W[Next.js]
 ```
 
-- **Extract:** peticiones en paralelo, reintentos con *backoff* exponencial solo para errores transitorios (red, 429, 5xx) y réplica de Binance para regiones bloqueadas. Una fuente que falla no detiene a las demás.
-- **Bronze:** Parquet inmutable particionado por fecha (`year=YYYY/month=MM/day=DD/`), con escritura atómica.
-- **Silver:** limpieza vectorizada con Polars e inferencia por lotes con `ProsusAI/finbert`, ordenada por longitud para reducir el *padding*. Cada historia se puntúa y se cuenta una sola vez.
-- **Gold:** vista de DuckDB que agrega las menciones por hora antes de unirlas con las velas.
+Los datos pasan por tres capas:
 
-Más detalle en [docs/PRD.md](docs/PRD.md).
+- Bronze guarda lo extraído tal cual, en Parquet particionado por fecha (`year=YYYY/month=MM/day=DD/`). No se modifica nunca, así que Silver se puede reconstruir sin volver a llamar a las APIs.
+- Silver son dos tablas de DuckDB: velas y titulares puntuados. Polars limpia y normaliza a UTC; `ProsusAI/finbert` puntúa por lotes, ordenados por longitud para reducir el *padding*. Cada noticia se puntúa una sola vez aunque llegue por varios medios, y volver a ejecutar no duplica filas.
+- Gold es una vista que agrega los titulares por hora, los une con las velas y calcula un índice de miedo y codicia a partir del sentimiento.
 
-### Decisiones de diseño
+La extracción lanza todas las peticiones en paralelo y reintenta con *backoff* exponencial solo los errores transitorios (red, 429, 5xx). Si una fuente falla, las demás siguen.
 
-| Decisión | Motivo |
-| --- | --- |
-| Una conexión DuckDB por proceso, un cursor por petición | DuckDB admite un solo proceso escritor por archivo. El esquema se crea una vez, al abrir la conexión. |
-| Consultas en el *thread pool* de FastAPI | Las consultas y la lectura del lago son bloqueantes: en el *event loop* frenarían a todas las demás peticiones. |
-| Ejecuciones en segundo plano (`202` + `pipeline_runs`) | Con FinBERT en CPU una ejecución dura minutos, más de lo que aguantan proxies y navegadores. El estado sobrevive a recargar la página, y un reinicio marca como fallidas las que quedaron a medias. |
-| La API corre en un único proceso | Por la limitación de DuckDB. El límite de peticiones vive en memoria por el mismo motivo. |
+## Decisiones que condicionan el diseño
 
-### Modelo de seguridad
+DuckDB admite un solo proceso escritor por archivo, y de ahí salen varias cosas:
 
-- La clave `API_SECRET_KEY` **nunca llega al navegador**: solo la conoce el servidor Next.js, en `app/api/admin/[...slug]/route.ts`.
-- Como ese proxy actúa en nombre de visitantes anónimos, lo que deja pasar es público de hecho. Por eso usa una lista cerrada (`lib/adminRoutes.ts`): las vistas de solo lectura y las acciones que ofrece la propia demo.
-- La API solo escucha en `127.0.0.1` dentro del contenedor y solo confía en `X-Forwarded-For` si viene de ese proxy local.
-- En producción la API no arranca con la clave por defecto; `start.sh` genera una aleatoria si no se configura ninguna.
-- Los errores inesperados se registran en el log y el cliente solo recibe un mensaje genérico.
+- La API corre en un único proceso, con una conexión compartida y un cursor por petición.
+- El límite de peticiones vive en memoria, porque no hay más procesos con los que compartirlo.
+- La CLI no puede escribir mientras la API está en marcha.
 
-**Límite conocido:** si Next.js se expone directamente sin un proxy inverso delante, un cliente puede falsear `X-Forwarded-For` y evadir el límite de peticiones. Aun así, nunca puede haber más de una ejecución a la vez. Detrás de un proxy inverso (como en Hugging Face Spaces) no ocurre.
+Con FinBERT en CPU una ejecución tarda desde unos segundos hasta varios minutos, más de lo que aguantan un proxy o un navegador. Por eso la API responde `202` y ejecuta en segundo plano; el progreso se guarda en la tabla `pipeline_runs`, la web lo consulta cada dos segundos y sobrevive a recargar la página. Si el servidor se reinicia a mitad, la ejecución queda marcada como fallida.
 
-## Inicio rápido
+Las consultas a DuckDB y la lectura de Parquet son bloqueantes, así que van al *thread pool* de FastAPI en lugar de al *event loop*.
 
-### 1. Instalar dependencias
+## Seguridad de la demo
 
-`requirements.lock` fija las versiones exactas con las que se ejecutó la suite de tests.
+La web es pública y permite lanzar ejecuciones, así que hay que acotar lo que puede hacer un visitante anónimo:
+
+- `API_SECRET_KEY` solo la conoce el servidor de Next.js (`app/api/admin/[...slug]/route.ts`); nunca llega al navegador.
+- Ese proxy solo deja pasar una lista cerrada de rutas (`lib/adminRoutes.ts`): las lecturas y las acciones que ofrece la propia web.
+- Solo puede haber una ejecución a la vez, y hay un límite de peticiones por cliente.
+- Dentro del contenedor la API escucha en `127.0.0.1` y solo confía en `X-Forwarded-For` si viene del proxy local.
+- En producción la API no arranca con la clave por defecto; `start.sh` genera una aleatoria si no hay ninguna configurada.
+
+Si Next.js se expone sin un proxy inverso delante, un cliente puede falsear `X-Forwarded-For` y saltarse el límite de peticiones. Detrás de uno, como en Hugging Face Spaces, no ocurre.
+
+## Limitaciones
+
+- Solo se puntúa el titular, no el cuerpo de la noticia.
+- El índice de miedo y codicia es un cálculo propio sobre el sentimiento de los titulares, no el índice que publican otros sitios.
+- No predice precios ni pretende hacerlo. El objetivo es el pipeline, no la señal.
+
+## Ejecutarlo en local
+
+Hace falta Python 3.12 y Node.
 
 ```bash
 py -m venv venv
@@ -66,36 +78,26 @@ cd frontend
 npm ci
 ```
 
-### 2. Configurar variables de entorno
-
 ```bash
 copy .env.example .env
 ```
 
-La API y el servidor Next.js local leen el mismo archivo.
+La API y el servidor de Next.js leen el mismo `.env`.
 
-### 3. Arrancar
+Para arrancar, doble clic en `start.bat` o `.\start.ps1` en Windows. Con Docker, `docker compose up`. La web queda en `http://localhost:3000` y la API, con su Swagger, en `http://localhost:8080/docs`.
 
-- **Windows:** doble clic en `start.bat`, o `.\start.ps1` desde PowerShell.
-- **Docker:** `docker compose up`.
-
-| Servicio | URL |
-| --- | --- |
-| Web | `http://localhost:3000` |
-| API y Swagger UI | `http://localhost:8080/docs` |
-
-### 4. Ejecutar el pipeline
-
-Se puede lanzar desde la web o desde la línea de comandos. DuckDB admite un solo proceso escritor, así que la CLI necesita que la API esté parada.
+El pipeline también se puede lanzar desde la línea de comandos, con la API parada:
 
 ```powershell
 .\run_pipeline.ps1 -Symbol BTCUSDT -Hours 24
 .\venv\Scripts\python -m src.main --symbol BTCUSDT --hours 24 --mock-nlp
 ```
 
-## Calidad
+`--mock-nlp` sustituye FinBERT por un motor heurístico, útil para probar sin descargar el modelo.
 
-Lo mismo que comprueba la CI:
+## Tests
+
+La CI ejecuta esto mismo en cada push:
 
 ```bash
 ruff check src tests benchmarks
@@ -114,30 +116,23 @@ npm run build
 npm audit --omit=dev
 ```
 
-### Actualizar las versiones fijadas
-
-Tras cambiar `pyproject.toml`, vuelve a generar el lockfile y ejecuta los tests con el resultado:
+`requirements.lock` fija las versiones con las que pasan los tests. Tras cambiar `pyproject.toml` hay que regenerarlo:
 
 ```bash
 uv pip compile pyproject.toml --extra ml --universal --python-version 3.12 -o requirements.lock
 ```
 
-## Estructura del repositorio
+## Estructura
 
 ```
-sentiment-analysis/
-├── docs/PRD.md                  # Requisitos y arquitectura
-├── src/
-│   ├── configs/                 # Configuración y logging
-│   ├── extractors/              # Binance, Google News, RSS y Reddit
-│   ├── storage/                 # Lago Bronze, esquema y almacén DuckDB
-│   ├── nlp/                     # Limpieza, FinBERT y motor heurístico de respaldo
-│   ├── pipeline/                # Orquestador E -> L -> T
-│   ├── analytics/               # Señales cuantitativas
-│   ├── dashboard/               # API: rutas, seguridad y trabajos en segundo plano
-│   └── main.py                  # CLI
-├── frontend/                    # Web Next.js
-├── tests/                       # Tests de la API, el pipeline y el almacén
-├── requirements.lock            # Versiones exactas probadas
-└── Dockerfile, start.sh         # Imagen y arranque en producción
+src/
+  extractors/   Binance, Google News, RSS y Reddit
+  storage/      Lago Bronze, esquema y almacén DuckDB
+  nlp/          Limpieza de texto, FinBERT y motor heurístico
+  pipeline/     Orquestador
+  analytics/    Retornos, volatilidad y momento del sentimiento
+  dashboard/    API: rutas, seguridad y ejecuciones en segundo plano
+  main.py       CLI
+frontend/       Web en Next.js
+tests/
 ```

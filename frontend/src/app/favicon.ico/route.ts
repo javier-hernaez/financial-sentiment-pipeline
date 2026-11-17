@@ -4,7 +4,8 @@ export async function GET() {
   return new Response(svg, {
     headers: {
       'Content-Type': 'image/svg+xml',
-      'Cache-Control': 'public, max-age=86400',
+      // Revalidated on every visit: a long cache kept showing an earlier icon after it changed
+      'Cache-Control': 'public, max-age=0, must-revalidate',
     },
   });
 }
