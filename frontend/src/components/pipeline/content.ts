@@ -90,15 +90,3 @@ export const DECISIONS: Decision[] = [
     },
   },
 ];
-
-export const STACK = [
-  { name: 'Python', detail: 'asyncio, httpx' },
-  { name: 'Polars', detail: '' },
-  { name: 'FinBERT', detail: 'transformers, torch' },
-  { name: 'DuckDB', detail: '' },
-  { name: 'Parquet', detail: 'pyarrow' },
-  { name: 'FastAPI', detail: '' },
-  { name: 'Next.js', detail: '' },
-  { name: 'Docker', detail: '' },
-  { name: 'GitHub Actions', detail: '' },
-];

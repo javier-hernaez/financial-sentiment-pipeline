@@ -157,6 +157,37 @@ async def test_pipeline_run_is_recorded_with_stage_timings(mock_pipeline_network
 
 
 @pytest.mark.asyncio
+async def test_run_records_each_finished_stage_while_running(mock_pipeline_network, monkeypatch):
+    from src.storage import MarketWarehouse
+
+    seen: dict = {}
+    original_gold = MarketIntelligencePipeline.aggregate_gold
+
+    def spying_gold(self):
+        # What a client polling the run would read while Gold is still working
+        seen.update(self.warehouse.list_runs()[0])
+        return original_gold(self)
+
+    monkeypatch.setattr(MarketIntelligencePipeline, "aggregate_gold", spying_gold)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db = Path(tmpdir) / "runs_progress.duckdb"
+        monkeypatch.setattr(settings, "duckdb_path", db)
+        monkeypatch.setattr(settings, "bronze_dir", Path(tmpdir) / "bronze_progress")
+        try:
+            pipeline = MarketIntelligencePipeline(symbol="BTCUSDT", hours=2, force_mock_nlp=True)
+            await pipeline.run(triggered_by="test")
+
+            assert seen["status"] == "running"
+            assert seen["candles"] == 2
+            assert seen["bronze_files"] == 2
+            for key in ("extract_seconds", "load_seconds", "transform_seconds"):
+                assert seen[key] is not None and seen[key] >= 0
+            assert seen["gold_seconds"] is None
+        finally:
+            MarketWarehouse.close_all_shared()
+
+
+@pytest.mark.asyncio
 async def test_failed_stage_is_recorded_with_error(mock_pipeline_network, monkeypatch):
     from src.storage import MarketWarehouse
 

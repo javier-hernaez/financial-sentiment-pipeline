@@ -84,13 +84,15 @@ export const runStage = (stage: Stage, symbol: string, hours: number, includeSoc
   post<StageAccepted>('/admin/run-stage', { stage, symbol, hours, include_social: includeSocial });
 
 /** Follows a run until it ends, however long it takes. */
-export async function waitForRun(runId: string): Promise<PipelineRun> {
+/** Polls a run until it ends. onProgress gets every snapshot, which carries each stage as soon as it finishes. */
+export async function waitForRun(runId: string, onProgress?: (run: PipelineRun) => void): Promise<PipelineRun> {
   let failures = 0;
   for (;;) {
     await new Promise((resolve) => setTimeout(resolve, RUN_POLL_MS));
     try {
       const run = await get<PipelineRun>(`/admin/runs/${runId}`);
       failures = 0;
+      onProgress?.(run);
       if (run.status !== 'running') return run;
     } catch (err) {
       failures += 1;

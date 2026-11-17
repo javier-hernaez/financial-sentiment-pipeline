@@ -8,7 +8,7 @@ import { Empty, ErrorNote, Figure, FigureGrid, LinkButton, PageHeader, Section, 
 import { csvExportUrl, fetchGold, fetchTableData } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { useLocale } from '@/lib/i18n';
-import { assetOptions, assetShort, dateTime, hourLabel, num, relative, signed } from '@/lib/format';
+import { assetOptions, assetShort, dateTime, hourLabel, num, relative, signed, weightedSentiment } from '@/lib/format';
 import { GoldRecord } from '@/types';
 
 function Summary({ rows }: { rows: GoldRecord[] }) {
@@ -17,10 +17,7 @@ function Summary({ rows }: { rows: GoldRecord[] }) {
   const last = rows[rows.length - 1];
   const change = ((last.close_price - first.close_price) / first.close_price) * 100;
   const mentions = rows.reduce((s, r) => s + r.social_volume_mentions, 0);
-  // Only hours with a score count: an hour without headlines has no sentiment, not a neutral one
-  const scored = rows.filter((r) => r.avg_hourly_sentiment !== null);
-  const scoredMentions = scored.reduce((s, r) => s + r.social_volume_mentions, 0);
-  const weighted = scoredMentions ? scored.reduce((s, r) => s + (r.avg_hourly_sentiment ?? 0) * r.social_volume_mentions, 0) / scoredMentions : null;
+  const weighted = weightedSentiment(rows);
 
   return (
     <FigureGrid className="grid-cols-2 lg:grid-cols-4">
